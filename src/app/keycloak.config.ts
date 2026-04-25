@@ -16,6 +16,8 @@ export const provideKeycloakAngular = () =>
     },
     initOptions: {
       onLoad: 'login-required' as KeycloakOnLoad,
+      checkLoginIframe: false,
+      silentCheckSsoFallback: false,
       silentCheckSsoRedirectUri: environment.keycloak.initOptions.silentCheckSsoRedirectUri,
       redirectUri: environment.keycloak.initOptions.redirectUri
     },
