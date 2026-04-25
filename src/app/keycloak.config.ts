@@ -15,7 +15,7 @@ export const provideKeycloakAngular = () =>
       clientId: environment.keycloak.config.clientId,
     },
     initOptions: {
-      onLoad: 'login-required' as KeycloakOnLoad,
+      onLoad: 'check-sso' as KeycloakOnLoad,
       checkLoginIframe: false,
       silentCheckSsoFallback: false,
       silentCheckSsoRedirectUri: environment.keycloak.initOptions.silentCheckSsoRedirectUri,
