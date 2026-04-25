@@ -33,7 +33,6 @@ const isAccessAllowed = async (
     return true;
   }
   else {
-  const router = inject(Router);
   return true;
   }
 };

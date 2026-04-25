@@ -10,8 +10,8 @@ import {
 import { KeycloakOnLoad } from 'keycloak-js';
 import { environment } from 'src/environments/environment';
 
-const localhostCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
-    urlPattern: /^(http:\/\/localhost:6010)(\/.*)?$/i
+const apiCondition = createInterceptorCondition({
+  urlPattern: /^(http:\/\/localhost:6010|https:\/\/TUO-BACKEND\.com)(\/.*)?$/i,
 });
 
 export const provideKeycloakAngular = () =>
@@ -23,7 +23,7 @@ export const provideKeycloakAngular = () =>
             
         },
         initOptions: {
-            onLoad: environment.keycloak.initOptions.onLoad as KeycloakOnLoad,
+            onLoad: 'login-required' as KeycloakOnLoad,
             silentCheckSsoRedirectUri: environment.keycloak.initOptions.silentCheckSsoRedirectUri,
             redirectUri: environment.keycloak.initOptions.redirectUri
        },
