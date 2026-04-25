@@ -8,7 +8,7 @@ export const environment = {
     apiBaseUrl: 'http://localhost:6010/api',
     keycloak: {
         config: {
-            url: 'http://localhost:18080',      // Indirizzo del container Keycloak
+            url: 'https://ca-keycloak.wonderfulglacier-d0f085b1.italynorth.azurecontainerapps.io',      // Indirizzo del container Keycloak
             realm: 'keycloak-auth-demo',              // Il tuo Realm in Keycloak
             clientId: 'gestionale-frontend-client' // Client ID configurato in Keycloak
         },
