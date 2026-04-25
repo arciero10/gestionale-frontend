@@ -10,7 +10,7 @@ import { provideKeycloakAngular } from '@/keycloak.config';
 export const appConfig: ApplicationConfig = {
     providers: [
         provideRouter(routes),
-        provideKeycloakAngular(),
+        provideKeycloakAngular,
         provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
         provideAnimationsAsync(),
         providePrimeNG({ theme: { preset: MyPreset, options: { darkModeSelector: '.app-dark' } } }),
