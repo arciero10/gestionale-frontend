@@ -30,12 +30,9 @@ export const provideKeycloakAngular = () =>
             })
         ],
         providers: [
-            AutoRefreshTokenService,
-            UserActivityService,
-            {
-           providers: [
   AutoRefreshTokenService,
   UserActivityService
-]
+],
+            }
         ]
     });
