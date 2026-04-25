@@ -10,10 +10,6 @@ import {
 import { KeycloakOnLoad } from 'keycloak-js';
 import { environment } from 'src/environments/environment';
 
-const localhostCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
-  url: /http:\/\/localhost:6010(\/.*)?/,
-});
-
 export const provideKeycloakAngular = () =>
     provideKeycloak({
         config: {
@@ -37,8 +33,9 @@ export const provideKeycloakAngular = () =>
             AutoRefreshTokenService,
             UserActivityService,
             {
-                provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
-                useValue: [localhostCondition]
-            }
+           providers: [
+  AutoRefreshTokenService,
+  UserActivityService
+]
         ]
     });
