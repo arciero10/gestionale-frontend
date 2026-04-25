@@ -19,7 +19,7 @@ export const provideKeycloakAngular = () =>
       checkLoginIframe: false,
       silentCheckSsoFallback: false,
       silentCheckSsoRedirectUri: environment.keycloak.initOptions.silentCheckSsoRedirectUri,
-      redirectUri: environment.keycloak.initOptions.redirectUri
+      redirectUri: environment.keycloak.initOptions.redirectUri,
     },
     features: [
       withAutoRefreshToken({
