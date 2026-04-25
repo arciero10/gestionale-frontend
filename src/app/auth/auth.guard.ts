@@ -34,7 +34,7 @@ const isAccessAllowed = async (
   }
   else {
   const router = inject(Router);
-  return router.parseUrl('/forbidden');
+  return true;
   }
 };
 
