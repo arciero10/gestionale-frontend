@@ -10,8 +10,8 @@ import {
 import { KeycloakOnLoad } from 'keycloak-js';
 import { environment } from 'src/environments/environment';
 
-const apiCondition = createInterceptorCondition({
-  urlPattern: /^(http:\/\/localhost:6010|https:\/\/TUO-BACKEND\.com)(\/.*)?$/i,
+const localhostCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
+  url: /http:\/\/localhost:6010(\/.*)?/,
 });
 
 export const provideKeycloakAngular = () =>
