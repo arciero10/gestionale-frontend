@@ -1,0 +1,9 @@
+.layout-menu-light {
+    --menu-bg: #ffffff;
+    --root-menuitem-text-color: var(--p-text-color);
+    --menuitem-text-color: var(--p-text-muted-color);
+    --menuitem-hover-bg: rgba(0, 0, 0, 0.04);
+    --active-menuitem-text-color: var(--p-primary-500);
+    --active-menuitem-bg: var(--p-primary-50);
+    --inline-menu-border-color: var(--p-content-border-color);
+}

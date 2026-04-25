@@ -1,0 +1,102 @@
+{
+    "data": [
+        {
+            "listId": "1",
+            "title": "Lista Convivenze",
+            "cards": [
+                {
+                    "id": "11",
+                    "title": "Convivenza Inizio Corso",
+                    "description": "Prati Somaschi, Albano Laziale",
+                    "startDate": "2022-05-18",
+                    "dueDate": "2022-05-18",
+                    "completed": false,
+                    "progress": 0,
+                    "assignees": [
+                        {
+                            "name": "Ioni Bowcher",
+                            "image": "ionibowcher.png"
+                        },
+                        {
+                            "name": "Amy Elsner",
+                            "image": "amyelsner.png"
+                        }
+                    ],
+                    "comments": [
+                        {
+                            "name": "Ioni Bowcher",
+                            "image": "ionibowcher.png",
+                            "text": "How likely are you to recommend our company"
+                        },
+                        {
+                            "name": "Amy Elsner",
+                            "image": "amyelsner.png",
+                            "text": "Ok thanks!"
+                        }
+                    ],
+                    "priority": {
+                        "color": "#3b82f6",
+                        "title": "Medium"
+                    },
+                    "attachments": 4,
+                    "taskList": {
+                        "id": "1234",
+                        "title": "Tasklist",
+                        "tasks": [
+                            {
+                                "text": "Contattare la struttura per conferma disponibilità",
+                                "completed": false
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": "12",
+                    "title": "Convivenza Riporto",
+                    "description": "Prati Somaschi, Albano Laziale",
+                    "startDate": "2022-05-18",
+                    "dueDate": "2022-05-18",
+                    "completed": false,
+                    "progress": 0,
+                    "assignees": [
+                        {
+                            "name": "Ioni Bowcher",
+                            "image": "ionibowcher.png"
+                        },
+                        {
+                            "name": "Amy Elsner",
+                            "image": "amyelsner.png"
+                        }
+                    ],
+                    "comments": [
+                        {
+                            "name": "Ioni Bowcher",
+                            "image": "ionibowcher.png",
+                            "text": "How likely are you to recommend our company"
+                        },
+                        {
+                            "name": "Amy Elsner",
+                            "image": "amyelsner.png",
+                            "text": "Ok thanks!"
+                        }
+                    ],
+                    "priority": {
+                        "color": "#3b82f6",
+                        "title": "Medium"
+                    },
+                    "attachments": 4,
+                    "taskList": {
+                        "id": "1234",
+                        "title": "Tasklist",
+                        "tasks": [
+                            {
+                                "text": "Contattare la struttura per conferma disponibilità",
+                                "completed": false
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}
