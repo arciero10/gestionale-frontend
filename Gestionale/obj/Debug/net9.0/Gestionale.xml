@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Gestionale</name>
+    </assembly>
+    <members>
+        <member name="M:Gestionale.Controllers.ParishController.GetParrocchie">
+            <summary>
+            Get All parrocchie
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:Gestionale.Migrations.Init">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.Init.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.Init.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.Init.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:Gestionale.Migrations.CreatedUserIdString">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.CreatedUserIdString.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.CreatedUserIdString.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.CreatedUserIdString.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:Gestionale.Migrations.PersonChange">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.PersonChange.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.PersonChange.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.PersonChange.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:Gestionale.Migrations.PersonChangeUserId">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.PersonChangeUserId.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.PersonChangeUserId.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.PersonChangeUserId.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:Gestionale.Migrations.CommunityChange">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.CommunityChange.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.CommunityChange.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:Gestionale.Migrations.CommunityChange.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="P:Gestionale.Models.Marriage.IsDissolved">
+            <summary>
+            false = ancora sposati (attivo); true = non più sposati.
+            </summary>
+        </member>
+    </members>
+</doc>

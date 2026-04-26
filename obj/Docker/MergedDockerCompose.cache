@@ -1,0 +1,117 @@
+name: dockercompose6447784206819612193
+services:
+  gestionale.auth.api:
+    build:
+      context: C:\Users\aless\Desktop\Gestionale
+      dockerfile: Gestionale/Dockerfile
+    container_name: Gestionale.Auth.Api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Default: Server=sqlserver,1433;Database=GestionaleCN;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    image: gestionaleauthapi
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\aless\AppData\Roaming/Microsoft/UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\aless\AppData\Roaming/Microsoft/UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+  gestionale.auth.proxy:
+    build:
+      context: C:\Users\aless\Desktop\Gestionale
+      dockerfile: Gestionale.Auth.Proxy/Dockerfile
+    container_name: Gestionale.Auth.Proxy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    image: gestionaleauthproxy
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "6010"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\aless\AppData\Roaming/Microsoft/UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+  jaeger:
+    container_name: Jaeger
+    image: jaegertracing/all-in-one:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 4317
+        published: "4317"
+        protocol: tcp
+      - mode: ingress
+        target: 4318
+        published: "4318"
+        protocol: tcp
+      - mode: ingress
+        target: 16686
+        published: "16686"
+        protocol: tcp
+  keycloak:
+    command:
+      - start-dev
+    container_name: Keycloak
+    environment:
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    image: quay.io/keycloak/keycloak:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "18080"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\aless\Desktop\Gestionale\.containers\identity
+        target: /opt/keycloak/data
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\aless\Desktop\Gestionale\keycloakify-starter\dist_keycloak\keycloak-theme-for-kc-all-other-versions.jar
+        target: /opt/keycloak/providers/keycloak-theme-for-kc-all-other-versions.jar
+        bind:
+          create_host_path: true
+  sqlserver:
+    container_name: SqlServer
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: YourStrong@Password123
+    image: mcr.microsoft.com/mssql/server:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 1433
+        published: "1433"
+        protocol: tcp
+networks:
+  default:
+    name: dockercompose6447784206819612193_default
