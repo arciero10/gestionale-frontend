@@ -1,0 +1,1 @@
+import{b as e}from"./chunk-YE6V4XUF.js";import{A as t}from"./chunk-B5VWMKZ2.js";import"./chunk-3RAYF7XP.js";import"./chunk-TBYF2LDC.js";import"./chunk-KWFFC3NF.js";import"./chunk-DAQOROHW.js";var a=[{path:"",redirectTo:"profile/list",pathMatch:"full"},{path:"list",data:{breadcrumb:"List"},component:e},{path:"create",data:{breadcrumb:"Create"},component:t}];export{a as default};
