@@ -1,13 +1,5 @@
-import { Injectable, computed, inject, signal, effect } from '@angular/core';
-import Keycloak from 'keycloak-js';
-import {
-  KEYCLOAK_EVENT_SIGNAL,
-  KeycloakEventType,
-  ReadyArgs,
-  typeEventArgs
-} from 'keycloak-angular';
+import { Injectable, computed, signal } from '@angular/core';
 
-// 1. Definiamo lo stato basato sui dati del Token Keycloak
 export interface AuthState {
   isAuthenticated: boolean;
   firstName: string | null;
@@ -20,90 +12,80 @@ export interface AuthState {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-
-  private readonly keycloak = inject(Keycloak);
-  private readonly keycloakEventSignal = inject(KEYCLOAK_EVENT_SIGNAL);
-
-  private _state = signal<AuthState>({
-    isAuthenticated: false,
-    firstName: null,
-    lastName: null,
-    email: null,
-    roles: null,
-    permissions: null,
-    userId: null
-  });
+  private _state = signal<AuthState>(this.buildStateFromToken());
 
   state = computed(() => this._state());
   isAuthenticated = computed(() => this._state().isAuthenticated);
   roles = computed(() => this._state().roles);
   permissions = computed(() => this._state().permissions);
 
-  constructor() {
-
-    effect(() => {
-      const keycloakEvent = this.keycloakEventSignal();
-
-      if (keycloakEvent.type === KeycloakEventType.Ready ||
-        keycloakEvent.type === KeycloakEventType.AuthRefreshSuccess) {
-        const authenticated = typeEventArgs<ReadyArgs>(keycloakEvent.args);
-        if (authenticated) {
-          this.updateStateFromKeycloak();
-        } else {
-          this.resetState();
-        }
-      }
-      if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
-        this.resetState();
-      }
-    });
-  }
-
-  //Metodi di Login/Logout (ora sono solo wrapper)
-
   login(): void {
-    this.keycloak.login();
+    window.location.href =
+      'https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/authorize?p=signup-signin&client_id=21ee1eae-67e3-4c7c-86ab-db78994d8666&redirect_uri=http://localhost:4200&response_type=id_token&scope=openid%20profile%20email&nonce=defaultNonce';
   }
 
   logout(): void {
-    this.keycloak.logout(); // L'URL di redirect è preso dal config
+    localStorage.removeItem('id_token');
+    sessionStorage.clear();
+
+    this.resetState();
+
+    window.location.href =
+      'https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/logout?p=signup-signin&post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A4200';
   }
 
-  // 6. Metodi Helper per recuperare i dati
+  refreshState(): void {
+    this._state.set(this.buildStateFromToken());
+  }
 
-  /**
-   * Aggiorna il nostro segnale (_state) leggendo i dati dal token
-   * decodificato fornito da Keycloak.
-   */
-  private updateStateFromKeycloak(): void {
-    const token = this.keycloak.tokenParsed as any; 
+  getToken(): string | undefined {
+    return localStorage.getItem('id_token') ?? undefined;
+  }
+
+  hasPermission(permission: string): boolean {
+    return this._state().permissions?.includes(permission) ?? false;
+  }
+
+  private buildStateFromToken(): AuthState {
+    const token = localStorage.getItem('id_token');
+
     if (!token) {
-      this.resetState();
-      return;
+      return this.emptyState();
     }
 
-    const firstName = token.given_name ?? null;
-    const lastName = token.family_name ?? null;
-    const email = token.email ?? null;
-    const roles = token.roles ?? token.realm_access?.roles ?? null;
-    const permissions = token.permissions ?? null; // Dal tuo mapper
-    const userId = token.sub ?? null;
-    this._state.set({
+    const payload = this.decodeToken(token);
+
+    return {
       isAuthenticated: true,
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      roles: roles,
-      permissions: permissions,
-      userId: userId
-    });
+      firstName: payload.given_name ?? null,
+      lastName: payload.family_name ?? payload.surname ?? null,
+      email: payload.email ?? payload.emails?.[0] ?? payload.preferred_username ?? null,
+      roles: payload.roles ?? payload.realm_access?.roles ?? ['USER'],
+      permissions: payload.permissions ?? [],
+      userId: payload.sub ?? null
+    };
   }
 
-  /**
-   * Resetta lo stato (usato al logout).
-   */
+  private decodeToken(token: string): any {
+    try {
+      const base64Payload = token
+        .split('.')[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+
+      return JSON.parse(atob(base64Payload));
+    } catch (error) {
+      console.error('[AUTH] errore decodifica token:', error);
+      return {};
+    }
+  }
+
   private resetState(): void {
-    this._state.set({
+    this._state.set(this.emptyState());
+  }
+
+  private emptyState(): AuthState {
+    return {
       isAuthenticated: false,
       firstName: null,
       lastName: null,
@@ -111,20 +93,6 @@ export class AuthService {
       roles: null,
       permissions: null,
       userId: null
-    });
-  }
-
-  /**
-   * Restituisce il token JWT grezzo (se necessario per il debug).
-   */
-  getToken(): string | undefined {
-    return this.keycloak.token;
-  }
-
-  /**
-   * Controlla se l'utente ha un permesso specifico (per la direttiva *hasPermission).
-   */
-  hasPermission(permission: string): boolean {
-    return this._state().permissions?.includes(permission) ?? false;
+    };
   }
 }
