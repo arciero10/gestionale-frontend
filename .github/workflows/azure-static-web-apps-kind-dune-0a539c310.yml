@@ -45,4 +45,3 @@ jobs:
           app_location: /
           api_location: ""
           output_location: dist/avalon-ng/browser
-``
