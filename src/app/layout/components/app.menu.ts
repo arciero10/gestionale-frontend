@@ -1,8 +1,8 @@
-import { AreasType } from './../../models/macro-area';
 import { Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AppMenuitem } from './app.menuitem';
+import { AuthService } from '@/auth/auth.service';
 
 @Component({
     selector: '[app-menu]',
@@ -17,50 +17,76 @@ import { AppMenuitem } from './app.menuitem';
 })
 export class AppMenu {
     el = inject(ElementRef);
+    authService = inject(AuthService);
 
     @ViewChild('menuContainer') menuContainer!: ElementRef;
 
     model: any[] = [
         {
-            label: 'Home',
-            icon: 'pi pi-home',
-            items: [
-                {
-                    label: 'Dahsboard',
-                    icon: 'pi pi-fw pi-home',
-                    routerLink: ['/']
-                }
-            ]
-        },
-        {
-            label: 'Gestionale CN',
+            label: 'Gestionale',
             icon: 'pi pi-fw pi-briefcase',
             items: [
                 {
-                    label: 'Convivenze',
+                    label: 'Dashboard',
                     icon: 'pi pi-fw pi-home',
-                    routerLink: [`/gestionale-cn/convivenze/${AreasType.Convivenze}`]
+                    routerLink: ['/gestionale-cn/dashboard']
                 },
                 {
-                    label: 'Viaggi',
-                    icon: 'pi pi-fw pi-money-bill',
-                    routerLink: [`/gestionale-cn/viaggi/${AreasType.Viaggi}`]
+                    label: 'La tua Comunità',
+                    icon: 'pi pi-fw pi-users',
+                    routerLink: ['/gestionale-cn/comunita']
+                },
+                {
+                    label: 'Convivenze',
+                    icon: 'pi pi-fw pi-calendar',
+                    routerLink: ['/gestionale-cn/convivenze']
+                },
+                {
+                    label: 'Posti di Convivenza',
+                    icon: 'pi pi-fw pi-building',
+                    routerLink: ['/gestionale-cn/posti-convivenza']
+                },
+                {
+                    label: 'Viaggi / Pellegrinaggi',
+                    icon: 'pi pi-fw pi-send',
+                    routerLink: ['/gestionale-cn/viaggi']
                 }
             ]
         },
         {
-            label: 'User Management',
+            label: 'Azioni rapide',
+            icon: 'pi pi-fw pi-plus-circle',
+            items: [
+                {
+                    label: 'Aggiungi membro',
+                    icon: 'pi pi-fw pi-user-plus',
+                    routerLink: ['/gestionale-cn/comunita']
+                },
+                {
+                    label: 'Nuova convivenza',
+                    icon: 'pi pi-fw pi-calendar-plus',
+                    routerLink: ['/gestionale-cn/convivenze']
+                },
+                {
+                    label: 'Nuovo posto',
+                    icon: 'pi pi-fw pi-plus',
+                    routerLink: ['/gestionale-cn/posti-convivenza']
+                }
+            ]
+        },
+        {
+            label: 'Account',
             icon: 'pi pi-fw pi-user',
             items: [
                 {
-                    label: 'Lista',
-                    icon: 'pi pi-fw pi-list',
-                    routerLink: ['profile/list']
+                    label: 'Profilo',
+                    icon: 'pi pi-fw pi-id-card',
+                    routerLink: ['/profile/create']
                 },
                 {
-                    label: 'Create',
-                    icon: 'pi pi-fw pi-plus',
-                    routerLink: ['profile/create']
+                    label: 'Esci',
+                    icon: 'pi pi-fw pi-power-off',
+                    command: () => this.authService.logout()
                 }
             ]
         }

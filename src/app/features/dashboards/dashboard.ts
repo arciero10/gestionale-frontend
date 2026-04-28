@@ -1,272 +1,309 @@
-import { PersonCreate, Service } from './../../models/person';
-import { AuthService } from './../../auth/auth.service';
-import { Component, computed, inject, OnDestroy } from '@angular/core';
-import { ChartModule } from 'primeng/chart';
-import { TableModule } from 'primeng/table';
-import { MenuModule } from 'primeng/menu';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { FormsModule } from '@angular/forms';
-import { MenuItem, MessageService } from 'primeng/api';
 import { CommonModule } from '@angular/common';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
-import { TagModule } from 'primeng/tag';
-import { RippleModule } from 'primeng/ripple';
+import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LayoutService } from '@/layout/service/layout.service';
-import { DialogService, DynamicDialogModule, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { ProfileCreate } from '../gestionaleCN/usermanagement/profile.create';
-import { ToastModule } from 'primeng/toast';
-import { ParishService } from '@/services/parish.service';
-import { PersonService } from '@/services/person.service';
+import { TagModule } from 'primeng/tag';
+
+interface DashboardModule {
+    title: string;
+    icon: string;
+    status: 'Attivo' | 'In sviluppo' | 'Prossimamente';
+    route: string;
+    tone: 'community' | 'convivenze' | 'posti' | 'viaggi';
+    cta: 'Apri' | 'Entra' | 'Vai al modulo';
+}
 
 @Component({
-  selector: 'app-dashboard',
-  imports: [
-    ChartModule,
-    RouterLink,
-    DynamicDialogModule,
-    TableModule,
-    MenuModule,
-    ButtonModule,
-    InputTextModule,
-    FormsModule,
-    CommonModule,
-    IconFieldModule,
-    InputIconModule,
-    TagModule,
-    RippleModule,
-    ToastModule
-  ],
-  providers: [DialogService, MessageService],
-  template: `
-    <div class="grid grid-cols-12 gap-8">
-      <div class="col-span-12 md:col-span-6 lg:col-span-3">
-        <a
-          [routerLink]="['/gestionale-cn/convivenze/1']"
-          class="block h-48 rounded-border bg-cyan-400 bg-center bg-cover bg-no-repeat text-white
-          transition-transform duration-300 ease-out will-change-transform
-          hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] cursor-pointer
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2
-          dark:focus-visible:ring-offset-gray-900 group"
-          style="background-image: url('/demo/images/dashboard/effect-1.svg')"
-          aria-label="Convivenze"
-        >
-          <div class="h-full w-full flex flex-col items-center justify-center text-center">
-            <span class="text-2xl font-bold tracking-tight">Convivenze</span>
-            <span class="mt-1 text-sm opacity-80 transition-opacity group-hover:opacity-100">
-              clicca per iniziare
-            </span>
-          </div>
-        </a>
-      </div>
+    selector: 'app-dashboard',
+    standalone: true,
+    imports: [CommonModule, RouterLink, TagModule],
+    template: `
+        <section class="dashboard-stage">
+            <div class="dashboard-overlay"></div>
 
-      <div class="col-span-12 md:col-span-6 lg:col-span-3">
-        <a
-          [routerLink]="['/gestionale-cn/viaggi/0']"
-          class="block h-48 rounded-border bg-orange-400 bg-center bg-cover bg-no-repeat text-white
-          transition-transform duration-300 ease-out will-change-transform
-          hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] cursor-pointer
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2
-          dark:focus-visible:ring-offset-gray-900 group"
-          style="background-image: url('/demo/images/dashboard/effect-2.svg')"
-          aria-label="Post Cresima - Gmg - Campi Estivi"
-        >
-          <div class="h-full w-full flex flex-col items-center justify-center text-center">
-            <span class="text-2xl font-bold tracking-tight">Post Cresima - Gmg - Campi Estivi</span>
-            <span class="mt-1 text-sm opacity-80 transition-opacity group-hover:opacity-100">
-              clicca per iniziare
-            </span>
-          </div>
-        </a>
-      </div>
+            <div class="dashboard-content">
+                <aside class="community-summary" aria-label="Dati comunità">
+                    <span class="summary-eyebrow">Comunità attiva</span>
+                    <h1>3ª Comunità</h1>
+                    <dl>
+                        <div>
+                            <dt>Parrocchia</dt>
+                            <dd>San Giovanni Battista</dd>
+                        </div>
+                        <div>
+                            <dt>Settore</dt>
+                            <dd>Roma Sud</dd>
+                        </div>
+                        <div>
+                            <dt>Membri</dt>
+                            <dd>42</dd>
+                        </div>
+                        <div>
+                            <dt>Convivenze in programma</dt>
+                            <dd>2</dd>
+                        </div>
+                        <div>
+                            <dt>Posti censiti</dt>
+                            <dd>5</dd>
+                        </div>
+                    </dl>
+                </aside>
 
-      <div class="col-span-12 md:col-span-4 xl:col-span-3">
-        <p-toast />
+                <div class="dashboard-grid">
+                    @for (module of modules; track module.title) {
+                        <a [routerLink]="module.route" class="module-card" [ngClass]="'module-card-' + module.tone" [attr.aria-label]="module.title">
+                            <div class="module-icon">
+                                <i class="pi" [ngClass]="module.icon"></i>
+                            </div>
+                            <h2 class="brand-neocat">{{ module.title }}</h2>
+                            <p-tag [value]="module.status" />
+                            <span class="module-button">{{ module.cta }}</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        </section>
+    `,
+    styles: [
+        `
+            :host {
+                display: block;
+                width: 100%;
+            }
 
-        <p-button
-          (click)="openCreateCommunityDialog()"
-          styleClass="w-full bg-surface-0! dark:bg-surface-900! flex! flex-wrap! justify-start! h-24 border-surface! text-primary! p-4!"
-        >
-          <div
-            class="w-12 h-12 p-4 flex justify-center items-center rounded-full bg-primary-50 text-primary mr-2 dark:bg-primary-900!"
-          >
-            <i class="pi pi-plus text-xl"></i>
-          </div>
+            .dashboard-stage {
+                position: relative;
+                width: 100%;
+                min-height: calc(100vh - 4rem);
+                padding: clamp(1rem, 2.5vw, 2rem);
+                display: flex;
+                align-items: center;
+                overflow: hidden;
+                isolation: isolate;
+                background-image: url('/assets/images/dashboard-bg.jpg');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+            }
 
-          <div class="flex flex-col items-start text-surface-900 dark:text-surface-0">
-            <span class="block h-auto font-bold">{{ buttonPerson() }}</span>
-            <span class="block h-auto">{{ buttonPerson() }} il tuo profilo</span>
-          </div>
-        </p-button>
-      </div>
+            .dashboard-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 0;
+                pointer-events: none;
+                background: linear-gradient(90deg, rgba(255, 255, 255, 0.24), rgba(10, 25, 45, 0.1));
+            }
 
-      <div class="col-span-12 md:col-span-4 xl:col-span-3">
-        <p-button
-          styleClass="w-full bg-surface-0! dark:bg-surface-900! flex! flex-wrap! justify-start! h-24 border-surface! text-primary! p-4!"
-        >
-          <div
-            class="w-12 h-12 p-4 flex justify-center items-center rounded-full bg-primary-50 text-primary mr-2 dark:bg-primary-900!"
-          >
-            <i class="pi pi-send text-xl"></i>
-          </div>
+            .dashboard-content {
+                position: relative;
+                z-index: 1;
+                width: 100%;
+                display: grid;
+                grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+                gap: clamp(1rem, 2vw, 1.5rem);
+                align-items: stretch;
+            }
 
-          <div class="flex flex-col items-start text-surface-900 dark:text-surface-0">
-            <span class="block h-auto font-bold">Mail</span>
-            <span class="block h-auto">Invia Link di Invito</span>
-          </div>
-        </p-button>
-      </div>
-    </div>
-  `
+            .community-summary,
+            .module-card {
+                background: rgba(255, 252, 245, 0.9);
+                border: 1px solid rgba(255, 255, 255, 0.7);
+                box-shadow: 0 16px 34px rgba(31, 41, 55, 0.16);
+                border-radius: 16px;
+            }
+
+            .community-summary {
+                padding: 1.25rem;
+                color: #1f2937;
+            }
+
+            .summary-eyebrow {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: #476078;
+                text-transform: uppercase;
+            }
+
+            .community-summary h1 {
+                margin: 0 0 1rem;
+                color: #111827;
+                font-size: 1.55rem;
+            }
+
+            .community-summary dl {
+                display: grid;
+                gap: 0.9rem;
+                margin: 0;
+            }
+
+            .community-summary dt {
+                color: #6b7280;
+                font-size: 0.82rem;
+            }
+
+            .community-summary dd {
+                margin: 0.15rem 0 0;
+                color: #111827;
+                font-weight: 700;
+            }
+
+            .dashboard-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 1rem;
+            }
+
+            .module-card {
+                --card-accent: #4f7da3;
+                min-height: 15rem;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 1rem;
+                padding: 1.25rem;
+                color: #1f2937;
+                text-align: center;
+                text-decoration: none;
+                border-top: 4px solid var(--card-accent);
+                transition:
+                    transform 180ms ease,
+                    box-shadow 180ms ease,
+                    border-color 180ms ease;
+            }
+
+            .module-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 22px 42px rgba(31, 41, 55, 0.22);
+                border-color: rgba(255, 255, 255, 0.95);
+            }
+
+            .module-icon {
+                width: 3.25rem;
+                height: 3.25rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 14px;
+                color: var(--card-accent);
+                background: color-mix(in srgb, var(--card-accent), transparent 90%);
+            }
+
+            .module-icon .pi {
+                font-size: 1.45rem;
+            }
+
+            .module-card h2 {
+                margin: 0;
+                color: #111827;
+                font-size: 1.28rem;
+                font-weight: 400;
+                line-height: 1.2;
+            }
+
+            .module-button {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                border-radius: 10px;
+                background: var(--card-accent);
+                color: #fff;
+                font-weight: 800;
+            }
+
+            :host ::ng-deep .module-card .p-tag {
+                padding: 0.22rem 0.55rem;
+                background: rgba(255, 255, 255, 0.78);
+                color: #374151;
+                border: 1px solid rgba(31, 41, 55, 0.1);
+            }
+
+            .module-card-community {
+                --card-accent: #547fa3;
+            }
+
+            .module-card-convivenze {
+                --card-accent: #2f867c;
+            }
+
+            .module-card-posti {
+                --card-accent: #b86f35;
+            }
+
+            .module-card-viaggi {
+                --card-accent: #8a3f4c;
+            }
+
+            @media (max-width: 1024px) {
+                .dashboard-content {
+                    grid-template-columns: 1fr;
+                }
+
+                .dashboard-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 767px) {
+                .dashboard-stage {
+                    min-height: calc(100vh - 4rem);
+                    padding: 0.85rem;
+                    align-items: flex-start;
+                    background-position: center top;
+                }
+
+                .dashboard-overlay {
+                    background: rgba(255, 255, 255, 0.38);
+                }
+
+                .dashboard-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .module-card {
+                    min-height: 10.75rem;
+                    gap: 0.75rem;
+                }
+            }
+        `
+    ]
 })
-export class Dashboard implements OnDestroy {
-  items!: MenuItem[];
-  cols: any[] = [];
-
-  ref: DynamicDialogRef<ProfileCreate> | null = null;
-
-  dialogService = inject(DialogService);
-  messageService = inject(MessageService);
-  layoutService = inject(LayoutService);
-  authService = inject(AuthService);
-  parishService = inject(ParishService);
-  personService = inject(PersonService);
-
-  authenticated = this.authService.isAuthenticated();
-
-  userId = computed(() => this.authService.state().userId);
-
-  readonly personResource = this.personService.getPersonById(this.userId);
-
-  buttonPerson = computed(() => {
-    const p = this.personResource?.value();
-
-    if (p?.id != null && p.id > 0) {
-      return 'Modifica';
-    }
-
-    return 'Crea';
-  });
-
-  ngOnInit() {
-    this.cols = [
-      { header: 'Name', field: 'name' },
-      { header: 'Category', field: 'category' },
-      { header: 'Price', field: 'price' },
-      { header: 'Status', field: 'inventoryStatus' }
-    ];
-  }
-
-  openCreateCommunityDialog() {
-    let person: PersonCreate;
-    let mode: string = 'create';
-
-    if (this.personResource?.value()?.id != null && this.personResource.value()!.id > 0) {
-      person = this.personResource.value()!;
-      person.birthDate = person.birthDate ? new Date(person.birthDate) : null;
-      mode = 'update';
-    } else {
-      person = {
-        firstName: this.authService.state().firstName || '',
-        lastName: this.authService.state().lastName || '',
-        email: this.authService.state().email || '',
-        address: null,
-        city: null,
-        region: null,
-        phoneNumber: null,
-        postalCode: null,
-        country: null,
-        birthDate: null,
-        notes: null,
-        service: Service.None,
-        createdAt: new Date(),
-        disability: null,
-        parishId: null,
-        communityNumber: null
-      };
-    }
-
-    this.ref = this.dialogService.open(ProfileCreate, {
-      header: 'Completa il tuo profilo',
-      width: '60vw',
-      height: 'auto',
-      contentStyle: { overflow: 'auto' },
-      baseZIndex: 10000,
-      inputValues: {
-        initialData: person,
-        buttonLabel: mode === 'create' ? 'Crea Profilo' : 'Aggiorna Profilo'
-      }
-    });
-
-    this.ref?.onClose.subscribe((data) => {
-      let summary_and_severity;
-
-      if (data) {
-        data.birthDate = data.birthDate ? new Date(data.birthDate) : null;
-
-        if (data.mode === 'create') {
-          data.createdAt = new Date();
-
-          this.personService.createProfile(data.data).subscribe({
-            next: (response) => {
-              console.log('Profile created successfully', response);
-              summary_and_severity = {
-                severity: 'success',
-                summary: 'Utente Registrato',
-                detail: data?.name
-              };
-
-              this.messageService.add({ ...summary_and_severity, life: 3000 });
-            },
-            error: (error) => {
-              console.error('Error creating profile', error);
-              summary_and_severity = {
-                severity: 'error',
-                summary: 'Registrazione annullata'
-              };
-
-              this.messageService.add({ ...summary_and_severity, life: 3000 });
-            }
-          });
-        } else {
-          this.personService.updateProfile(data.data).subscribe({
-            next: () => {
-              console.log('Profile updated successfully');
-              summary_and_severity = {
-                severity: 'success',
-                summary: 'Utente Aggiornato',
-                detail: data.data.id
-              };
-
-              this.messageService.add({ ...summary_and_severity, life: 3000 });
-            },
-            error: (error) => {
-              console.error('Error updating profile', error);
-              summary_and_severity = {
-                severity: 'error',
-                summary: 'Aggiornamento annullato'
-              };
-
-              this.messageService.add({ ...summary_and_severity, life: 3000 });
-            }
-          });
+export class Dashboard {
+    modules: DashboardModule[] = [
+        {
+            title: 'La tua Comunità',
+            icon: 'pi-users',
+            status: 'Attivo',
+            route: '/gestionale-cn/comunita',
+            tone: 'community',
+            cta: 'Apri'
+        },
+        {
+            title: 'Convivenze',
+            icon: 'pi-calendar',
+            status: 'In sviluppo',
+            route: '/gestionale-cn/convivenze',
+            tone: 'convivenze',
+            cta: 'Entra'
+        },
+        {
+            title: 'Posti di Convivenza',
+            icon: 'pi-building',
+            status: 'In sviluppo',
+            route: '/gestionale-cn/posti-convivenza',
+            tone: 'posti',
+            cta: 'Vai al modulo'
+        },
+        {
+            title: 'Viaggi / Pellegrinaggi',
+            icon: 'pi-send',
+            status: 'Prossimamente',
+            route: '/gestionale-cn/viaggi',
+            tone: 'viaggi',
+            cta: 'Apri'
         }
-      } else {
-        summary_and_severity = {
-          severity: 'warn',
-          summary: 'Registrazione annullata'
-        };
-
-        this.messageService.add({ ...summary_and_severity, life: 3000 });
-      }
-    });
-  }
-
-  ngOnDestroy() {
-    if (this.ref) {
-      this.ref.close();
-    }
-  }
+    ];
 }

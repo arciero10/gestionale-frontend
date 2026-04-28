@@ -20,8 +20,10 @@ export class AuthService {
   permissions = computed(() => this._state().permissions);
 
   login(): void {
+    const redirectUri = encodeURIComponent(window.location.origin);
+
     window.location.href =
-      'https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/authorize?p=signup-signin&client_id=21ee1eae-67e3-4c7c-86ab-db78994d8666&redirect_uri=http://localhost:4200&response_type=id_token&scope=openid%20profile%20email&nonce=defaultNonce';
+      `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/authorize?p=signup-signin&client_id=21ee1eae-67e3-4c7c-86ab-db78994d8666&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20profile%20email&nonce=defaultNonce`;
   }
 
   logout(): void {
@@ -30,8 +32,10 @@ export class AuthService {
 
     this.resetState();
 
+    const postLogoutRedirectUri = encodeURIComponent(window.location.origin);
+
     window.location.href =
-      'https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/logout?p=signup-signin&post_logout_redirect_uri=http%3A%2F%2Flocalhost%3A4200';
+      `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/logout?p=signup-signin&post_logout_redirect_uri=${postLogoutRedirectUri}`;
   }
 
   refreshState(): void {

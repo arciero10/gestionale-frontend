@@ -12,36 +12,20 @@ import { AuthService } from '@/auth/auth.service';
     selector: '[app-menu-profile]',
     standalone: true,
     imports: [CommonModule, TooltipModule, ButtonModule, RouterModule],
-    template: `<button (click)="toggleMenu()" pTooltip="Profile" [tooltipDisabled]="isTooltipDisabled()">
-            <img src="/demo/images/avatar/amyelsner.png" alt="avatar" style="width: 32px; height: 32px;" />
+    template: `<button (click)="toggleMenu()" pTooltip="Account" [tooltipDisabled]="isTooltipDisabled()">
+            <span class="w-8 h-8 rounded-md bg-blue-50 text-blue-800 flex items-center justify-center">
+                <i class="pi pi-user"></i>
+            </span>
             <span class="text-start">
-                <strong>{{authService.state().firstName}}</strong>
-                <small>{{authService.state().lastName}}</small>
+                <strong>{{ authService.state().firstName || 'Gestionale CN' }}</strong>
+                <small>{{ authService.state().lastName || 'Area riservata' }}</small>
             </span>
             <i class="layout-menu-profile-toggler pi pi-fw" [ngClass]="{ 'pi-angle-down': menuProfilePosition() === 'start' || isHorizontal(), 'pi-angle-up': menuProfilePosition() === 'end' && !isHorizontal() }"></i>
         </button>
 
         <ul *ngIf="menuProfileActive()" [@menu]="isHorizontal() ? 'overlay' : 'inline'">
-            <li pTooltip="Settings" [tooltipDisabled]="isTooltipDisabled()" [routerLink]="['/profile/create']">
-                <button [routerLink]="['/documentation']">
-                    <i class="pi pi-cog pi-fw"></i>
-                    <span>Settings</span>
-                </button>
-            </li>
-            <li pTooltip="Profile" [tooltipDisabled]="isTooltipDisabled()">
-                <button [routerLink]="['/documentation']">
-                    <i class="pi pi-file-o pi-fw"></i>
-                    <span>Profile</span>
-                </button>
-            </li>
-            <li pTooltip="Support" [tooltipDisabled]="isTooltipDisabled()">
-                <button [routerLink]="['/documentation']">
-                    <i class="pi pi-compass pi-fw"></i>
-                    <span>Support</span>
-                </button>
-            </li>
-            <li pTooltip="Logout" [tooltipDisabled]="isTooltipDisabled()" [routerLink]="['/auth/login2']">
-                <button class="p-link">
+            <li pTooltip="Logout" [tooltipDisabled]="isTooltipDisabled()">
+                <button class="p-link" type="button" (click)="logout()">
                     <i class="pi pi-power-off pi-fw"></i>
                     <span>Logout</span>
                 </button>
@@ -124,5 +108,9 @@ export class AppMenuProfile implements OnDestroy {
 
     toggleMenu() {
         this.layoutService.onMenuProfileToggle();
+    }
+
+    logout() {
+        this.authService.logout();
     }
 }

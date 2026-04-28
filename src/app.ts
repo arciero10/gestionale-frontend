@@ -1,150 +1,30 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+import { AuthService } from './app/auth/auth.service';
 
-const APP_REDIRECT_URI = 'https://kind-dune-0a539c310.7.azurestaticapps.net';
+const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet],
   template: `
     @if (!isLoggedIn()) {
-      <main
-        style="
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 32px;
-          background:
-            linear-gradient(135deg, rgba(15,23,42,.88), rgba(30,64,175,.72)),
-            radial-gradient(circle at top left, rgba(250,204,21,.28), transparent 35%),
-            linear-gradient(120deg, #0f172a, #1e3a8a);
-          font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        "
-      >
-        <section
-          style="
-            width: 100%;
-            max-width: 1120px;
-            display: grid;
-            grid-template-columns: 1.1fr .9fr;
-            gap: 32px;
-            align-items: center;
-          "
-        >
-          <div style="color: white;">
-            <div
-              style="
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-                padding: 8px 14px;
-                border-radius: 999px;
-                background: rgba(255,255,255,.12);
-                border: 1px solid rgba(255,255,255,.22);
-                margin-bottom: 22px;
-                backdrop-filter: blur(10px);
-              "
-            >
-              <span style="width: 9px; height: 9px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
-              <span style="font-size: 14px;">Accesso sicuro tramite Microsoft Entra</span>
-            </div>
-
-            <h1
-              style="
-                font-size: clamp(42px, 6vw, 72px);
-                line-height: .95;
-                margin: 0 0 22px;
-                letter-spacing: -0.05em;
-                font-weight: 800;
-              "
-            >
-              Eventi di<br />Comunità
-            </h1>
-
-            <p
-              style="
-                max-width: 620px;
-                font-size: 19px;
-                line-height: 1.6;
-                color: rgba(255,255,255,.82);
-                margin: 0;
-              "
-            >
-              Gestisci iscrizioni, accoglienza, responsabili, strutture e attività
-              in un unico spazio digitale semplice e sicuro.
-            </p>
+      <main class="login-page">
+        <section class="login-shell">
+          <div class="login-copy">
+            <h1 class="brand-neocat">Gestionale per le comunità<br />del cammino neocatecumenale</h1>
           </div>
 
-          <div
-            style="
-              background: rgba(255,255,255,.94);
-              border-radius: 28px;
-              padding: 34px;
-              box-shadow: 0 30px 80px rgba(0,0,0,.35);
-              border: 1px solid rgba(255,255,255,.6);
-            "
-          >
-            <div style="margin-bottom: 28px;">
-              <div
-                style="
-                  width: 56px;
-                  height: 56px;
-                  border-radius: 18px;
-                  background: linear-gradient(135deg, #2563eb, #7c3aed);
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  color: white;
-                  font-weight: 800;
-                  font-size: 22px;
-                  margin-bottom: 18px;
-                "
-              >
-                EC
-              </div>
-
-              <h2 style="margin: 0 0 8px; font-size: 28px; color: #0f172a;">
+          <div class="login-card">
+            <div class="login-card-head">
+              <h2>
                 Accedi al gestionale
               </h2>
-
-              <p style="margin: 0; color: #64748b; line-height: 1.5;">
-                Entra con la tua email. Riceverai un codice temporaneo per confermare l’accesso.
-              </p>
             </div>
 
-            <button
-              type="button"
-              (click)="login()"
-              style="
-                width: 100%;
-                padding: 15px 18px;
-                background: linear-gradient(135deg, #2563eb, #1d4ed8);
-                color: white;
-                border: none;
-                border-radius: 14px;
-                font-size: 16px;
-                font-weight: 700;
-                cursor: pointer;
-                box-shadow: 0 12px 24px rgba(37,99,235,.28);
-              "
-            >
+            <button type="button" (click)="login()" class="login-button">
               Accedi con email
             </button>
-
-            <div
-              style="
-                margin-top: 22px;
-                padding: 14px;
-                border-radius: 14px;
-                background: #f8fafc;
-                color: #64748b;
-                font-size: 13px;
-                line-height: 1.5;
-              "
-            >
-              Accesso protetto con Microsoft Entra External ID. Nessuna password da ricordare.
-            </div>
           </div>
         </section>
       </main>
@@ -187,10 +67,128 @@ const APP_REDIRECT_URI = 'https://kind-dune-0a539c310.7.azurestaticapps.net';
 
       <router-outlet></router-outlet>
     }
-  `
+  `,
+  styles: [
+    `
+      .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 13vh 24px 42px;
+        background-image:
+          linear-gradient(180deg, rgba(5, 15, 31, .42), rgba(15, 23, 42, .22) 44%, rgba(15, 23, 42, .14)),
+          url('/assets/images/login-bg.jpg');
+        background-size: cover;
+        background-position: 50% 42%;
+        background-repeat: no-repeat;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .login-shell {
+        width: 100%;
+        max-width: 760px;
+        display: grid;
+        gap: 0;
+        justify-items: center;
+      }
+
+      .login-copy {
+        color: white;
+        max-width: 720px;
+        text-shadow: 0 2px 16px rgba(0, 0, 0, .24);
+        text-align: center;
+      }
+
+      .login-copy h1 {
+        font-size: clamp(32px, 5vw, 54px);
+        line-height: 1.08;
+        margin: 0;
+        font-weight: 800;
+      }
+
+      .login-card {
+        width: 330px;
+        max-width: 100%;
+        margin-top: 18vh;
+        background: rgba(255, 255, 255, .1);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, .16);
+        border: 1px solid rgba(255, 255, 255, .42);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .login-card-head {
+        margin-bottom: 22px;
+      }
+
+      .login-card h2 {
+        margin: 0;
+        font-size: 24px;
+        color: #ffffff;
+        text-shadow: 0 1px 12px rgba(0, 0, 0, .28);
+      }
+
+      .login-button {
+        width: 240px;
+        max-width: 100%;
+        min-height: 48px;
+        padding: 15px 18px;
+        background: #15365c;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(23, 55, 94, .18);
+        transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+      }
+
+      .login-button:hover {
+        background: #1e4a79;
+        transform: translateY(-1px);
+        box-shadow: 0 14px 24px rgba(23, 55, 94, .24);
+      }
+
+      @media (max-width: 900px) {
+        .login-page {
+          padding: 10vh 18px 28px;
+          background-image:
+            linear-gradient(180deg, rgba(5, 15, 31, .48), rgba(15, 23, 42, .24)),
+            url('/assets/images/login-bg.jpg');
+          background-position: 50% 18%;
+        }
+
+        .login-copy h1 {
+          font-size: clamp(28px, 9vw, 42px);
+        }
+
+        .login-card {
+          width: 320px;
+          max-width: 100%;
+          margin-top: 10vh;
+          padding: 24px;
+          border-radius: 20px;
+        }
+
+        .login-card h2 {
+          font-size: 22px;
+        }
+      }
+    `
+  ]
 })
 export class App {
   protected readonly title = signal('Gestionale Cammino Neocatecumenale');
+  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
   constructor() {
     this.captureTokenFromUrl();
@@ -219,6 +217,7 @@ export class App {
 
     if (idToken) {
       localStorage.setItem('id_token', idToken);
+      this.authService.refreshState();
 
       console.log('[TOKEN]', idToken);
       console.log('[PAYLOAD]', this.decodeToken(idToken));
@@ -226,6 +225,7 @@ export class App {
       window.history.replaceState({}, document.title, window.location.pathname);
 
       console.log('[LOGIN] token salvato');
+      this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
     }
   }
 
@@ -268,7 +268,7 @@ export class App {
   }
 
   login(): void {
-    const redirectUri = encodeURIComponent(APP_REDIRECT_URI);
+    const redirectUri = encodeURIComponent(window.location.origin);
 
     window.location.href =
       `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/authorize?p=signup-signin&client_id=21ee1eae-67e3-4c7c-86ab-db78994d8666&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20profile%20email&nonce=defaultNonce`;
@@ -278,7 +278,7 @@ export class App {
     localStorage.removeItem('id_token');
     sessionStorage.clear();
 
-    const postLogoutRedirectUri = encodeURIComponent(APP_REDIRECT_URI);
+    const postLogoutRedirectUri = encodeURIComponent(window.location.origin);
 
     window.location.href =
       `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/logout?p=signup-signin&post_logout_redirect_uri=${postLogoutRedirectUri}`;

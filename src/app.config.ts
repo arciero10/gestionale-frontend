@@ -23,12 +23,14 @@ import { routes } from './app.routes';
 import MyPreset from './mypreset';
 
 export function MSALInstanceFactory() {
+  const origin = window.location.origin;
+
   return new PublicClientApplication({
     auth: {
       clientId: '21ee1eae-67e3-4c7c-86ab-db78994d8666',
       authority: 'https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/signup-signin',
-      redirectUri: 'http://localhost:4200',
-      postLogoutRedirectUri: 'http://localhost:4200'
+      redirectUri: origin,
+      postLogoutRedirectUri: origin
     },
     cache: {
       cacheLocation: 'localStorage'

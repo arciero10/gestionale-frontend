@@ -1,4 +1,4 @@
-import { Component, computed, OnDestroy, Renderer2, ViewChild } from '@angular/core';
+import { Component, computed, HostListener, OnDestroy, Renderer2, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
@@ -16,8 +16,8 @@ import { AppBreadcrumb } from './app.breadcrumb';
         <div app-topbar></div>
         <div app-sidebar></div>
 
-        <div class="layout-content-wrapper">
-            <nav app-breadcrumb></nav>
+        <div class="layout-content-wrapper" [ngClass]="{ 'layout-dashboard-full': isDashboardRoute() }">
+            <nav app-breadcrumb *ngIf="!isDashboardRoute()"></nav>
             <div class="layout-content">
                 <router-outlet></router-outlet>
             </div>
@@ -28,6 +28,8 @@ import { AppBreadcrumb } from './app.breadcrumb';
     </div> `
 })
 export class AppLayout implements OnDestroy {
+    isDashboardRoute = signal(false);
+
     overlayMenuOpenSubscription: Subscription;
 
     menuOutsideClickListener: any;
@@ -43,6 +45,8 @@ export class AppLayout implements OnDestroy {
         public renderer: Renderer2,
         public router: Router
     ) {
+        this.updateDashboardRoute(this.router.url);
+
         this.overlayMenuOpenSubscription = this.layoutService.overlayOpen$.subscribe(() => {
             if (!this.menuOutsideClickListener) {
                 this.menuOutsideClickListener = this.renderer.listen('document', 'click', (event) => {
@@ -74,9 +78,20 @@ export class AppLayout implements OnDestroy {
             }
         });
 
-        this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+        this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
+            this.updateDashboardRoute(event.urlAfterRedirects);
             this.hideMenu();
         });
+    }
+
+    private updateDashboardRoute(url: string) {
+        const normalizedUrl = url.split('?')[0].split('#')[0];
+        this.isDashboardRoute.set(normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard');
+    }
+
+    @HostListener('document:keydown.escape')
+    onEscape() {
+        this.hideMenu();
     }
 
     hideMenu() {
