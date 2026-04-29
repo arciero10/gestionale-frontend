@@ -18,7 +18,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
               <h2>Accedi al gestionale</h2>
             </div>
 
-            <button type="button" (click)="login($event)" class="login-button">
+            <button type="button" class="login-button" (click)="login()">
               Accedi con email
             </button>
 
@@ -292,14 +292,21 @@ export class App {
     return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/completa-profilo';
   }
 
-  login(event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
+  login(): void {
+    console.log('[LOGIN] click Accedi con email');
+    console.log('[LOGIN] redirectUri', window.location.origin);
+
     this.clearAuthState();
     this.msalService.initialize().subscribe({
       next: () => {
+        console.log('[LOGIN] avvio loginRedirect MSAL');
+
         this.msalService.loginRedirect({
           scopes: ['openid', 'profile', 'email']
+        }).subscribe({
+          error: (error) => {
+            console.error('[LOGIN] errore loginRedirect', error);
+          }
         });
       },
       error: (error) => {
