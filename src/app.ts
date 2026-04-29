@@ -1,5 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { AuthenticationResult } from '@azure/msal-browser';
+import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
@@ -37,40 +39,6 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
     }
 
     @if (isLoggedIn() && !isPublicRoute()) {
-      <div
-        style="
-          padding: 12px 18px;
-          display: flex;
-          gap: 14px;
-          align-items: center;
-          border-bottom: 1px solid #e5e7eb;
-          background: white;
-          font-family: Inter, system-ui, sans-serif;
-        "
-      >
-        <strong>Gestionale Comunità</strong>
-
-        <span style="color: #475569;">
-          Utente: {{ userName() }}
-        </span>
-
-        <button
-          type="button"
-          (click)="logout()"
-          style="
-            margin-left: auto;
-            padding: 8px 14px;
-            background: #dc2626;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-          "
-        >
-          Logout
-        </button>
-      </div>
-
       <router-outlet></router-outlet>
     }
 
@@ -238,48 +206,57 @@ export class App {
   protected readonly title = signal('Gestionale Comunità');
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly msalService = inject(MsalService);
 
   constructor() {
-    this.captureTokenFromUrl();
+    this.clearInvalidLegacyToken();
+    this.handleMicrosoftRedirect();
   }
 
-  private captureTokenFromUrl(): void {
-    const hash = window.location.hash;
+  private handleMicrosoftRedirect(): void {
+    this.msalService.handleRedirectObservable().subscribe({
+      next: (result: AuthenticationResult | null) => {
+        if (!result?.account) {
+          const activeAccount = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
+          if (activeAccount) {
+            this.msalService.instance.setActiveAccount(activeAccount);
+          }
+          return;
+        }
 
-    if (!hash) {
-      return;
-    }
+        this.msalService.instance.setActiveAccount(result.account);
 
-    const params = new URLSearchParams(hash.replace('#', ''));
+        if (result.idToken && this.isValidToken(result.idToken)) {
+          localStorage.setItem('id_token', result.idToken);
+          this.authService.refreshState();
+        }
 
-    const idToken = params.get('id_token');
-    const error = params.get('error');
-    const errorDescription = params.get('error_description');
-
-    if (error) {
-      console.error('[LOGIN ERROR]', error, errorDescription);
-      alert('Errore login: ' + (errorDescription ?? error));
-
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-
-    if (idToken) {
-      localStorage.setItem('id_token', idToken);
-      this.authService.refreshState();
-
-      console.log('[TOKEN]', idToken);
-      console.log('[PAYLOAD]', this.decodeToken(idToken));
-
-      window.history.replaceState({}, document.title, window.location.pathname);
-
-      console.log('[LOGIN] token salvato');
-      this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
-    }
+        this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
+      },
+      error: (error) => {
+        console.error('[LOGIN ERROR]', error);
+        this.clearAuthState();
+      }
+    });
   }
 
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('id_token');
+    const account = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
+    if (account) {
+      this.msalService.instance.setActiveAccount(account);
+      return true;
+    }
+
+    const token = localStorage.getItem('id_token');
+    if (this.isValidToken(token)) {
+      return true;
+    }
+
+    if (token) {
+      this.clearAuthState();
+    }
+
+    return false;
   }
 
   isPublicRoute(): boolean {
@@ -287,24 +264,51 @@ export class App {
     return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/completa-profilo';
   }
 
-  userName(): string {
-    const token = localStorage.getItem('id_token');
+  login(): void {
+    this.clearAuthState();
+    this.msalService.initialize().subscribe({
+      next: () => {
+        this.msalService.loginRedirect({
+          scopes: ['openid', 'profile', 'email']
+        });
+      },
+      error: (error) => {
+        console.error('[LOGIN INIT ERROR]', error);
+      }
+    });
+  }
 
-    if (!token) {
-      return 'utente';
+  logout(): void {
+    this.clearAuthState();
+    this.msalService.initialize().subscribe({
+      next: () => this.msalService.logoutRedirect(),
+      error: (error) => console.error('[LOGOUT INIT ERROR]', error)
+    });
+  }
+
+  private clearInvalidLegacyToken(): void {
+    const token = localStorage.getItem('id_token');
+    if (token && !this.isValidToken(token)) {
+      this.clearAuthState();
+    }
+  }
+
+  private clearAuthState(): void {
+    localStorage.removeItem('id_token');
+    sessionStorage.clear();
+    this.authService.refreshState();
+  }
+
+  private isValidToken(token: string | null | undefined): token is string {
+    if (!token || token.split('.').length < 3) {
+      return false;
     }
 
     const payload = this.decodeToken(token);
+    const hasIdentity = Boolean(payload.sub || payload.oid || payload.email || payload.emails?.length || payload.preferred_username || payload.name);
+    const isExpired = typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
 
-    return (
-      payload.name ||
-      payload.given_name ||
-      payload.family_name ||
-      payload.email ||
-      payload.emails?.[0] ||
-      payload.preferred_username ||
-      'utente'
-    );
+    return hasIdentity && !isExpired;
   }
 
   private decodeToken(token: string): any {
@@ -319,22 +323,5 @@ export class App {
       console.error('[TOKEN] errore decodifica:', error);
       return {};
     }
-  }
-
-  login(): void {
-    const redirectUri = encodeURIComponent(window.location.origin);
-
-    window.location.href =
-      `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/authorize?p=signup-signin&client_id=21ee1eae-67e3-4c7c-86ab-db78994d8666&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20profile%20email&nonce=defaultNonce`;
-  }
-
-  logout(): void {
-    localStorage.removeItem('id_token');
-    sessionStorage.clear();
-
-    const postLogoutRedirectUri = encodeURIComponent(window.location.origin);
-
-    window.location.href =
-      `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/logout?p=signup-signin&post_logout_redirect_uri=${postLogoutRedirectUri}`;
   }
 }

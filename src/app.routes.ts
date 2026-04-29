@@ -2,17 +2,62 @@ import { Routes } from '@angular/router';
 import { AppLayout } from '@/layout/components/app.layout';
 import { Forbidden } from '@/features/forbidden/forbidden';
 import { NotFound } from '@/features/not-found/not.found';
-import { DemoShellComponent } from '@/features/demo/demo-shell.component';
 
 export const routes: Routes = [
-  { path: 'demo', component: DemoShellComponent },
-  { path: 'demo/dashboard', component: DemoShellComponent },
-  { path: 'demo/comunita', component: DemoShellComponent },
-  { path: 'demo/convivenze', component: DemoShellComponent },
-  { path: 'demo/posti-convivenza', component: DemoShellComponent },
-  { path: 'demo/posti-convivenza/mappa', component: DemoShellComponent },
-  { path: 'demo/viaggi', component: DemoShellComponent },
-  { path: 'demo/**', component: DemoShellComponent },
+  {
+    path: 'demo',
+    component: AppLayout,
+    data: { demo: true },
+    children: [
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('@/features/dashboards/dashboard').then((c) => c.Dashboard),
+        data: { breadcrumb: 'Dashboard demo', demo: true }
+      },
+      {
+        path: 'comunita',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/comunita/comunita').then((c) => c.Comunita),
+        data: { breadcrumb: 'La tua Comunità demo', demo: true }
+      },
+      {
+        path: 'convivenze',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/convivenze/convivenze').then((c) => c.Convivenze),
+        data: { breadcrumb: 'Convivenze demo', demo: true }
+      },
+      {
+        path: 'posti-convivenza/mappa',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/posti-convivenza/posti-convivenza-mappa').then((c) => c.PostiConvivenzaMappa),
+        data: { breadcrumb: 'Mappa posti demo', demo: true }
+      },
+      {
+        path: 'posti-convivenza',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/posti-convivenza/posti-convivenza').then((c) => c.PostiConvivenza),
+        data: { breadcrumb: 'Posti di Convivenza demo', demo: true }
+      },
+      {
+        path: 'viaggi',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/placeholder/gestionale-placeholder').then((c) => c.GestionalePlaceholder),
+        data: { breadcrumb: 'Viaggi / Pellegrinaggi demo', title: 'Viaggi / Pellegrinaggi - demo', demo: true }
+      },
+      {
+        path: '**',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/placeholder/gestionale-placeholder').then((c) => c.GestionalePlaceholder),
+        data: { breadcrumb: 'Demo', title: 'Modulo demo - in sviluppo', demo: true }
+      }
+    ]
+  },
   {
     path: 'faq',
     loadComponent: () => import('@/features/faq/faq').then((c) => c.Faq),

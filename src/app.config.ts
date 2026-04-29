@@ -12,6 +12,7 @@ import { providePrimeNG } from 'primeng/config';
 import { PublicClientApplication, InteractionType } from '@azure/msal-browser';
 import {
   MsalService,
+  MsalBroadcastService,
   MSAL_INSTANCE,
   MSAL_GUARD_CONFIG,
   MSAL_INTERCEPTOR_CONFIG,
@@ -69,6 +70,7 @@ export const appConfig: ApplicationConfig = {
       useFactory: MSALInterceptorConfigFactory
     },
     MsalService,
+    MsalBroadcastService,
 
     provideAnimationsAsync(),
 
