@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
+import { MSAL_AUTHORITY } from './app.config';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
@@ -295,6 +296,7 @@ export class App {
   login(): void {
     console.log('[LOGIN] click Accedi con email');
     console.log('[LOGIN] redirectUri', window.location.origin);
+    console.log('[LOGIN] authority', MSAL_AUTHORITY);
 
     this.clearAuthState();
     this.msalService.initialize().subscribe({
