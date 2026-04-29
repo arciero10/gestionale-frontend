@@ -58,12 +58,12 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                     <div class="result-count">{{ postiFiltrati().length }} risultati</div>
                     @for (posto of postiFiltrati(); track posto.id) {
                         <button type="button" class="posto-item" [class.active]="posto.id === selected.id" (click)="select(posto)">
-                            <strong>{{ posto.nome }}</strong>
-                            <span>{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
+                            <span class="posto-title">{{ posto.nome }}</span>
+                            <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
                             <span>{{ posto.citta }}, {{ posto.regione }} · Capienza {{ posto.capienza ?? 'n/d' }}</span>
                             <span class="badges">
-                                <p-tag [value]="posto.tipologia" severity="secondary" />
-                                <p-tag [value]="posto.statoRelazione" [severity]="getRelazioneSeverity(posto.statoRelazione)" />
+                                <span class="local-badge">{{ posto.tipologia }}</span>
+                                <span class="local-badge" [ngClass]="getRelazioneClass(posto.statoRelazione)">{{ posto.statoRelazione }}</span>
                             </span>
                         </button>
                     } @empty {
@@ -189,20 +189,55 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
             .list-panel { padding: .75rem; display: grid; gap: .75rem; align-content: start; max-height: calc(100vh - 15rem); overflow: auto; }
             .result-count { color: #64748b; font-weight: 700; padding: .25rem .25rem .5rem; }
             .posto-item {
-                min-height: 44px;
+                min-height: 118px;
                 text-align: left;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
                 background: #fafafa;
-                padding: 1rem;
+                padding: .9rem 1rem;
                 cursor: pointer;
                 display: grid;
-                gap: .45rem;
+                gap: .55rem;
+                align-content: start;
                 color: #111827;
+                line-height: 1.35;
+                overflow: visible;
             }
             .posto-item.active { border-color: #b86f35; background: #fff7ed; }
-            .posto-item span { color: #64748b; }
-            .badges { display: flex; flex-wrap: wrap; gap: .35rem; }
+            .posto-item > span {
+                display: block;
+                min-width: 0;
+                color: #64748b;
+                overflow-wrap: anywhere;
+            }
+            .posto-title {
+                color: #111827 !important;
+                font-weight: 850;
+                line-height: 1.25;
+            }
+            .posto-address {
+                color: #475569 !important;
+            }
+            .badges { display: flex !important; flex-wrap: wrap; gap: .4rem; align-items: center; }
+            .local-badge {
+                display: inline-flex;
+                align-items: center;
+                min-height: 1.7rem;
+                padding: .22rem .55rem;
+                border-radius: 999px;
+                background: #f1f5f9;
+                color: #334155 !important;
+                border: 1px solid #e2e8f0;
+                font-size: .78rem;
+                font-weight: 800;
+                line-height: 1.2;
+                white-space: normal;
+            }
+            .relazione-partner { background: #dcfce7; color: #166534 !important; border-color: #bbf7d0; }
+            .relazione-interessato { background: #dbeafe; color: #1d4ed8 !important; border-color: #bfdbfe; }
+            .relazione-verificare { background: #fef3c7; color: #92400e !important; border-color: #fde68a; }
+            .relazione-non-disponibile { background: #fee2e2; color: #991b1b !important; border-color: #fecaca; }
+            .relazione-censito { background: #f1f5f9; color: #334155 !important; border-color: #cbd5e1; }
             .empty-state {
                 border: 1px dashed #cbd5e1;
                 border-radius: 12px;
@@ -252,6 +287,7 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                 .actions button { width: 100%; }
                 .stats, .detail-grid { grid-template-columns: 1fr; }
                 .service-filter button { flex: 1 1 100%; justify-content: center; }
+                .posto-item { min-height: auto; padding: 1rem; }
             }
         `
     ]
@@ -383,6 +419,21 @@ export class PostiConvivenza {
                 return 'danger';
             default:
                 return 'secondary';
+        }
+    }
+
+    getRelazioneClass(stato: StatoRelazione) {
+        switch (stato) {
+            case 'Partner attivo':
+                return 'relazione-partner';
+            case 'Interessato al progetto':
+                return 'relazione-interessato';
+            case 'Da verificare':
+                return 'relazione-verificare';
+            case 'Non disponibile':
+                return 'relazione-non-disponibile';
+            default:
+                return 'relazione-censito';
         }
     }
 }

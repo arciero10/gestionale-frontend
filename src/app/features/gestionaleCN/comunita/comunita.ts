@@ -243,7 +243,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                         </header>
                         <p>Ruolo attuale: <strong>{{ ruoloModalMembro.ruolo }}</strong></p>
                         <label for="nuovoRuolo">Nuovo ruolo</label>
-                        <p-select inputId="nuovoRuolo" appendTo="body" [options]="ruoliOperativi" [(ngModel)]="nuovoRuolo"></p-select>
+                        <p-select inputId="nuovoRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="ruoliOperativi" [(ngModel)]="nuovoRuolo"></p-select>
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
                             <button pButton type="button" label="Salva ruolo" icon="pi pi-check" (click)="salvaRuolo()"></button>
@@ -260,7 +260,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                             <h2>{{ privacyModalMembro.nomeCompleto }}</h2>
                         </header>
                         <label for="nuovaPrivacy">Stato privacy</label>
-                        <p-select inputId="nuovaPrivacy" appendTo="body" [options]="statiPrivacy" [(ngModel)]="nuovaPrivacy"></p-select>
+                        <p-select inputId="nuovaPrivacy" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="statiPrivacy" [(ngModel)]="nuovaPrivacy"></p-select>
                         <label class="check-row">
                             <input type="checkbox" [(ngModel)]="privacyModuloRicevuto" />
                             Modulo privacy ricevuto
@@ -282,7 +282,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                         </header>
                         <p>Tappa attuale: <strong>{{ tappaCammino }}</strong></p>
                         <label for="nuovaTappa">Nuova tappa</label>
-                        <p-select inputId="nuovaTappa" appendTo="body" [options]="tappeCammino" [(ngModel)]="nuovaTappa"></p-select>
+                        <p-select inputId="nuovaTappa" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tappeCammino" [(ngModel)]="nuovaTappa"></p-select>
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
                             <button pButton type="button" label="Salva tappa" icon="pi pi-check" (click)="salvaTappa()"></button>
@@ -682,6 +682,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                 border-radius: 18px;
                 background: #fff;
                 box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+                overflow: visible;
+            }
+
+            :host ::ng-deep .modal-dropdown-panel {
+                z-index: 12000 !important;
             }
 
             .app-modal-wide {

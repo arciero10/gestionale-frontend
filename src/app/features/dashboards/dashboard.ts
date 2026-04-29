@@ -23,7 +23,6 @@ interface DashboardModule {
             <div class="dashboard-overlay"></div>
 
             <div class="dashboard-content">
-                <span class="auth-render-check" *ngIf="!isDemo">Dashboard autenticata caricata</span>
                 <aside class="community-summary" aria-label="Dati comunità">
                     <span class="summary-eyebrow">{{ isDemo ? 'Comunità demo' : 'Comunità attiva' }}</span>
                     <h1>{{ nomeComunita }}</h1>
@@ -109,22 +108,9 @@ interface DashboardModule {
                 z-index: 1;
                 width: 100%;
                 display: grid;
-                grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+                grid-template-columns: 1fr;
                 gap: clamp(1rem, 2vw, 1.5rem);
-                align-items: stretch;
-            }
-
-            .auth-render-check {
-                position: absolute;
-                top: -0.2rem;
-                right: 0;
-                padding: 0.3rem 0.65rem;
-                border-radius: 999px;
-                background: rgba(255, 255, 255, 0.82);
-                color: #0f2440;
-                font-size: 0.78rem;
-                font-weight: 800;
-                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+                align-items: start;
             }
 
             .community-summary,
@@ -136,8 +122,13 @@ interface DashboardModule {
             }
 
             .community-summary {
-                padding: 1.25rem;
+                min-height: 104px;
+                padding: 1rem 1.15rem;
                 color: #1f2937;
+                display: grid;
+                grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+                gap: 1rem;
+                align-items: center;
             }
 
             .summary-eyebrow {
@@ -147,29 +138,51 @@ interface DashboardModule {
                 font-weight: 700;
                 color: #476078;
                 text-transform: uppercase;
+                grid-column: 1;
+                grid-row: 1;
+                align-self: end;
             }
 
             .community-summary h1 {
-                margin: 0 0 1rem;
+                margin: 0;
                 color: #111827;
-                font-size: 1.55rem;
+                font-size: clamp(1.3rem, 2vw, 1.7rem);
+                line-height: 1.1;
+                grid-column: 1;
+                grid-row: 2;
+                align-self: start;
             }
 
             .community-summary dl {
-                display: grid;
-                gap: 0.9rem;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.55rem;
                 margin: 0;
+                grid-column: 2;
+                grid-row: 1 / span 2;
+            }
+
+            .community-summary dl div {
+                min-height: 3.2rem;
+                display: grid;
+                align-content: center;
+                padding: 0.45rem 0.7rem;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.66);
+                border: 1px solid rgba(31, 41, 55, 0.08);
             }
 
             .community-summary dt {
                 color: #6b7280;
-                font-size: 0.82rem;
+                font-size: 0.75rem;
             }
 
             .community-summary dd {
                 margin: 0.15rem 0 0;
                 color: #111827;
                 font-weight: 700;
+                line-height: 1.15;
             }
 
             .dashboard-grid {
@@ -180,13 +193,14 @@ interface DashboardModule {
 
             .module-card {
                 --card-accent: #4f7da3;
-                min-height: 15rem;
+                min-height: 190px;
+                max-height: 230px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: 1rem;
-                padding: 1.25rem;
+                gap: 0.85rem;
+                padding: 1.15rem;
                 color: #1f2937;
                 text-align: center;
                 text-decoration: none;
@@ -204,8 +218,8 @@ interface DashboardModule {
             }
 
             .module-icon {
-                width: 3.25rem;
-                height: 3.25rem;
+                width: 3rem;
+                height: 3rem;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -221,7 +235,7 @@ interface DashboardModule {
             .module-card h2 {
                 margin: 0;
                 color: #111827;
-                font-size: 1.28rem;
+                font-size: 1.15rem;
                 font-weight: 400;
                 line-height: 1.2;
             }
@@ -266,6 +280,16 @@ interface DashboardModule {
                     grid-template-columns: 1fr;
                 }
 
+                .community-summary {
+                    grid-template-columns: 1fr;
+                }
+
+                .community-summary dl {
+                    justify-content: flex-start;
+                    grid-column: 1;
+                    grid-row: auto;
+                }
+
                 .dashboard-grid {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
@@ -288,8 +312,18 @@ interface DashboardModule {
                 }
 
                 .module-card {
-                    min-height: 10.75rem;
+                    min-height: 10.5rem;
                     gap: 0.75rem;
+                }
+
+                .community-summary {
+                    min-height: auto;
+                    padding: 1rem;
+                }
+
+                .community-summary dl {
+                    display: grid;
+                    grid-template-columns: 1fr;
                 }
             }
         `
