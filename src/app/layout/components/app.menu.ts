@@ -47,6 +47,11 @@ export class AppMenu {
                     routerLink: ['/gestionale-cn/posti-convivenza']
                 },
                 {
+                    label: 'Richieste strutture',
+                    icon: 'pi pi-fw pi-send',
+                    routerLink: ['/gestionale-cn/richieste-strutture']
+                },
+                {
                     label: 'Viaggi / Pellegrinaggi',
                     icon: 'pi pi-fw pi-send',
                     routerLink: ['/gestionale-cn/viaggi']

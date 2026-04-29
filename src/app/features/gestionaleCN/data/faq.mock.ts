@@ -2,7 +2,7 @@ export type FaqVisibilita = 'pubblica' | 'interna';
 
 export interface FaqItem {
     id: number;
-    categoria: 'Accesso' | 'Demo' | 'Comunità' | 'Membri' | 'Convivenze' | 'Posti di Convivenza' | 'Privacy e Consensi' | 'Strutture';
+    categoria: 'Accesso' | 'Demo' | 'Comunità' | 'Membri' | 'Convivenze' | 'Posti di Convivenza' | 'Richieste strutture' | 'Privacy e Consensi' | 'Strutture';
     domanda: string;
     risposta: string;
     visibilita: FaqVisibilita;
@@ -42,5 +42,11 @@ export const FAQ_MOCK: FaqItem[] = [
     { id: 118, categoria: 'Privacy e Consensi', domanda: 'Posso inviare dati personali a una struttura?', risposta: 'Solo se necessario all’organizzazione e dopo aver verificato consensi, finalità e autorizzazioni.', visibilita: 'interna', ordine: 18, tag: ['strutture', 'privacy'] },
     { id: 119, categoria: 'Privacy e Consensi', domanda: 'Posso caricare documenti personali?', risposta: 'No. In questa fase non è previsto upload di documenti personali o sensibili.', visibilita: 'interna', ordine: 19, tag: ['documenti'] },
     { id: 120, categoria: 'Privacy e Consensi', domanda: 'Chi può vedere note riservate o dati particolari?', risposta: 'La progettazione prevede accesso limitato a responsabili autorizzati. Prima della produzione servirà validazione specifica.', visibilita: 'interna', ordine: 20, tag: ['ruoli', 'dati particolari'] },
-    { id: 121, categoria: 'Privacy e Consensi', domanda: 'Cosa fare prima di andare in produzione?', risposta: 'Validare informativa privacy, basi giuridiche, ruoli autorizzativi, consensi e modalità operative.', visibilita: 'interna', ordine: 21, tag: ['produzione'] }
+    { id: 121, categoria: 'Privacy e Consensi', domanda: 'Cosa fare prima di andare in produzione?', risposta: 'Validare informativa privacy, basi giuridiche, ruoli autorizzativi, consensi e modalità operative.', visibilita: 'interna', ordine: 21, tag: ['produzione'] },
+    { id: 122, categoria: 'Richieste strutture', domanda: 'A cosa serve il modulo Richieste strutture?', risposta: 'Serve a preparare, inviare e monitorare le richieste di disponibilità inviate alle strutture di accoglienza per convivenze o incontri.', visibilita: 'interna', ordine: 22, tag: ['richieste', 'strutture', 'convivenze'] },
+    { id: 123, categoria: 'Richieste strutture', domanda: 'Da quale indirizzo partono le email?', risposta: 'Le email partiranno da una mailbox dedicata, ad esempio richieste@eventidicomunita.it, configurata tramite Microsoft Graph nel backend.', visibilita: 'interna', ordine: 23, tag: ['email', 'graph', 'mailbox'] },
+    { id: 124, categoria: 'Richieste strutture', domanda: 'Come vengono riconosciute le risposte delle strutture?', risposta: 'Ogni richiesta contiene un codice univoco nell’oggetto, ad esempio [EC-2026-000001]. Il sistema userà questo codice per collegare automaticamente le risposte alla richiesta corretta.', visibilita: 'interna', ordine: 24, tag: ['codice richiesta', 'risposte', 'graph'] },
+    { id: 125, categoria: 'Richieste strutture', domanda: 'L’invio email è già reale?', risposta: 'In questa fase può essere in modalità mock/front-end se il backend non è ancora collegato. L’invio reale sarà gestito tramite Microsoft Graph e configurazione sicura.', visibilita: 'interna', ordine: 25, tag: ['mock', 'email', 'backend'] },
+    { id: 126, categoria: 'Richieste strutture', domanda: 'Dove vengono salvati client secret o credenziali Graph?', risposta: 'Non devono essere salvati nel codice. Devono essere configurati tramite environment/appsettings o segreti dell’ambiente Azure.', visibilita: 'interna', ordine: 26, tag: ['secret', 'graph', 'azure'] },
+    { id: 127, categoria: 'Richieste strutture', domanda: 'La demo usa richieste reali?', risposta: 'No. La demo deve usare solo dati finti e non deve contenere richieste reali, strutture reali o dati personali reali.', visibilita: 'interna', ordine: 27, tag: ['demo', 'dati finti'] }
 ];
