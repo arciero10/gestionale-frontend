@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
+import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
 
 type StatoConvivenza = 'Bozza' | 'Richiesta inviata' | 'Confermata' | 'Conclusa';
 type StatoRichiestaStruttura = 'Non inviata' | 'In preparazione' | 'Inviata' | 'Confermata' | 'Rifiutata';
@@ -171,12 +173,20 @@ interface PostoSintesi {
     ]
 })
 export class Convivenze {
-    posti: PostoSintesi[] = [
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
+
+    get isDemo() {
+        const url = this.router.url.split('?')[0].split('#')[0];
+        return this.route.snapshot.data['demo'] === true || url === '/demo' || url.startsWith('/demo/');
+    }
+
+    posti: PostoSintesi[] = this.isDemo ? DEMO_POSTI.map((posto, index) => ({ id: index + 1, nome: posto.nome, citta: posto.citta, regione: posto.regione })) : [
         { id: 1, nome: 'Casa San Giuseppe', citta: 'Albano Laziale', regione: 'Lazio' },
         { id: 2, nome: 'Istituto Santa Marta', citta: 'Frascati', regione: 'Lazio' }
     ];
 
-    convivenze: Convivenza[] = [
+    convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : [
         {
             id: 1,
             titolo: 'Convivenza Avvento',
@@ -212,6 +222,37 @@ export class Convivenze {
     ];
 
     selected = this.convivenze[0];
+
+    private creaConvivenzeDemo(): Convivenza[] {
+        return DEMO_CONVIVENZE.map((convivenza, index) => ({
+            id: index + 1,
+            titolo: convivenza.titolo,
+            dataInizio: convivenza.dataInizio,
+            dataFine: convivenza.dataFine,
+            stato: convivenza.stato as StatoConvivenza,
+            comunita: DEMO_COMUNITA.nome,
+            partecipantiPrevisti: 28 + index * 4,
+            partecipantiConfermati: 18 + index * 3,
+            postoId: index < 2 ? index + 1 : null,
+            luogoTestuale: convivenza.luogo,
+            citta: index === 2 ? 'Da assegnare' : DEMO_POSTI[index]?.citta ?? 'Roma',
+            note: 'Dato dimostrativo per la demo pubblica.',
+            statoRichiestaStruttura: index === 0 ? 'Confermata' : index === 1 ? 'Inviata' : 'Non inviata',
+            aggregati: {
+                adulti: 18 + index * 3,
+                bambini: 4 + index,
+                famiglieConBambini: 2 + index,
+                pastiSpeciali: index + 1,
+                esigenzeAlloggio: index,
+                documentiRicevuti: 10 + index * 2,
+                documentiRichiesti: 16 + index * 3,
+                consensiMancanti: index + 1,
+                consensiRaccolti: 14 + index * 2,
+                consensiDaVerificare: index + 1,
+                consensiNegatiRevocati: index === 2 ? 1 : 0
+            }
+        }));
+    }
 
     select(convivenza: Convivenza) {
         this.selected = convivenza;

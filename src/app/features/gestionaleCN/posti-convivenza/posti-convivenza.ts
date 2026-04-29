@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { PlaceMapComponent } from '../maps/place-map';
 import { POSTI_CONVIVENZA_MOCK, PostoConvivenza, ServiziPosto, StatoRelazione, TipologiaPosto } from '../data/posti-convivenza.mock';
+import { DEMO_POSTI } from '../../demo/demo.mock';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -23,7 +24,7 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                     <p>Censimento operativo dei luoghi, contatti, servizi e relazione con le strutture.</p>
                 </div>
                 <div class="head-actions">
-                    <a pButton routerLink="/gestionale-cn/posti-convivenza/mappa" icon="pi pi-map" label="Vista mappa" outlined></a>
+                    <a pButton [routerLink]="mappaRoute" icon="pi pi-map" label="Vista mappa" outlined></a>
                     <button pButton type="button" icon="pi pi-plus" label="Nuovo posto"></button>
                 </div>
             </header>
@@ -256,6 +257,9 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
     ]
 })
 export class PostiConvivenza {
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
+
     readonly statiRelazione: StatoRelazione[] = ['Da verificare', 'Censito internamente', 'Interessato al progetto', 'Partner attivo', 'Non disponibile'];
     readonly tipologie: TipologiaPosto[] = ['Casa di convivenza', 'Parrocchia', 'Istituto religioso', 'Casa per ritiri', 'Albergo / pensione', 'Altro'];
     readonly serviziFiltri: { key: ServizioFiltro; label: string }[] = [
@@ -265,7 +269,7 @@ export class PostiConvivenza {
         { key: 'accessibilita', label: 'Accessibilita' },
         { key: 'spazioBambini', label: 'Spazio bambini' }
     ];
-    readonly posti = POSTI_CONVIVENZA_MOCK;
+    readonly posti = this.isDemo ? this.creaPostiDemo() : POSTI_CONVIVENZA_MOCK;
 
     filtroTesto = '';
     filtroLuogo = '';
@@ -274,6 +278,49 @@ export class PostiConvivenza {
     filtroStato: StatoRelazione | null = null;
     serviziSelezionati: ServizioFiltro[] = [];
     selected = this.posti[0];
+
+    get isDemo() {
+        const url = this.router.url.split('?')[0].split('#')[0];
+        return this.route.snapshot.data['demo'] === true || url === '/demo' || url.startsWith('/demo/');
+    }
+
+    get mappaRoute() {
+        return this.isDemo ? '/demo/posti-convivenza/mappa' : '/gestionale-cn/posti-convivenza/mappa';
+    }
+
+    private creaPostiDemo(): PostoConvivenza[] {
+        return DEMO_POSTI.map((posto, index) => ({
+            id: index + 1,
+            nome: posto.nome,
+            tipologia: posto.tipologia as TipologiaPosto,
+            citta: posto.citta,
+            regione: posto.regione,
+            indirizzo: posto.indirizzo,
+            indirizzoNormalizzato: posto.indirizzo,
+            capienza: posto.capienza,
+            referente: '',
+            telefono: '',
+            email: '',
+            sitoWeb: '',
+            statoRelazione: posto.stato as StatoRelazione,
+            note: 'Scheda dimostrativa, senza dati reali.',
+            latitudine: null,
+            longitudine: null,
+            placeId: null,
+            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${posto.nome}, ${posto.citta}, ${posto.regione}`)}`,
+            ultimoContatto: null,
+            storicoConvivenze: index === 0 ? ['Convivenza di Avvento'] : [],
+            servizi: {
+                camere: true,
+                salaIncontri: true,
+                cucina: index !== 2,
+                parcheggio: index !== 1,
+                accessibilita: index === 0,
+                spazioBambini: index === 1
+            },
+            valutazioneInterna: index === 0 ? 'positivo' : 'non valutato'
+        }));
+    }
 
     select(posto: PostoConvivenza) {
         this.selected = posto;

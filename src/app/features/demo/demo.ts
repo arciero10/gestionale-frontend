@@ -66,7 +66,7 @@ type DemoSection = 'dashboard' | 'comunita' | 'convivenze' | 'posti-convivenza' 
                         @for (convivenza of convivenze; track convivenza.titolo) {
                             <article>
                                 <strong>{{ convivenza.titolo }}</strong>
-                                <span>{{ convivenza.data }} · {{ convivenza.luogo }} · {{ convivenza.stato }}</span>
+                                <span>{{ convivenza.dataInizio }} - {{ convivenza.dataFine }} · {{ convivenza.luogo }} · {{ convivenza.stato }}</span>
                             </article>
                         }
                     </div>

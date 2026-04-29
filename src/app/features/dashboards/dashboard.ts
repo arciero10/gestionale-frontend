@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TagModule } from 'primeng/tag';
+import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 
 interface DashboardModule {
@@ -23,7 +24,7 @@ interface DashboardModule {
 
             <div class="dashboard-content">
                 <aside class="community-summary" aria-label="Dati comunità">
-                    <span class="summary-eyebrow">Comunità attiva</span>
+                    <span class="summary-eyebrow">{{ isDemo ? 'Comunità demo' : 'Comunità attiva' }}</span>
                     <h1>{{ nomeComunita }}</h1>
                     <dl>
                         <div>
@@ -40,15 +41,15 @@ interface DashboardModule {
                         </div>
                         <div>
                             <dt>Membri</dt>
-                            <dd>42</dd>
+                            <dd>{{ membriCount }}</dd>
                         </div>
                         <div>
                             <dt>Convivenze in programma</dt>
-                            <dd>2</dd>
+                            <dd>{{ convivenzeCount }}</dd>
                         </div>
                         <div>
                             <dt>Posti censiti</dt>
-                            <dd>5</dd>
+                            <dd>{{ postiCount }}</dd>
                         </div>
                     </dl>
                 </aside>
@@ -277,44 +278,81 @@ interface DashboardModule {
     ]
 })
 export class Dashboard {
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
     private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
-    nomeComunita = generaNomeComunita(this.comunitaAttiva.numero);
-    parrocchia = PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId)?.nome ?? '-';
-    settore = SETTORI_MOCK.find((settore) => settore.id === this.comunitaAttiva.settoreId)?.nome ?? '-';
-    diocesi = DIOCESI_MOCK.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId)?.nome ?? '-';
 
-    modules: DashboardModule[] = [
-        {
-            title: 'La tua Comunità',
-            icon: 'pi-users',
-            status: 'Attivo',
-            route: '/gestionale-cn/comunita',
-            tone: 'community',
-            cta: 'Apri'
-        },
-        {
-            title: 'Convivenze',
-            icon: 'pi-calendar',
-            status: 'In sviluppo',
-            route: '/gestionale-cn/convivenze',
-            tone: 'convivenze',
-            cta: 'Entra'
-        },
-        {
-            title: 'Posti di Convivenza',
-            icon: 'pi-building',
-            status: 'In sviluppo',
-            route: '/gestionale-cn/posti-convivenza',
-            tone: 'posti',
-            cta: 'Vai al modulo'
-        },
-        {
-            title: 'Viaggi / Pellegrinaggi',
-            icon: 'pi-send',
-            status: 'Prossimamente',
-            route: '/gestionale-cn/viaggi',
-            tone: 'viaggi',
-            cta: 'Apri'
-        }
-    ];
+    get isDemo() {
+        const url = this.router.url.split('?')[0].split('#')[0];
+        return this.route.snapshot.data['demo'] === true || url === '/demo' || url.startsWith('/demo/');
+    }
+
+    get basePath() {
+        return this.isDemo ? '/demo' : '/gestionale-cn';
+    }
+
+    get nomeComunita() {
+        return this.isDemo ? DEMO_COMUNITA.nome : generaNomeComunita(this.comunitaAttiva.numero);
+    }
+
+    get parrocchia() {
+        return this.isDemo ? DEMO_COMUNITA.parrocchia : (PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId)?.nome ?? '-');
+    }
+
+    get settore() {
+        return this.isDemo ? DEMO_COMUNITA.settore.replace(/^Settore\s+/i, '') : (SETTORI_MOCK.find((settore) => settore.id === this.comunitaAttiva.settoreId)?.nome ?? '-');
+    }
+
+    get diocesi() {
+        return this.isDemo ? DEMO_COMUNITA.diocesi : (DIOCESI_MOCK.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId)?.nome ?? '-');
+    }
+
+    get membriCount() {
+        return this.isDemo ? DEMO_MEMBRI.length : 42;
+    }
+
+    get convivenzeCount() {
+        return this.isDemo ? DEMO_CONVIVENZE.length : 2;
+    }
+
+    get postiCount() {
+        return this.isDemo ? DEMO_POSTI.length : 5;
+    }
+
+    get modules(): DashboardModule[] {
+        return [
+            {
+                title: 'La tua Comunità',
+                icon: 'pi-users',
+                status: 'Attivo',
+                route: `${this.basePath}/comunita`,
+                tone: 'community',
+                cta: 'Apri'
+            },
+            {
+                title: 'Convivenze',
+                icon: 'pi-calendar',
+                status: 'In sviluppo',
+                route: `${this.basePath}/convivenze`,
+                tone: 'convivenze',
+                cta: 'Entra'
+            },
+            {
+                title: 'Posti di Convivenza',
+                icon: 'pi-building',
+                status: 'In sviluppo',
+                route: `${this.basePath}/posti-convivenza`,
+                tone: 'posti',
+                cta: 'Vai al modulo'
+            },
+            {
+                title: 'Viaggi / Pellegrinaggi',
+                icon: 'pi-send',
+                status: 'Prossimamente',
+                route: `${this.basePath}/viaggi`,
+                tone: 'viaggi',
+                cta: 'Apri'
+            }
+        ];
+    }
 }

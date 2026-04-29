@@ -1,6 +1,7 @@
 ﻿import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -8,6 +9,7 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
+import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 
 type RuoloComunita = 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Fratello';
 type StatoMembro = 'Attivo' | 'Temporaneamente assente' | 'Da contattare';
@@ -59,10 +61,10 @@ interface MembroComunita {
                 </div>
 
                 <div class="identity-summary">
-                    <div><span>Parrocchia</span><strong>{{ parrocchiaSelezionata?.nome }}</strong></div>
-                    <div><span>Settore</span><strong>Settore {{ settoreSelezionato?.nome }}</strong></div>
-                    <div><span>Diocesi</span><strong>{{ diocesiSelezionata?.nome }}</strong></div>
-                    <div><span>Responsabile</span><strong>{{ comunitaAttiva.responsabilePrincipale }}</strong></div>
+                    <div><span>Parrocchia</span><strong>{{ parrocchiaComunita }}</strong></div>
+                    <div><span>Settore</span><strong>{{ settoreComunita }}</strong></div>
+                    <div><span>Diocesi</span><strong>{{ diocesiComunita }}</strong></div>
+                    <div><span>Responsabile</span><strong>{{ responsabileComunita }}</strong></div>
                 </div>
 
                 <p class="identity-note">Le modifiche all’associazione comunità saranno gestite da un responsabile autorizzato.</p>
@@ -557,6 +559,9 @@ interface MembroComunita {
     ]
 })
 export class Comunita {
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
+
     ruoli: RuoloComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Fratello'];
     statiMembro: StatoMembro[] = ['Attivo', 'Temporaneamente assente', 'Da contattare'];
     accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
@@ -566,7 +571,15 @@ export class Comunita {
     settori = SETTORI_MOCK;
     parrocchie = PARROCCHIE_MOCK;
     comunitaAttiva = { ...COMUNITA_ATTIVA_MOCK };
-    nomeComunita = generaNomeComunita(this.comunitaAttiva.numero);
+
+    get isDemo() {
+        const url = this.router.url.split('?')[0].split('#')[0];
+        return this.route.snapshot.data['demo'] === true || url === '/demo' || url.startsWith('/demo/');
+    }
+
+    get nomeComunita() {
+        return this.isDemo ? DEMO_COMUNITA.nome : generaNomeComunita(this.comunitaAttiva.numero);
+    }
 
     get diocesiSelezionata() {
         return this.diocesi.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId);
@@ -581,8 +594,18 @@ export class Comunita {
     }
 
     get datiComunita() {
+        if (this.isDemo) {
+            return [
+                { label: 'Comunità', value: DEMO_COMUNITA.nome },
+                { label: 'Parrocchia', value: DEMO_COMUNITA.parrocchia },
+                { label: 'Settore', value: DEMO_COMUNITA.settore },
+                { label: 'Diocesi', value: DEMO_COMUNITA.diocesi },
+                { label: 'Responsabile', value: DEMO_COMUNITA.responsabile }
+            ];
+        }
+
         return [
-            { label: 'ComunitÃ ', value: generaNomeComunita(this.comunitaAttiva.numero) },
+            { label: 'Comunità', value: generaNomeComunita(this.comunitaAttiva.numero) },
             { label: 'Parrocchia', value: this.parrocchiaSelezionata?.nome ?? '-' },
             { label: 'Settore', value: this.settoreSelezionato ? `Settore ${this.settoreSelezionato.nome}` : '-' },
             { label: 'Diocesi', value: this.diocesiSelezionata?.nome ?? '-' },
@@ -590,7 +613,23 @@ export class Comunita {
         ];
     }
 
-    membri: MembroComunita[] = [
+    get responsabileComunita() {
+        return this.isDemo ? DEMO_COMUNITA.responsabile : this.comunitaAttiva.responsabilePrincipale;
+    }
+
+    get parrocchiaComunita() {
+        return this.isDemo ? DEMO_COMUNITA.parrocchia : (this.parrocchiaSelezionata?.nome ?? '-');
+    }
+
+    get settoreComunita() {
+        return this.isDemo ? DEMO_COMUNITA.settore : (this.settoreSelezionato ? `Settore ${this.settoreSelezionato.nome}` : '-');
+    }
+
+    get diocesiComunita() {
+        return this.isDemo ? DEMO_COMUNITA.diocesi : (this.diocesiSelezionata?.nome ?? '-');
+    }
+
+    membri: MembroComunita[] = this.isDemo ? this.creaMembriDemo() : [
         { id: 1, nome: 'Mario', cognome: 'Rossi', ruolo: 'Responsabile', telefono: '333 1234567', email: 'mario.rossi@example.com', statoMembro: 'Attivo', accessoApp: 'Attivo', note: 'Responsabile principale', consensoPrivacyStato: 'Raccolto', consensoPrivacyMetodo: 'Digitale', consensoPrivacyData: '2026-04-12', consensoPrivacyRaccoltoDa: 'Segreteria', consensoDatiParticolari: true, consensoCondivisioneStrutture: true, moduloPrivacyRicevuto: true, consensoNote: 'Consenso completo mock.' },
         { id: 2, nome: 'Lucia', cognome: 'Bianchi', ruolo: 'Catechista', telefono: '333 7654321', email: '', statoMembro: 'Attivo', accessoApp: 'Nessuno', note: '', consensoPrivacyStato: 'Da raccogliere', consensoPrivacyMetodo: 'Non indicato', consensoPrivacyData: '', consensoPrivacyRaccoltoDa: '', consensoDatiParticolari: false, consensoCondivisioneStrutture: false, moduloPrivacyRicevuto: false, consensoNote: 'Da verificare al prossimo incontro.' },
         { id: 3, nome: 'Paolo', cognome: 'Verdi', ruolo: 'Cantore', telefono: '', email: '', statoMembro: 'Da contattare', accessoApp: 'In attesa', note: 'Verificare disponibilità', consensoPrivacyStato: 'Negato', consensoPrivacyMetodo: 'Cartaceo', consensoPrivacyData: '2026-03-20', consensoPrivacyRaccoltoDa: 'Mario Rossi', consensoDatiParticolari: false, consensoCondivisioneStrutture: false, moduloPrivacyRicevuto: true, consensoNote: 'Non condividere dati con strutture esterne.' }
@@ -598,7 +637,7 @@ export class Comunita {
 
     formVisibile = false;
     membroInModifica: MembroComunita | null = null;
-    private prossimoId = 4;
+    private prossimoId = this.isDemo ? DEMO_MEMBRI.length + 1 : 4;
 
     form: Omit<MembroComunita, 'id'> = this.creaFormVuoto();
 
@@ -699,6 +738,28 @@ export class Comunita {
             default:
                 return 'secondary';
         }
+    }
+
+    private creaMembriDemo(): MembroComunita[] {
+        return DEMO_MEMBRI.map((membro, index) => ({
+            id: index + 1,
+            nome: membro.nome,
+            cognome: membro.cognome,
+            ruolo: membro.ruolo as RuoloComunita,
+            telefono: '',
+            email: '',
+            statoMembro: membro.stato as StatoMembro,
+            accessoApp: membro.accessoApp as AccessoApp,
+            note: 'Dato dimostrativo',
+            consensoPrivacyStato: membro.privacy as ConsensoPrivacyStato,
+            consensoPrivacyMetodo: membro.privacy === 'Raccolto' ? 'Digitale' : 'Non indicato',
+            consensoPrivacyData: membro.privacy === 'Raccolto' ? '2026-04-01' : '',
+            consensoPrivacyRaccoltoDa: membro.privacy === 'Raccolto' ? 'Responsabile demo' : '',
+            consensoDatiParticolari: membro.privacy === 'Raccolto',
+            consensoCondivisioneStrutture: membro.privacy === 'Raccolto',
+            moduloPrivacyRicevuto: membro.privacy === 'Raccolto',
+            consensoNote: 'Dato privacy dimostrativo.'
+        }));
     }
 
     private creaFormVuoto(): Omit<MembroComunita, 'id'> {

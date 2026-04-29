@@ -6,11 +6,52 @@ import { NotFound } from '@/features/not-found/not.found';
 export const routes: Routes = [
   {
     path: 'demo',
-    loadComponent: () => import('@/features/demo/demo').then((c) => c.Demo)
-  },
-  {
-    path: 'demo/:section',
-    loadComponent: () => import('@/features/demo/demo').then((c) => c.Demo)
+    component: AppLayout,
+    data: { demo: true },
+    children: [
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('@/features/dashboards/dashboard').then((c) => c.Dashboard),
+        data: { breadcrumb: 'Dashboard demo', demo: true }
+      },
+      {
+        path: 'comunita',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/comunita/comunita').then((c) => c.Comunita),
+        data: { breadcrumb: 'La tua Comunità demo', demo: true }
+      },
+      {
+        path: 'convivenze',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/convivenze/convivenze').then((c) => c.Convivenze),
+        data: { breadcrumb: 'Convivenze demo', demo: true }
+      },
+      {
+        path: 'posti-convivenza/mappa',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/posti-convivenza/posti-convivenza-mappa').then((c) => c.PostiConvivenzaMappa),
+        data: { breadcrumb: 'Mappa posti demo', demo: true }
+      },
+      {
+        path: 'posti-convivenza',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/posti-convivenza/posti-convivenza').then((c) => c.PostiConvivenza),
+        data: { breadcrumb: 'Posti di Convivenza demo', demo: true }
+      },
+      {
+        path: 'viaggi',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/placeholder/gestionale-placeholder').then((c) => c.GestionalePlaceholder),
+        data: { breadcrumb: 'Viaggi / Pellegrinaggi demo', title: 'Viaggi / Pellegrinaggi - demo', demo: true }
+      },
+      { path: '**', redirectTo: 'dashboard' }
+    ]
   },
   {
     path: 'faq',

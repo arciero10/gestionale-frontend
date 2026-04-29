@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TagModule } from 'primeng/tag';
-import { POSTI_CONVIVENZA_MOCK, StatoRelazione } from '../data/posti-convivenza.mock';
+import { POSTI_CONVIVENZA_MOCK, PostoConvivenza, StatoRelazione, TipologiaPosto } from '../data/posti-convivenza.mock';
+import { DEMO_POSTI } from '../../demo/demo.mock';
 
 @Component({
     selector: 'app-posti-convivenza-mappa',
@@ -18,7 +19,7 @@ import { POSTI_CONVIVENZA_MOCK, StatoRelazione } from '../data/posti-convivenza.
                     <h1>Mappa posti di convivenza</h1>
                     <p>La mappa con tutti i luoghi censiti sara integrata in una fase successiva.</p>
                 </div>
-                <a pButton routerLink="/gestionale-cn/posti-convivenza" icon="pi pi-list" label="Torna all'elenco" outlined></a>
+                <a pButton [routerLink]="elencoRoute" icon="pi pi-list" label="Torna all'elenco" outlined></a>
             </header>
 
             <section class="map-shell">
@@ -115,9 +116,47 @@ import { POSTI_CONVIVENZA_MOCK, StatoRelazione } from '../data/posti-convivenza.
     ]
 })
 export class PostiConvivenzaMappa {
-    readonly posti = POSTI_CONVIVENZA_MOCK;
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
+    readonly posti = this.isDemo ? this.creaPostiDemo() : POSTI_CONVIVENZA_MOCK;
     readonly statiRelazione: StatoRelazione[] = ['Da verificare', 'Censito internamente', 'Interessato al progetto', 'Partner attivo', 'Non disponibile'];
     filtro = '';
+
+    get isDemo() {
+        const url = this.router.url.split('?')[0].split('#')[0];
+        return this.route.snapshot.data['demo'] === true || url === '/demo' || url.startsWith('/demo/');
+    }
+
+    get elencoRoute() {
+        return this.isDemo ? '/demo/posti-convivenza' : '/gestionale-cn/posti-convivenza';
+    }
+
+    private creaPostiDemo(): PostoConvivenza[] {
+        return DEMO_POSTI.map((posto, index) => ({
+            id: index + 1,
+            nome: posto.nome,
+            tipologia: posto.tipologia as TipologiaPosto,
+            citta: posto.citta,
+            regione: posto.regione,
+            indirizzo: posto.indirizzo,
+            indirizzoNormalizzato: posto.indirizzo,
+            capienza: posto.capienza,
+            referente: '',
+            telefono: '',
+            email: '',
+            sitoWeb: '',
+            statoRelazione: posto.stato as StatoRelazione,
+            note: 'Scheda dimostrativa.',
+            latitudine: null,
+            longitudine: null,
+            placeId: null,
+            googleMapsUrl: '',
+            ultimoContatto: null,
+            storicoConvivenze: [],
+            servizi: { camere: true, salaIncontri: true, cucina: true, parcheggio: false, accessibilita: false, spazioBambini: false },
+            valutazioneInterna: index === 0 ? 'positivo' : 'non valutato'
+        }));
+    }
 
     countByStato(stato: StatoRelazione) {
         return this.posti.filter((posto) => posto.statoRelazione === stato).length;

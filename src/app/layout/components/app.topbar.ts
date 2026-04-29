@@ -1,5 +1,5 @@
 import { Component, computed, ElementRef, inject, ViewChild } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { StyleClassModule } from 'primeng/styleclass';
 import { LayoutService } from '@/layout/service/layout.service';
@@ -23,7 +23,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
         }"
     >
         <div class="layout-topbar-start">
-            <a class="layout-topbar-logo" routerLink="/gestionale-cn/dashboard">
+            <a class="layout-topbar-logo" [routerLink]="homeLink">
                 <h1 class="brand-neocat text-xl md:text-2xl font-normal dark:text-white leading-tight">GESTIONALE CN</h1>
             </a>
             <a #menuButton class="layout-menu-button" (click)="onMenuButtonClick()" pRipple>
@@ -31,15 +31,40 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
             </a>
         </div>
 
-        <div class="layout-topbar-end"></div>
+        <div class="layout-topbar-end">
+            @if (isDemoRoute) {
+                <a routerLink="/" class="demo-access-link">Accedi all'app</a>
+            }
+        </div>
     </div>`
+    ,
+    styles: [
+        `
+            .demo-access-link {
+                display: inline-flex;
+                min-height: 40px;
+                align-items: center;
+                justify-content: center;
+                padding: 0.45rem 0.9rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.14);
+                border: 1px solid rgba(255, 255, 255, 0.28);
+                color: #fff;
+                text-decoration: none;
+                font-weight: 700;
+            }
+        `
+    ]
 })
 export class AppTopbar {
     @ViewChild('menuButton') menuButton!: ElementRef;
 
     @ViewChild('mobileMenuButton') mobileMenuButton!: ElementRef;
 
-    constructor(public el: ElementRef) {}
+    constructor(
+        public el: ElementRef,
+        private router: Router
+    ) {}
 
     activeItem!: number;
     themeOptions = [
@@ -56,6 +81,15 @@ export class AppTopbar {
         { name: 'indigo', color: '#3F51B5' }
     ];
     layoutService: LayoutService = inject(LayoutService);
+
+    get isDemoRoute() {
+        const url = this.router.url.split('?')[0].split('#')[0];
+        return url === '/demo' || url.startsWith('/demo/');
+    }
+
+    get homeLink() {
+        return this.isDemoRoute ? '/demo/dashboard' : '/gestionale-cn/dashboard';
+    }
 
     darkTheme = computed(() => this.layoutService.layoutConfig().darkTheme);
     selectedTopbarTheme = computed(() => {

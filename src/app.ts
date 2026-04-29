@@ -36,7 +36,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       </main>
     }
 
-    @if (isLoggedIn()) {
+    @if (isLoggedIn() && !isPublicRoute()) {
       <div
         style="
           padding: 12px 18px;
@@ -74,7 +74,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       <router-outlet></router-outlet>
     }
 
-    @if (!isLoggedIn() && isPublicRoute()) {
+    @if (isPublicRoute()) {
       <router-outlet></router-outlet>
     }
   `,
