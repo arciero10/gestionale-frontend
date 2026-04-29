@@ -3,6 +3,7 @@ import { AppLayout } from '@/layout/components/app.layout';
 import { DemoLayout } from '@/features/demo/demo-layout';
 import { Forbidden } from '@/features/forbidden/forbidden';
 import { NotFound } from '@/features/not-found/not.found';
+import { gestionaleAuthGuard } from '@/auth/gestionale-auth.guard';
 
 export const routes: Routes = [
   {
@@ -69,6 +70,20 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/completa-profilo/completa-profilo').then((c) => c.CompletaProfilo)
   },
   {
+    path: 'gestionale-cn',
+    component: AppLayout,
+    canMatch: [gestionaleAuthGuard],
+    children: [
+      {
+        path: '',
+        loadChildren: () => import('@/features/gestionaleCN/gestionale.routes'),
+        data: {
+          breadcrumb: 'Gestionale'
+        }
+      }
+    ]
+  },
+  {
     path: '',
     component: AppLayout,
     children: [
@@ -86,13 +101,6 @@ export const routes: Routes = [
           import('@/features/dashboards/dashboard').then((c) => c.Dashboard),
         data: {
           breadcrumb: 'Banking Dashboard'
-        }
-      },
-      {
-        path: 'gestionale-cn',
-        loadChildren: () => import('@/features/gestionaleCN/gestionale.routes'),
-        data: {
-          breadcrumb: 'Gestionale'
         }
       },
       {

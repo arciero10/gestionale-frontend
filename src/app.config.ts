@@ -1,5 +1,7 @@
 import {
   ApplicationConfig,
+  inject,
+  provideAppInitializer,
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection
 } from '@angular/core';
@@ -81,6 +83,11 @@ export const appConfig: ApplicationConfig = {
     },
     MsalService,
     MsalBroadcastService,
+
+    provideAppInitializer(async () => {
+      const msal = inject(MsalService);
+      await msal.instance.initialize();
+    }),
 
     provideAnimationsAsync(),
 
