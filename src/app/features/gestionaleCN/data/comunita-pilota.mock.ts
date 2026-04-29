@@ -37,7 +37,8 @@ export const COMUNITA_PILOTA = {
     nomeVisualizzato: '3ª Comunità',
     parrocchia: 'S. Maria delle Grazie alle Fornaci',
     settore: 'Ovest',
-    diocesi: 'Diocesi di Roma'
+    diocesi: 'Diocesi di Roma',
+    tappaCammino: 'Precatecumenato'
 } as const;
 
 const baseMembro = {

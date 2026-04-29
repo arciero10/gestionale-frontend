@@ -1,9 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
+import { TIPI_CONVIVENZA, TipoConvivenza, isTappaCammino } from '../data/tappe-cammino.mock';
 
 type StatoConvivenza = 'Bozza' | 'Richiesta inviata' | 'Confermata' | 'Conclusa';
 type StatoRichiestaStruttura = 'Non inviata' | 'In preparazione' | 'Inviata' | 'Confermata' | 'Rifiutata';
@@ -11,6 +14,7 @@ type StatoRichiestaStruttura = 'Non inviata' | 'In preparazione' | 'Inviata' | '
 interface Convivenza {
     id: number;
     titolo: string;
+    tipoConvivenza: TipoConvivenza;
     dataInizio: string;
     dataFine: string;
     stato: StatoConvivenza;
@@ -47,7 +51,7 @@ interface PostoSintesi {
 @Component({
     selector: 'app-convivenze',
     standalone: true,
-    imports: [CommonModule, ButtonModule, TagModule],
+    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, TagModule],
     template: `
         <section class="convivenze-page">
             <header class="page-head">
@@ -55,14 +59,31 @@ interface PostoSintesi {
                     <h1>Convivenze</h1>
                     <p>Recap, dettaglio, partecipazioni aggregate e richieste alle strutture.</p>
                 </div>
-                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza"></button>
+                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="formNuovaConvivenzaVisibile = !formNuovaConvivenzaVisibile"></button>
             </header>
+
+            @if (formNuovaConvivenzaVisibile) {
+                <section class="new-convivenza-box">
+                    <div>
+                        <h2>Nuova convivenza</h2>
+                        <p>Bozza front-end: il salvataggio reale sarà collegato al backend in una fase successiva.</p>
+                    </div>
+                    <label for="tipoNuovaConvivenza">Tipo convivenza / passaggio</label>
+                    <p-select inputId="tipoNuovaConvivenza" appendTo="body" [options]="tipiConvivenza" [(ngModel)]="tipoNuovaConvivenza"></p-select>
+                </section>
+            }
+
+            <section class="filters-card">
+                <label for="tipoConvivenzaFiltro">Filtra per tipo convivenza / passaggio</label>
+                <p-select inputId="tipoConvivenzaFiltro" appendTo="body" [options]="tipiConvivenza" [(ngModel)]="tipoFiltro" [showClear]="true" placeholder="Tutti i tipi"></p-select>
+            </section>
 
             <div class="workspace">
                 <aside class="list-panel">
-                    @for (convivenza of convivenze; track convivenza.id) {
+                    @for (convivenza of convivenzeFiltrate; track convivenza.id) {
                         <button type="button" class="convivenza-item" [class.active]="convivenza.id === selected.id" (click)="select(convivenza)">
                             <span class="item-title">{{ convivenza.titolo }}</span>
+                            <span class="tipo-badge" [ngClass]="getTipoClass(convivenza.tipoConvivenza)">{{ convivenza.tipoConvivenza }}</span>
                             <span class="item-meta">{{ convivenza.dataInizio }} - {{ convivenza.dataFine }}</span>
                             <span class="item-meta">{{ getPostoNome(convivenza) }}</span>
                             <span class="item-row">
@@ -79,12 +100,14 @@ interface PostoSintesi {
                             <div>
                                 <span class="eyebrow">{{ selected.comunita }}</span>
                                 <h2>{{ selected.titolo }}</h2>
+                                <span class="tipo-badge" [ngClass]="getTipoClass(selected.tipoConvivenza)">{{ selected.tipoConvivenza }}</span>
                             </div>
                             <p-tag [value]="selected.stato" [severity]="getStatoSeverity(selected.stato)" />
                         </div>
 
                         <div class="detail-grid">
                             <div><span>Periodo</span><strong>{{ selected.dataInizio }} - {{ selected.dataFine }}</strong></div>
+                            <div><span>Tipo</span><strong>{{ selected.tipoConvivenza }}</strong></div>
                             <div><span>Posto assegnato</span><strong>{{ getPostoNome(selected) }}</strong></div>
                             <div><span>Partecipanti</span><strong>{{ selected.partecipantiConfermati }}/{{ selected.partecipantiPrevisti }}</strong></div>
                             <div><span>Richiesta struttura</span><strong>{{ selected.statoRichiestaStruttura }}</strong></div>
@@ -139,6 +162,12 @@ interface PostoSintesi {
             .page-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
             .page-head h1 { margin: 0 0 .35rem; font-size: 2rem; }
             .page-head p { margin: 0; color: #64748b; }
+            .new-convivenza-box, .filters-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); padding: 1rem; }
+            .new-convivenza-box { display: grid; grid-template-columns: minmax(0, 1fr) 14rem 18rem; gap: 1rem; align-items: end; }
+            .new-convivenza-box h2 { margin: 0 0 .25rem; font-size: 1.1rem; }
+            .new-convivenza-box p { margin: 0; color: #64748b; }
+            .new-convivenza-box label, .filters-card label { display: block; margin-bottom: .4rem; color: #475569; font-weight: 800; }
+            .filters-card { max-width: 25rem; }
             .workspace { display: grid; grid-template-columns: 22rem minmax(0, 1fr); gap: 1.25rem; }
             .list-panel, .detail-card, .map-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); }
             .list-panel { padding: .75rem; display: grid; gap: .75rem; align-content: start; }
@@ -147,6 +176,9 @@ interface PostoSintesi {
             .item-title { font-weight: 800; color: #111827; }
             .item-meta { color: #64748b; font-size: .9rem; }
             .item-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+            .tipo-badge { display: inline-flex; width: fit-content; align-items: center; min-height: 1.7rem; padding: .18rem .55rem; border-radius: 999px; border: 1px solid transparent; font-size: .78rem; font-weight: 800; }
+            .tipo-tappa { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+            .tipo-ordinaria { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
             .detail-panel { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1.25rem; }
             .detail-card, .map-card { padding: 1.25rem; }
             .detail-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
@@ -167,7 +199,7 @@ interface PostoSintesi {
             .map-placeholder .pi { font-size: 2rem; color: #2f867c; }
             .map-placeholder h3 { margin: 0; }
             .map-placeholder small { color: #64748b; }
-            @media (max-width: 1024px) { .workspace, .detail-panel { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+            @media (max-width: 1024px) { .workspace, .detail-panel, .new-convivenza-box { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
             @media (max-width: 767px) { .page-head { flex-direction: column; align-items: stretch; } .page-head button, .actions button { min-height: 44px; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
         `
     ]
@@ -175,6 +207,10 @@ interface PostoSintesi {
 export class Convivenze {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    tipiConvivenza = [...TIPI_CONVIVENZA];
+    tipoFiltro: TipoConvivenza | null = null;
+    tipoNuovaConvivenza: TipoConvivenza = 'Inizio Corso';
+    formNuovaConvivenzaVisibile = false;
 
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];
@@ -189,7 +225,8 @@ export class Convivenze {
     convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : [
         {
             id: 1,
-            titolo: 'Convivenza Avvento',
+            titolo: 'Convivenza Inizio Corso 2025',
+            tipoConvivenza: 'Inizio Corso',
             dataInizio: '2026-12-05',
             dataFine: '2026-12-08',
             stato: 'Confermata',
@@ -205,7 +242,8 @@ export class Convivenze {
         },
         {
             id: 2,
-            titolo: 'Convivenza Quaresima',
+            titolo: 'Passaggio 1 Scrutinio',
+            tipoConvivenza: '1 Scrutinio',
             dataInizio: '2027-03-12',
             dataFine: '2027-03-14',
             stato: 'Bozza',
@@ -218,15 +256,54 @@ export class Convivenze {
             note: 'Verificare disponibilità strutture zona Lazio.',
             statoRichiestaStruttura: 'Non inviata',
             aggregati: { adulti: 16, bambini: 2, famiglieConBambini: 1, pastiSpeciali: 1, esigenzeAlloggio: 1, documentiRicevuti: 4, documentiRichiesti: 18, consensiMancanti: 5, consensiRaccolti: 12, consensiDaVerificare: 5, consensiNegatiRevocati: 1 }
+        },
+        {
+            id: 3,
+            titolo: 'Convivenza di Pentecoste',
+            tipoConvivenza: 'Pentecoste',
+            dataInizio: '2027-05-22',
+            dataFine: '2027-05-24',
+            stato: 'Richiesta inviata',
+            comunita: '3Âª ComunitÃ ',
+            partecipantiPrevisti: 38,
+            partecipantiConfermati: 22,
+            postoId: 2,
+            luogoTestuale: 'Istituto Santa Marta',
+            citta: 'Frascati',
+            note: 'Attendere conferma disponibilitÃ  camere.',
+            statoRichiestaStruttura: 'Inviata',
+            aggregati: { adulti: 20, bambini: 2, famiglieConBambini: 2, pastiSpeciali: 2, esigenzeAlloggio: 1, documentiRicevuti: 8, documentiRichiesti: 16, consensiMancanti: 3, consensiRaccolti: 19, consensiDaVerificare: 3, consensiNegatiRevocati: 0 }
+        },
+        {
+            id: 4,
+            titolo: 'Convivenza di Riporto',
+            tipoConvivenza: 'Riporto',
+            dataInizio: '2027-09-18',
+            dataFine: '2027-09-19',
+            stato: 'Bozza',
+            comunita: '3Âª ComunitÃ ',
+            partecipantiPrevisti: 40,
+            partecipantiConfermati: 0,
+            postoId: null,
+            luogoTestuale: 'Luogo non ancora assegnato',
+            citta: 'Roma',
+            note: 'Da programmare dopo la pausa estiva.',
+            statoRichiestaStruttura: 'In preparazione',
+            aggregati: { adulti: 0, bambini: 0, famiglieConBambini: 0, pastiSpeciali: 0, esigenzeAlloggio: 0, documentiRicevuti: 0, documentiRichiesti: 0, consensiMancanti: 0, consensiRaccolti: 0, consensiDaVerificare: 0, consensiNegatiRevocati: 0 }
         }
     ];
 
     selected = this.convivenze[0];
 
+    get convivenzeFiltrate() {
+        return this.tipoFiltro ? this.convivenze.filter((convivenza) => convivenza.tipoConvivenza === this.tipoFiltro) : this.convivenze;
+    }
+
     private creaConvivenzeDemo(): Convivenza[] {
         return DEMO_CONVIVENZE.map((convivenza, index) => ({
             id: index + 1,
             titolo: convivenza.titolo,
+            tipoConvivenza: convivenza.tipoConvivenza as TipoConvivenza,
             dataInizio: convivenza.dataInizio,
             dataFine: convivenza.dataFine,
             stato: convivenza.stato as StatoConvivenza,
@@ -274,5 +351,9 @@ export class Convivenze {
             default:
                 return 'warn';
         }
+    }
+
+    getTipoClass(tipo: TipoConvivenza) {
+        return isTappaCammino(tipo) ? 'tipo-tappa' : 'tipo-ordinaria';
     }
 }

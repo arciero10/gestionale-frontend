@@ -4,7 +4,7 @@ import { AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
-import { filter } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
@@ -235,53 +235,77 @@ export class App {
   private readonly msalService = inject(MsalService);
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
+  private readonly msalReady = signal(false);
+  private msalInitPromise: Promise<void> | null = null;
 
   constructor() {
     this.clearInvalidLegacyToken();
-    this.handleMicrosoftRedirect();
-    this.authenticated.set(this.isLoggedIn());
+    void this.initMsalSafe();
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
-      this.authenticated.set(this.isLoggedIn());
     });
+  }
+
+  private async initMsalSafe(): Promise<void> {
+    try {
+      await this.ensureMsalInitialized();
+      this.msalReady.set(true);
+      this.handleMicrosoftRedirect();
+    } catch (error) {
+      console.error('[MSAL] init error', error);
+      this.authenticated.set(false);
+      this.msalReady.set(false);
+    }
   }
 
   private handleMicrosoftRedirect(): void {
     this.msalService.handleRedirectObservable().subscribe({
       next: (result: AuthenticationResult | null) => {
-        if (!result?.account) {
-          const activeAccount = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
-          if (activeAccount) {
-            this.msalService.instance.setActiveAccount(activeAccount);
-            this.authenticated.set(true);
+        if (result?.account) {
+          this.msalService.instance.setActiveAccount(result.account);
+
+          if (result.idToken && this.isValidToken(result.idToken)) {
+            localStorage.setItem('id_token', result.idToken);
+            this.authService.refreshState();
           }
+
+          this.authenticated.set(true);
+          this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
           return;
         }
 
-        this.msalService.instance.setActiveAccount(result.account);
+        const accounts = this.msalService.instance.getAllAccounts();
 
-        if (result.idToken && this.isValidToken(result.idToken)) {
-          localStorage.setItem('id_token', result.idToken);
-          this.authService.refreshState();
+        if (!this.msalService.instance.getActiveAccount() && accounts.length > 0) {
+          this.msalService.instance.setActiveAccount(accounts[0]);
         }
 
-        this.authenticated.set(true);
-        this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
+        const activeAccount = this.msalService.instance.getActiveAccount();
+        this.authenticated.set(Boolean(activeAccount || this.hasValidLocalToken()));
       },
       error: (error) => {
-        console.error('[LOGIN ERROR]', error);
+        console.error('[MSAL] redirect observable error', error);
         this.clearAuthState();
+        this.authenticated.set(false);
       }
     });
   }
 
   isLoggedIn(): boolean {
+    if (!this.msalReady()) {
+      return this.hasValidLocalToken();
+    }
+
     const account = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
     if (account) {
       this.msalService.instance.setActiveAccount(account);
       return true;
     }
 
+    return this.hasValidLocalToken();
+  }
+
+  private hasValidLocalToken(): boolean {
     const token = localStorage.getItem('id_token');
     if (this.isValidToken(token)) {
       return true;
@@ -314,8 +338,9 @@ export class App {
     console.log('[LOGIN] authority', MSAL_AUTHORITY);
 
     this.clearAuthState();
-    this.msalService.initialize().subscribe({
-      next: () => {
+    this.ensureMsalInitialized()
+      .then(() => {
+        this.msalReady.set(true);
         console.log('[LOGIN] avvio loginRedirect MSAL');
 
         this.msalService.loginRedirect({
@@ -325,11 +350,10 @@ export class App {
             console.error('[LOGIN] errore loginRedirect', error);
           }
         });
-      },
-      error: (error) => {
+      })
+      .catch((error) => {
         console.error('[LOGIN INIT ERROR]', error);
-      }
-    });
+      });
   }
 
   logout(): void {
@@ -351,6 +375,15 @@ export class App {
     localStorage.removeItem('id_token');
     sessionStorage.clear();
     this.authService.refreshState();
+    this.authenticated.set(false);
+  }
+
+  private ensureMsalInitialized(): Promise<void> {
+    if (!this.msalInitPromise) {
+      this.msalInitPromise = firstValueFrom(this.msalService.initialize()).then(() => undefined);
+    }
+
+    return this.msalInitPromise;
   }
 
   private isValidToken(token: string | null | undefined): token is string {

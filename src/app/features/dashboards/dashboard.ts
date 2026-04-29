@@ -41,6 +41,10 @@ interface DashboardModule {
                             <dd>{{ diocesi }}</dd>
                         </div>
                         <div>
+                            <dt>Tappa del Cammino</dt>
+                            <dd>{{ tappaCammino }}</dd>
+                        </div>
+                        <div>
                             <dt>Membri</dt>
                             <dd>{{ membriCount }}</dd>
                         </div>
@@ -319,6 +323,10 @@ export class Dashboard {
 
     get diocesi() {
         return this.isDemo ? DEMO_COMUNITA.diocesi : (DIOCESI_MOCK.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId)?.nome ?? '-');
+    }
+
+    get tappaCammino() {
+        return this.isDemo ? DEMO_COMUNITA.tappaCammino : this.comunitaAttiva.tappaCammino;
     }
 
     get membriCount() {

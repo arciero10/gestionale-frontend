@@ -24,6 +24,7 @@ export interface ComunitaAttiva {
     diocesiId: number;
     settoreId: number;
     parrocchiaId: number;
+    tappaCammino: string;
     responsabilePrincipale: string;
     note: string;
 }
@@ -97,6 +98,7 @@ export const COMUNITA_ATTIVA_MOCK: ComunitaAttiva = {
     diocesiId: 1,
     settoreId: 2,
     parrocchiaId: 24,
+    tappaCammino: 'Precatecumenato',
     responsabilePrincipale: 'Mario Rossi',
     note: 'Mock locale: la comunità non è pre-caricata, il responsabile indica il numero.'
 };

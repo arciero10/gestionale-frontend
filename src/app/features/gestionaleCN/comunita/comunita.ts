@@ -20,6 +20,7 @@ import {
 } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
+import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
@@ -46,9 +47,13 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                     <p>{{ parrocchiaComunita }}</p>
                 </div>
                 <div class="identity-meta">
+                    <span class="tappa-badge">Tappa del Cammino: {{ tappaCammino }}</span>
                     <strong>Settore {{ settoreComunita }}</strong>
                     <strong>{{ diocesiComunita }}</strong>
                     <small>{{ isDemo ? 'I dati mostrati sono dimostrativi.' : 'Questi dati sono visibili solo nell’ambiente autenticato.' }}</small>
+                    @if (!isDemo) {
+                        <button pButton type="button" label="Modifica tappa" icon="pi pi-flag" severity="secondary" outlined (click)="apriModificaTappa()"></button>
+                    }
                 </div>
             </section>
 
@@ -263,6 +268,24 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
                             <button pButton type="button" label="Salva privacy" icon="pi pi-check" (click)="salvaPrivacy()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
+            @if (tappaModalAperta) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica tappa del Cammino" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Modifica tappa</span>
+                            <h2>{{ nomeComunita }}</h2>
+                        </header>
+                        <p>Tappa attuale: <strong>{{ tappaCammino }}</strong></p>
+                        <label for="nuovaTappa">Nuova tappa</label>
+                        <p-select inputId="nuovaTappa" appendTo="body" [options]="tappeCammino" [(ngModel)]="nuovaTappa"></p-select>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            <button pButton type="button" label="Salva tappa" icon="pi pi-check" (click)="salvaTappa()"></button>
                         </footer>
                     </section>
                 </div>
@@ -594,6 +617,20 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
             .privacy-negato { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
             .privacy-revocato { background: #ede9fe; color: #312e81; border-color: #c4b5fd; }
 
+            .tappa-badge {
+                display: inline-flex;
+                width: fit-content;
+                align-items: center;
+                min-height: 1.9rem;
+                padding: 0.25rem 0.65rem;
+                border-radius: 999px;
+                background: #eef2ff;
+                color: #3730a3;
+                border: 1px solid #c7d2fe;
+                font-size: 0.82rem;
+                font-weight: 800;
+            }
+
             .row-actions {
                 justify-content: flex-end;
                 flex-wrap: wrap;
@@ -788,6 +825,7 @@ export class Comunita {
     statiMembro: StatoMembro[] = ['Attivo', 'Temporaneamente assente', 'Da contattare'];
     accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
+    tappeCammino = [...TAPPE_CAMMINO];
 
     ricerca = '';
     ruoloFiltro: Exclude<RuoloComunitaPilota, 'Catechista'> | null = null;
@@ -804,6 +842,9 @@ export class Comunita {
     privacyInvioMembro: MembroComunitaPilota | null = null;
     invioMassivo = false;
     anteprimaMembro: MembroComunitaPilota | null = null;
+    tappaCammino: TappaCammino = (this.isDemo ? DEMO_COMUNITA.tappaCammino : COMUNITA_PILOTA.tappaCammino) as TappaCammino;
+    nuovaTappa: TappaCammino = this.tappaCammino;
+    tappaModalAperta = false;
     policyTitle = PRIVACY_POLICY_DRAFT_TITLE;
     policyParagraphs = PRIVACY_POLICY_DRAFT_PARAGRAPHS;
     policyDataItems = PRIVACY_POLICY_DRAFT_DATA_ITEMS;
@@ -952,6 +993,17 @@ export class Comunita {
         this.chiudiModali();
     }
 
+    apriModificaTappa() {
+        this.nuovaTappa = this.tappaCammino;
+        this.tappaModalAperta = true;
+    }
+
+    salvaTappa() {
+        this.tappaCammino = this.nuovaTappa;
+        this.messaggio = 'Tappa aggiornata';
+        this.chiudiModali();
+    }
+
     apriInvioPrivacy(membro: MembroComunitaPilota) {
         this.privacyInvioMembro = membro;
         this.invioMassivo = false;
@@ -1009,6 +1061,7 @@ export class Comunita {
         this.privacyInvioMembro = null;
         this.invioMassivo = false;
         this.anteprimaMembro = null;
+        this.tappaModalAperta = false;
     }
 
     annullaForm() {
