@@ -1,32 +1,38 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from './app/auth/auth.service';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink],
   template: `
-    @if (!isLoggedIn()) {
+    @if (!isLoggedIn() && !isPublicRoute()) {
       <main class="login-page">
         <section class="login-shell">
-          <div class="login-copy">
-            <h1 class="brand-neocat">Gestionale per le comunità<br />del cammino neocatecumenale</h1>
-          </div>
-
           <div class="login-card">
             <div class="login-card-head">
-              <h2>
-                Accedi al gestionale
-              </h2>
+              <h2>Accedi al gestionale</h2>
             </div>
 
             <button type="button" (click)="login()" class="login-button">
               Accedi con email
             </button>
+
+            <a routerLink="/demo" class="demo-link">Guarda la demo</a>
+            <a routerLink="/faq" class="demo-link secondary-link">FAQ</a>
+          </div>
+
+          <div class="login-copy">
+            <h1 class="brand-neocat">Gestionale per le comunità<br />del cammino neocatecumenale</h1>
           </div>
         </section>
+
+        <footer class="app-footer login-footer">
+          <span>All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
+          <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
+        </footer>
       </main>
     }
 
@@ -42,7 +48,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
           font-family: Inter, system-ui, sans-serif;
         "
       >
-        <strong>Eventi di Comunità</strong>
+        <strong>Gestionale Comunità</strong>
 
         <span style="color: #475569;">
           Utente: {{ userName() }}
@@ -67,15 +73,20 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
       <router-outlet></router-outlet>
     }
+
+    @if (!isLoggedIn() && isPublicRoute()) {
+      <router-outlet></router-outlet>
+    }
   `,
   styles: [
     `
       .login-page {
         min-height: 100vh;
         display: flex;
+        flex-direction: column;
         align-items: flex-start;
         justify-content: center;
-        padding: 13vh 24px 42px;
+        padding: 14vh 24px 32px;
         background-image:
           linear-gradient(180deg, rgba(5, 15, 31, .42), rgba(15, 23, 42, .22) 44%, rgba(15, 23, 42, .14)),
           url('/assets/images/login-bg.jpg');
@@ -89,8 +100,9 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         width: 100%;
         max-width: 760px;
         display: grid;
-        gap: 0;
+        gap: 3.5rem;
         justify-items: center;
+        margin: 0 auto;
       }
 
       .login-copy {
@@ -101,8 +113,8 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       }
 
       .login-copy h1 {
-        font-size: clamp(32px, 5vw, 54px);
-        line-height: 1.08;
+        font-size: clamp(30px, 4.8vw, 50px);
+        line-height: 1.1;
         margin: 0;
         font-weight: 800;
       }
@@ -110,7 +122,6 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       .login-card {
         width: 330px;
         max-width: 100%;
-        margin-top: 18vh;
         background: rgba(255, 255, 255, .1);
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
@@ -157,23 +168,61 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         box-shadow: 0 14px 24px rgba(23, 55, 94, .24);
       }
 
+      .demo-link {
+        margin-top: 1rem;
+        color: rgba(255, 255, 255, .88);
+        font-size: .92rem;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(255, 255, 255, .42);
+      }
+
+      .demo-link:hover {
+        color: #fff;
+        border-bottom-color: #fff;
+      }
+
+      .secondary-link {
+        margin-top: .55rem;
+        font-size: .85rem;
+      }
+
+      .app-footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: .35rem 1rem;
+        width: 100%;
+        text-align: center;
+        font-size: .75rem;
+        line-height: 1.45;
+      }
+
+      .login-footer {
+        margin-top: auto;
+        color: rgba(255, 255, 255, .72);
+        text-shadow: 0 1px 8px rgba(0, 0, 0, .24);
+      }
+
       @media (max-width: 900px) {
         .login-page {
-          padding: 10vh 18px 28px;
+          padding: 10vh 18px 24px;
           background-image:
             linear-gradient(180deg, rgba(5, 15, 31, .48), rgba(15, 23, 42, .24)),
             url('/assets/images/login-bg.jpg');
           background-position: 50% 18%;
         }
 
+        .login-shell {
+          gap: 2.5rem;
+        }
+
         .login-copy h1 {
-          font-size: clamp(28px, 9vw, 42px);
+          font-size: clamp(27px, 8.5vw, 40px);
         }
 
         .login-card {
           width: 320px;
           max-width: 100%;
-          margin-top: 10vh;
           padding: 24px;
           border-radius: 20px;
         }
@@ -186,7 +235,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
   ]
 })
 export class App {
-  protected readonly title = signal('Gestionale Cammino Neocatecumenale');
+  protected readonly title = signal('Gestionale Comunità');
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
 
@@ -231,6 +280,11 @@ export class App {
 
   isLoggedIn(): boolean {
     return !!localStorage.getItem('id_token');
+  }
+
+  isPublicRoute(): boolean {
+    const path = window.location.pathname;
+    return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/completa-profilo';
   }
 
   userName(): string {

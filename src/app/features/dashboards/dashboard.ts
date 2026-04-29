@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TagModule } from 'primeng/tag';
+import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 
 interface DashboardModule {
     title: string;
@@ -23,15 +24,19 @@ interface DashboardModule {
             <div class="dashboard-content">
                 <aside class="community-summary" aria-label="Dati comunità">
                     <span class="summary-eyebrow">Comunità attiva</span>
-                    <h1>3ª Comunità</h1>
+                    <h1>{{ nomeComunita }}</h1>
                     <dl>
                         <div>
                             <dt>Parrocchia</dt>
-                            <dd>San Giovanni Battista</dd>
+                            <dd>{{ parrocchia }}</dd>
                         </div>
                         <div>
                             <dt>Settore</dt>
-                            <dd>Roma Sud</dd>
+                            <dd>Settore {{ settore }}</dd>
+                        </div>
+                        <div>
+                            <dt>Diocesi</dt>
+                            <dd>{{ diocesi }}</dd>
                         </div>
                         <div>
                             <dt>Membri</dt>
@@ -272,6 +277,12 @@ interface DashboardModule {
     ]
 })
 export class Dashboard {
+    private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
+    nomeComunita = generaNomeComunita(this.comunitaAttiva.numero);
+    parrocchia = PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId)?.nome ?? '-';
+    settore = SETTORI_MOCK.find((settore) => settore.id === this.comunitaAttiva.settoreId)?.nome ?? '-';
+    diocesi = DIOCESI_MOCK.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId)?.nome ?? '-';
+
     modules: DashboardModule[] = [
         {
             title: 'La tua Comunità',

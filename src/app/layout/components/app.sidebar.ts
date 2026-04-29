@@ -4,6 +4,7 @@ import { LayoutService } from '@/layout/service/layout.service';
 import { RouterModule } from '@angular/router';
 import { AppMenuProfile } from './app.menuprofile';
 import { CommonModule } from '@angular/common';
+import { COMUNITA_ATTIVA_MOCK, PARROCCHIE_MOCK, generaNomeComunita } from '../../features/gestionaleCN/data/anagrafica-ecclesiale.mock';
 
 @Component({
     selector: '[app-sidebar]',
@@ -19,9 +20,8 @@ import { CommonModule } from '@angular/common';
             <button class="layout-sidebar-anchor" type="button" (click)="anchor()"></button>
         </div>
         <div class="px-6 pb-4 text-sm text-surface-500 dark:text-surface-300 layout-sidebar-logo">
-            <div class="font-semibold text-surface-700 dark:text-surface-100">3ª Comunità</div>
-            <div>San Giovanni Battista</div>
-            <div>Roma Sud</div>
+            <div class="font-semibold text-surface-700 dark:text-surface-100">{{ nomeComunita }}</div>
+            <div>{{ parrocchia }}</div>
         </div>
         <div app-menu-profile *ngIf="menuProfilePosition === 'start'"></div>
         <div class="layout-menu-container">
@@ -32,6 +32,9 @@ import { CommonModule } from '@angular/common';
 })
 export class AppSidebar {
     timeout: any = null;
+    private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
+    nomeComunita = generaNomeComunita(this.comunitaAttiva.numero);
+    parrocchia = PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId)?.nome ?? '';
 
     @ViewChild(AppMenu) appMenu!: AppMenu;
 

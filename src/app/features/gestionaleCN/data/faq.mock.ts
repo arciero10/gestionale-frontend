@@ -1,0 +1,46 @@
+export type FaqVisibilita = 'pubblica' | 'interna';
+
+export interface FaqItem {
+    id: number;
+    categoria: 'Accesso' | 'Demo' | 'Comunità' | 'Membri' | 'Convivenze' | 'Posti di Convivenza' | 'Privacy e Consensi' | 'Strutture';
+    domanda: string;
+    risposta: string;
+    visibilita: FaqVisibilita;
+    ordine: number;
+    tag: string[];
+}
+
+export const FAQ_MOCK: FaqItem[] = [
+    { id: 1, categoria: 'Accesso', domanda: 'Cos’è il Gestionale Comunità?', risposta: 'È uno strumento pensato per aiutare i responsabili a organizzare comunità, convivenze, posti e viaggi in modo ordinato.', visibilita: 'pubblica', ordine: 1, tag: ['accesso', 'gestionale'] },
+    { id: 2, categoria: 'Accesso', domanda: 'Chi può accedere al gestionale?', risposta: 'L’accesso all’app vera sarà riservato agli utenti autorizzati tramite email e Microsoft Entra.', visibilita: 'pubblica', ordine: 2, tag: ['accesso', 'autorizzati'] },
+    { id: 3, categoria: 'Accesso', domanda: 'Devo registrarmi per vedere la demo?', risposta: 'No. La demo pubblica è accessibile senza registrazione e mostra solo dati dimostrativi.', visibilita: 'pubblica', ordine: 3, tag: ['demo'] },
+    { id: 4, categoria: 'Accesso', domanda: 'Come funziona l’accesso con email?', risposta: 'L’utente autorizzato entra con la propria email e conferma l’accesso secondo il flusso configurato con Microsoft Entra.', visibilita: 'pubblica', ordine: 4, tag: ['email', 'entra'] },
+    { id: 5, categoria: 'Demo', domanda: 'La demo contiene dati reali?', risposta: 'No. I dati della demo sono finti e servono solo a mostrare il funzionamento generale.', visibilita: 'pubblica', ordine: 5, tag: ['demo', 'mock'] },
+    { id: 6, categoria: 'Demo', domanda: 'Posso condividere il link della demo?', risposta: 'Sì, il link demo è pensato per una visione pubblica preliminare senza accesso all’area riservata.', visibilita: 'pubblica', ordine: 6, tag: ['demo', 'link'] },
+    { id: 7, categoria: 'Privacy e Consensi', domanda: 'Il gestionale contiene dati personali?', risposta: 'Sì, può contenere dati personali dei membri e informazioni organizzative. La gestione definitiva sarà validata prima della produzione.', visibilita: 'pubblica', ordine: 7, tag: ['privacy', 'dati'] },
+    { id: 8, categoria: 'Privacy e Consensi', domanda: 'Chi può vedere i dati della comunità?', risposta: 'La logica prevista limita l’accesso agli utenti autorizzati e associati alla comunità o a ruoli di gestione.', visibilita: 'pubblica', ordine: 8, tag: ['privacy', 'accesso'] },
+    { id: 9, categoria: 'Privacy e Consensi', domanda: 'I dati dei membri vengono condivisi con le strutture?', risposta: 'Solo i dati necessari all’organizzazione dovrebbero essere condivisi, previa verifica dei consensi e dei ruoli autorizzati.', visibilita: 'pubblica', ordine: 9, tag: ['strutture', 'consensi'] },
+    { id: 10, categoria: 'Privacy e Consensi', domanda: 'Come vengono gestiti i consensi?', risposta: 'Il gestionale prepara il tracciamento dello stato dei consensi, del metodo di raccolta e di eventuali limitazioni.', visibilita: 'pubblica', ordine: 10, tag: ['consensi'] },
+    { id: 11, categoria: 'Privacy e Consensi', domanda: 'I fratelli devono registrarsi obbligatoriamente?', risposta: 'No. Un membro può essere presente nell’anagrafica della comunità anche senza avere accesso all’app.', visibilita: 'pubblica', ordine: 11, tag: ['membri', 'accesso'] },
+    { id: 101, categoria: 'Comunità', domanda: 'Come aggiungo un membro?', risposta: 'Dalla pagina La tua Comunità puoi usare “Aggiungi membro” e compilare i dati essenziali. Email e telefono possono restare facoltativi.', visibilita: 'interna', ordine: 1, tag: ['membri'] },
+    { id: 102, categoria: 'Comunità', domanda: 'Cosa significa membro senza accesso app?', risposta: 'Significa che la persona è censita nella comunità, ma non ha ancora un account o non deve accedere al gestionale.', visibilita: 'interna', ordine: 2, tag: ['accesso app'] },
+    { id: 103, categoria: 'Comunità', domanda: 'Chi può modificare i dati della comunità?', risposta: 'In questa fase i dati sono mock. In futuro le modifiche saranno riservate ai ruoli autorizzati.', visibilita: 'interna', ordine: 3, tag: ['ruoli'] },
+    { id: 104, categoria: 'Comunità', domanda: 'Perché la comunità è già associata al profilo?', risposta: 'Il gestionale deve sapere quale comunità stai gestendo. La richiesta di associazione avviene nel completamento profilo.', visibilita: 'interna', ordine: 4, tag: ['profilo'] },
+    { id: 105, categoria: 'Membri', domanda: 'Cosa significa consenso privacy da raccogliere?', risposta: 'Indica che lo stato del consenso non è ancora completo e va verificato prima di usare o condividere dati non necessari.', visibilita: 'interna', ordine: 5, tag: ['privacy'] },
+    { id: 106, categoria: 'Membri', domanda: 'Cosa faccio se un membro nega o revoca il consenso?', risposta: 'Il gestionale segnala lo stato. Prima di condividere dati o usarli per organizzazioni esterne serve una verifica autorizzata.', visibilita: 'interna', ordine: 6, tag: ['privacy', 'revoca'] },
+    { id: 107, categoria: 'Membri', domanda: 'Posso inserire un membro senza email?', risposta: 'Sì. Il membro della comunità è distinto dall’utente che accede all’app.', visibilita: 'interna', ordine: 7, tag: ['email'] },
+    { id: 108, categoria: 'Membri', domanda: 'Posso esportare liste membri?', risposta: 'L’esportazione non è prevista in questa fase. In futuro dovrà rispettare ruoli, finalità e consensi.', visibilita: 'interna', ordine: 8, tag: ['export'] },
+    { id: 109, categoria: 'Convivenze', domanda: 'Come creo una convivenza?', risposta: 'Il modulo Convivenze contiene il flusso mock. In futuro permetterà di creare date, luogo, partecipazioni e richiesta struttura.', visibilita: 'interna', ordine: 9, tag: ['convivenze'] },
+    { id: 110, categoria: 'Convivenze', domanda: 'Come seleziono i partecipanti?', risposta: 'Il modello prevede partecipazioni collegate ai membri, non una semplice copia dei dati anagrafici.', visibilita: 'interna', ordine: 10, tag: ['partecipazioni'] },
+    { id: 111, categoria: 'Convivenze', domanda: 'Cosa significa richiesta struttura?', risposta: 'È la preparazione dei dati necessari da inviare alla struttura per verificare disponibilità e organizzazione.', visibilita: 'interna', ordine: 11, tag: ['strutture'] },
+    { id: 112, categoria: 'Convivenze', domanda: 'Cosa succede se mancano consensi?', risposta: 'La UI mostra avvisi aggregati. Prima dell’invio a strutture esterne va verificato lo stato dei consensi.', visibilita: 'interna', ordine: 12, tag: ['consensi'] },
+    { id: 113, categoria: 'Convivenze', domanda: 'Come gestisco intolleranze o esigenze alimentari?', risposta: 'In questa fase le esigenze sono mostrate solo in forma aggregata, evitando dettagli nominativi non necessari.', visibilita: 'interna', ordine: 13, tag: ['dati particolari'] },
+    { id: 114, categoria: 'Posti di Convivenza', domanda: 'Come censisco un posto?', risposta: 'Il modulo Posti raccoglie dati essenziali di contatto, capienza, servizi e stato relazione.', visibilita: 'interna', ordine: 14, tag: ['posti'] },
+    { id: 115, categoria: 'Posti di Convivenza', domanda: 'Cosa significa “Da verificare”?', risposta: 'Indica che i dati del posto o la disponibilità non sono ancora confermati.', visibilita: 'interna', ordine: 15, tag: ['stato'] },
+    { id: 116, categoria: 'Posti di Convivenza', domanda: 'Come apro un posto in Google Maps?', risposta: 'Nella scheda posto è disponibile il pulsante “Apri in Google Maps” quando è presente il link.', visibilita: 'interna', ordine: 16, tag: ['maps'] },
+    { id: 117, categoria: 'Posti di Convivenza', domanda: 'Come condivido un’esperienza su un posto?', risposta: 'Lo storico esperienze è preparato come dato mock; il flusso operativo sarà definito in seguito.', visibilita: 'interna', ordine: 17, tag: ['storico'] },
+    { id: 118, categoria: 'Privacy e Consensi', domanda: 'Posso inviare dati personali a una struttura?', risposta: 'Solo se necessario all’organizzazione e dopo aver verificato consensi, finalità e autorizzazioni.', visibilita: 'interna', ordine: 18, tag: ['strutture', 'privacy'] },
+    { id: 119, categoria: 'Privacy e Consensi', domanda: 'Posso caricare documenti personali?', risposta: 'No. In questa fase non è previsto upload di documenti personali o sensibili.', visibilita: 'interna', ordine: 19, tag: ['documenti'] },
+    { id: 120, categoria: 'Privacy e Consensi', domanda: 'Chi può vedere note riservate o dati particolari?', risposta: 'La progettazione prevede accesso limitato a responsabili autorizzati. Prima della produzione servirà validazione specifica.', visibilita: 'interna', ordine: 20, tag: ['ruoli', 'dati particolari'] },
+    { id: 121, categoria: 'Privacy e Consensi', domanda: 'Cosa fare prima di andare in produzione?', risposta: 'Validare informativa privacy, basi giuridiche, ruoli autorizzativi, consensi e modalità operative.', visibilita: 'interna', ordine: 21, tag: ['produzione'] }
+];

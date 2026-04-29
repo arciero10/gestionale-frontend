@@ -5,6 +5,23 @@ import { NotFound } from '@/features/not-found/not.found';
 
 export const routes: Routes = [
   {
+    path: 'demo',
+    loadComponent: () => import('@/features/demo/demo').then((c) => c.Demo)
+  },
+  {
+    path: 'demo/:section',
+    loadComponent: () => import('@/features/demo/demo').then((c) => c.Demo)
+  },
+  {
+    path: 'faq',
+    loadComponent: () => import('@/features/faq/faq').then((c) => c.Faq),
+    data: { visibilita: 'pubblica' }
+  },
+  {
+    path: 'completa-profilo',
+    loadComponent: () => import('@/features/completa-profilo/completa-profilo').then((c) => c.CompletaProfilo)
+  },
+  {
     path: '',
     component: AppLayout,
     children: [

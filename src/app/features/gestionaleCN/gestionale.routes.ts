@@ -17,6 +17,11 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'Dashboard' }
     },
         {
+        path: 'faq',
+        loadComponent: () => import('../faq/faq').then((c) => c.Faq),
+        data: { breadcrumb: 'Aiuto / FAQ', visibilita: 'interna' }
+    },
+        {
         path: 'comunita',
         loadComponent: () => import('./comunita/comunita').then((c) => c.Comunita),
         data: { breadcrumb: 'La tua Comunità' }

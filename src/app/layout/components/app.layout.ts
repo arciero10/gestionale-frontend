@@ -21,11 +21,29 @@ import { AppBreadcrumb } from './app.breadcrumb';
             <div class="layout-content">
                 <router-outlet></router-outlet>
             </div>
-            <!-- <div app-footer></div> -->
+            <footer class="internal-footer">
+                <span>All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
+                <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
+            </footer>
         </div>
         <!-- <app-configurator></app-configurator> -->
         <!-- <div class="layout-mask animate-fadein"></div> -->
-    </div> `
+    </div> `,
+    styles: [
+        `
+            .internal-footer {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.35rem 1rem;
+                padding: 0.75rem 1rem 1rem;
+                color: #6b7280;
+                font-size: 0.75rem;
+                line-height: 1.45;
+                text-align: center;
+            }
+        `
+    ]
 })
 export class AppLayout implements OnDestroy {
     isDashboardRoute = signal(false);

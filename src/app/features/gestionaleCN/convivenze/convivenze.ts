@@ -29,6 +29,9 @@ interface Convivenza {
         documentiRicevuti: number;
         documentiRichiesti: number;
         consensiMancanti: number;
+        consensiRaccolti: number;
+        consensiDaVerificare: number;
+        consensiNegatiRevocati: number;
     };
 }
 
@@ -99,8 +102,13 @@ interface PostoSintesi {
                         </section>
 
                         <section class="privacy-box">
-                            <h3>Privacy organizzativa</h3>
-                            <p>Le informazioni dei partecipanti vanno condivise con le strutture solo quando necessario per l'organizzazione della convivenza. I dati riservati devono restare accessibili solo ai responsabili autorizzati.</p>
+                            <h3>Verifica consensi</h3>
+                            <p>Prima di inviare dati a una struttura, controlla che i partecipanti abbiano fornito il consenso necessario alla condivisione dei dati utili all’organizzazione.</p>
+                            <div class="privacy-stats">
+                                <div><span>Consensi raccolti</span><strong>{{ selected.aggregati.consensiRaccolti }}</strong></div>
+                                <div><span>Da verificare</span><strong>{{ selected.aggregati.consensiDaVerificare }}</strong></div>
+                                <div><span>Negati/revocati</span><strong>{{ selected.aggregati.consensiNegatiRevocati }}</strong></div>
+                            </div>
                         </section>
 
                         <div class="actions">
@@ -148,13 +156,17 @@ interface PostoSintesi {
             .detail-grid strong, .needs-grid strong { display: block; margin-top: .25rem; color: #111827; }
             .needs-box h3, .privacy-box h3 { margin: 1.25rem 0 .85rem; }
             .privacy-box p { margin: 0; color: #4b5563; line-height: 1.5; }
+            .privacy-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .85rem; }
+            .privacy-stats div { padding: .75rem; border-radius: 10px; background: #fff; border: 1px solid #e5e7eb; }
+            .privacy-stats span { display: block; color: #64748b; font-size: .82rem; }
+            .privacy-stats strong { display: block; margin-top: .2rem; color: #111827; font-size: 1.15rem; }
             .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; justify-content: flex-end; }
             .map-placeholder { min-height: 100%; border: 1px dashed #9ca3af; border-radius: 12px; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: .5rem; padding: 1.5rem; color: #334155; }
             .map-placeholder .pi { font-size: 2rem; color: #2f867c; }
             .map-placeholder h3 { margin: 0; }
             .map-placeholder small { color: #64748b; }
             @media (max-width: 1024px) { .workspace, .detail-panel { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-            @media (max-width: 767px) { .page-head { flex-direction: column; align-items: stretch; } .page-head button, .actions button { min-height: 44px; } .detail-grid, .needs-grid { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
+            @media (max-width: 767px) { .page-head { flex-direction: column; align-items: stretch; } .page-head button, .actions button { min-height: 44px; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
         `
     ]
 })
@@ -179,7 +191,7 @@ export class Convivenze {
             citta: 'Albano Laziale',
             note: 'Preparare richiesta pasti entro novembre.',
             statoRichiestaStruttura: 'Confermata',
-            aggregati: { adulti: 30, bambini: 6, famiglieConBambini: 4, pastiSpeciali: 3, esigenzeAlloggio: 2, documentiRicevuti: 15, documentiRichiesti: 20, consensiMancanti: 2 }
+            aggregati: { adulti: 30, bambini: 6, famiglieConBambini: 4, pastiSpeciali: 3, esigenzeAlloggio: 2, documentiRicevuti: 15, documentiRichiesti: 20, consensiMancanti: 2, consensiRaccolti: 34, consensiDaVerificare: 2, consensiNegatiRevocati: 0 }
         },
         {
             id: 2,
@@ -195,7 +207,7 @@ export class Convivenze {
             citta: 'Roma',
             note: 'Verificare disponibilità strutture zona Lazio.',
             statoRichiestaStruttura: 'Non inviata',
-            aggregati: { adulti: 16, bambini: 2, famiglieConBambini: 1, pastiSpeciali: 1, esigenzeAlloggio: 1, documentiRicevuti: 4, documentiRichiesti: 18, consensiMancanti: 5 }
+            aggregati: { adulti: 16, bambini: 2, famiglieConBambini: 1, pastiSpeciali: 1, esigenzeAlloggio: 1, documentiRicevuti: 4, documentiRichiesti: 18, consensiMancanti: 5, consensiRaccolti: 12, consensiDaVerificare: 5, consensiNegatiRevocati: 1 }
         }
     ];
 

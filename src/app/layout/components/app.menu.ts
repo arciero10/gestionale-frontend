@@ -50,6 +50,11 @@ export class AppMenu {
                     label: 'Viaggi / Pellegrinaggi',
                     icon: 'pi pi-fw pi-send',
                     routerLink: ['/gestionale-cn/viaggi']
+                },
+                {
+                    label: 'Aiuto / FAQ',
+                    icon: 'pi pi-fw pi-question-circle',
+                    routerLink: ['/gestionale-cn/faq']
                 }
             ]
         },
