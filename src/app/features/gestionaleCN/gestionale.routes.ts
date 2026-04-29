@@ -22,6 +22,11 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'Aiuto / FAQ', visibilita: 'interna' }
     },
         {
+        path: 'privacy/compila',
+        loadComponent: () => import('./privacy/compila-privacy').then((c) => c.CompilaPrivacy),
+        data: { breadcrumb: 'Compila privacy' }
+    },
+        {
         path: 'comunita',
         loadComponent: () => import('./comunita/comunita').then((c) => c.Comunita),
         data: { breadcrumb: 'La tua Comunità' }

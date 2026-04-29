@@ -8,12 +8,22 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
-import { COMUNITA_PILOTA, MEMBRI_COMUNITA_PILOTA, MembroComunitaPilota, RuoloComunitaPilota, ConsensoPrivacyPilota } from '../data/comunita-pilota.mock';
+import {
+    CATECHISTI_COMUNITA_PILOTA,
+    COMUNITA_PILOTA,
+    MEMBRI_COMUNITA_PILOTA,
+    CatechistaComunita,
+    ConsensoPrivacyPilota,
+    MembroComunitaPilota,
+    RuoloComunitaPilota,
+    RuoloOperativoComunita
+} from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
+import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
-type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
+type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
 
 @Component({
     selector: 'app-comunita',
@@ -42,10 +52,32 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 </div>
             </section>
 
-            @if (messaggioPrivacy) {
+            @if (!isDemo) {
+                <section class="catechisti-card">
+                    <div class="section-title">
+                        <div>
+                            <span>Catechisti accompagnatori</span>
+                            <h2>Catechisti della comunità</h2>
+                            <p>Riferimenti super partes: non sono inclusi nei conteggi dei membri operativi.</p>
+                        </div>
+                        <strong>{{ catechisti.length }}</strong>
+                    </div>
+                    <div class="catechisti-grid">
+                        @for (catechista of catechisti; track catechista.id) {
+                            <article>
+                                <strong>{{ catechista.nome }} {{ catechista.cognome }}</strong>
+                                <span class="role-badge role-catechista">{{ catechista.ruolo }}</span>
+                                <small>{{ catechista.note }}</small>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (messaggio) {
                 <section class="action-message">
                     <i class="pi pi-info-circle"></i>
-                    <span>{{ messaggioPrivacy }}</span>
+                    <span>{{ messaggio }}</span>
                 </section>
             }
 
@@ -63,7 +95,7 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                         </div>
                         <div>
                             <label for="ruolo">Ruolo</label>
-                            <p-select inputId="ruolo" name="ruolo" appendTo="body" [options]="ruoli" [(ngModel)]="form.ruolo" required></p-select>
+                            <p-select inputId="ruolo" name="ruolo" appendTo="body" [options]="ruoliForm" [(ngModel)]="form.ruolo" required></p-select>
                         </div>
                         <div>
                             <label for="accessoApp">Accesso app</label>
@@ -106,9 +138,13 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                     <label for="filtroRuolo">Filtra ruolo</label>
                     <p-select inputId="filtroRuolo" appendTo="body" [options]="ruoliFiltro" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i ruoli"></p-select>
                 </div>
+                <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
                 <div class="totals">
                     <strong>{{ membriFiltrati.length }}</strong>
                     <span>membri visualizzati su {{ membri.length }}</span>
+                    @if (!isDemo) {
+                        <small>Catechisti accompagnatori: {{ catechisti.length }}</small>
+                    }
                 </div>
             </section>
 
@@ -144,15 +180,16 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                         <tr>
                             <td>{{ membro.nome }}</td>
                             <td>{{ membro.cognome }}</td>
-                            <td><p-tag [value]="membro.ruolo" [severity]="getRuoloSeverity(membro.ruolo)" /></td>
+                            <td><span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ membro.ruolo }}</span></td>
                             <td><p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" /></td>
-                            <td><p-tag [value]="membro.consensoPrivacyStato" [severity]="getPrivacySeverity(membro.consensoPrivacyStato)" /></td>
+                            <td><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
                             <td>
                                 <div class="row-actions">
-                                    <button pButton type="button" label="Modifica ruolo" icon="pi pi-user-edit" severity="info" text (click)="modificaMembro(membro)"></button>
-                                    <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="modificaMembro(membro)"></button>
-                                    <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="inviaModuloPrivacy(membro)"></button>
+                                    <button pButton type="button" label="Modifica ruolo" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
+                                    <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
+                                    <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
+                                    <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
                                     <button pButton type="button" icon="pi pi-trash" severity="danger" text ariaLabel="Elimina" (click)="eliminaMembro(membro.id)"></button>
                                 </div>
                             </td>
@@ -172,24 +209,138 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                         <div class="member-card-head">
                             <div>
                                 <strong>{{ membro.nomeCompleto }}</strong>
-                                <span>{{ membro.ruolo }}</span>
+                                <span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ membro.ruolo }}</span>
                             </div>
                             <p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" />
                         </div>
                         <dl>
                             <div><dt>Accesso app</dt><dd>{{ membro.accessoApp }}</dd></div>
-                            <div><dt>Privacy</dt><dd>{{ membro.consensoPrivacyStato }}</dd></div>
+                            <div><dt>Privacy</dt><dd><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></dd></div>
                             <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'Sì' : 'No' }}</dd></div>
                             <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'Sì' : 'No' }}</dd></div>
                         </dl>
                         <div class="card-actions">
-                            <button pButton type="button" icon="pi pi-user-edit" label="Modifica ruolo" severity="info" outlined (click)="modificaMembro(membro)"></button>
-                            <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="modificaMembro(membro)"></button>
-                            <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="inviaModuloPrivacy(membro)"></button>
+                            <button pButton type="button" icon="pi pi-user-edit" label="Modifica ruolo" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
+                            <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
+                            <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
+                            <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="apriInvioPrivacy(membro)"></button>
                         </div>
                     </article>
                 }
             </section>
+
+            @if (ruoloModalMembro) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica ruolo" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Modifica ruolo</span>
+                            <h2>{{ ruoloModalMembro.nomeCompleto }}</h2>
+                        </header>
+                        <p>Ruolo attuale: <strong>{{ ruoloModalMembro.ruolo }}</strong></p>
+                        <label for="nuovoRuolo">Nuovo ruolo</label>
+                        <p-select inputId="nuovoRuolo" appendTo="body" [options]="ruoliOperativi" [(ngModel)]="nuovoRuolo"></p-select>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            <button pButton type="button" label="Salva ruolo" icon="pi pi-check" (click)="salvaRuolo()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
+            @if (privacyModalMembro) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica privacy" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Modifica privacy</span>
+                            <h2>{{ privacyModalMembro.nomeCompleto }}</h2>
+                        </header>
+                        <label for="nuovaPrivacy">Stato privacy</label>
+                        <p-select inputId="nuovaPrivacy" appendTo="body" [options]="statiPrivacy" [(ngModel)]="nuovaPrivacy"></p-select>
+                        <label class="check-row">
+                            <input type="checkbox" [(ngModel)]="privacyModuloRicevuto" />
+                            Modulo privacy ricevuto
+                        </label>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            <button pButton type="button" label="Salva privacy" icon="pi pi-check" (click)="salvaPrivacy()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
+            @if (privacyInvioAperto) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" aria-label="Invia modulo privacy" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Invio modulo privacy</span>
+                            <h2>{{ invioMassivo ? 'Moduli privacy mancanti' : privacyInvioMembro?.nomeCompleto }}</h2>
+                        </header>
+                        <p>Il fratello riceverà un link personale per completare i propri dati e consensi. L’invio reale sarà collegato al backend email in una fase successiva.</p>
+                        @if (!invioMassivo && privacyInvioMembro) {
+                            <div class="email-preview">
+                                <strong>Destinatario</strong>
+                                <span>{{ privacyInvioMembro.email || 'Email mancante' }}</span>
+                            </div>
+                        }
+                        @if (invioMassivo) {
+                            <div class="email-preview">
+                                <strong>{{ membriSelezionatiInvio.length }} moduli selezionati</strong>
+                                <span>Con email: {{ membriConEmailSelezionati.length }} · Senza email: {{ membriSenzaEmailSelezionati.length }} · Esclusi: {{ membriEsclusiInvio.length }}</span>
+                            </div>
+                        }
+                        <div class="mock-email">
+                            <strong>Oggetto</strong>
+                            <p>Modulo privacy – Gestionale Comunità</p>
+                            <strong>Testo email mock</strong>
+                            <p>Pace. Ti inviamo il link personale per leggere l’informativa privacy e completare i consensi necessari alla gestione della comunità e delle convivenze.</p>
+                            @if (!invioMassivo && privacyInvioMembro) {
+                                <strong>Link personale mock</strong>
+                                <code>{{ linkPrivacy(privacyInvioMembro) }}</code>
+                            }
+                        </div>
+                        <p class="privacy-warning">Bozza ambiente test. L’invio email reale sarà collegato al backend in una fase successiva.</p>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            @if (!invioMassivo && privacyInvioMembro) {
+                                <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" outlined (click)="copiaLinkPrivacy(privacyInvioMembro)"></button>
+                            }
+                            <button pButton type="button" label="Conferma invio mock" icon="pi pi-send" (click)="confermaInvioPrivacy()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
+            @if (anteprimaMembro) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal app-modal-wide policy-preview" role="dialog" aria-modal="true" aria-label="Anteprima modulo privacy" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Bozza ambiente test</span>
+                            <h2>Anteprima modulo per {{ anteprimaMembro.nomeCompleto }}</h2>
+                        </header>
+                        <h3>{{ policyTitle }}</h3>
+                        @for (paragraph of policyParagraphs; track paragraph) {
+                            <p>{{ paragraph }}</p>
+                        }
+                        <h3>Dati trattati</h3>
+                        <ul>
+                            @for (item of policyDataItems; track item) {
+                                <li>{{ item }}</li>
+                            }
+                        </ul>
+                        <h3>Consensi richiesti</h3>
+                        @for (consenso of policyConsents; track consenso.key) {
+                            <div class="consent-preview">
+                                <strong>{{ consenso.title }} <span *ngIf="consenso.required">obbligatorio</span></strong>
+                                <p>{{ consenso.text }}</p>
+                            </div>
+                        }
+                        <a class="privacy-link" [href]="linkPrivacy(anteprimaMembro)" target="_blank" rel="noopener">Apri pagina compilazione</a>
+                        <footer>
+                            <button pButton type="button" label="Chiudi" severity="secondary" outlined (click)="chiudiModali()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
         </div>
     `,
     styles: [
@@ -204,23 +355,28 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
             .row-actions,
             .card-actions,
             .identity-card,
-            .controls-card {
+            .controls-card,
+            .section-title {
                 display: flex;
                 gap: 1rem;
             }
 
             .page-heading,
-            .table-caption {
+            .table-caption,
+            .section-title {
                 justify-content: space-between;
                 align-items: center;
             }
 
-            .page-heading h1 {
+            .page-heading h1,
+            .section-title h2 {
                 margin: 0 0 0.35rem;
-                font-size: 2rem;
             }
 
-            .page-heading p {
+            .page-heading p,
+            .section-title p,
+            .identity-card p,
+            .identity-meta small {
                 margin: 0;
                 color: #64748b;
             }
@@ -229,7 +385,8 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
             .controls-card,
             .role-summary article,
             .member-card,
-            .action-message {
+            .action-message,
+            .catechisti-card {
                 padding: 1rem;
                 border-radius: 14px;
                 background: #fff;
@@ -237,16 +394,23 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
             }
 
-            .identity-card {
-                justify-content: space-between;
-                align-items: flex-start;
+            .identity-card,
+            .catechisti-card {
                 background: #fbfbf8;
             }
 
+            .identity-card {
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+
             .identity-card span,
+            .section-title span,
             .search-box label,
             .role-summary span,
-            .member-card dt {
+            .member-card dt,
+            .app-modal header span,
+            .app-modal label {
                 color: #64748b;
                 font-size: 0.82rem;
                 font-weight: 700;
@@ -258,16 +422,30 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 font-size: 1.45rem;
             }
 
-            .identity-card p,
-            .identity-meta small {
-                margin: 0;
-                color: #64748b;
-            }
-
             .identity-meta {
                 display: grid;
                 gap: 0.3rem;
                 text-align: right;
+            }
+
+            .catechisti-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.85rem;
+                margin-top: 1rem;
+            }
+
+            .catechisti-grid article {
+                display: grid;
+                gap: 0.45rem;
+                padding: 0.85rem;
+                border-radius: 12px;
+                background: #fff;
+                border: 1px solid #e5e7eb;
+            }
+
+            .catechisti-grid small {
+                color: #64748b;
             }
 
             .action-message {
@@ -286,7 +464,9 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 gap: 1rem;
             }
 
-            .member-form div {
+            .member-form div,
+            .search-box,
+            .app-modal {
                 display: grid;
                 gap: 0.45rem;
             }
@@ -300,7 +480,8 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
             .member-form textarea,
             .member-form p-select,
             .search-box input,
-            .search-box p-select {
+            .search-box p-select,
+            .app-modal p-select {
                 width: 100%;
             }
 
@@ -323,9 +504,11 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 font-weight: 700;
             }
 
-            .form-actions {
+            .form-actions,
+            .app-modal footer {
                 display: flex !important;
                 justify-content: flex-end;
+                gap: 0.65rem;
                 grid-template-columns: none !important;
             }
 
@@ -336,9 +519,7 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
             }
 
             .search-box {
-                display: grid;
-                gap: 0.4rem;
-                min-width: min(100%, 260px);
+                min-width: min(100%, 240px);
             }
 
             .totals {
@@ -352,13 +533,14 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 color: #111827;
             }
 
-            .totals span {
+            .totals span,
+            .totals small {
                 color: #64748b;
             }
 
             .role-summary {
                 display: grid;
-                grid-template-columns: repeat(7, minmax(0, 1fr));
+                grid-template-columns: repeat(6, minmax(0, 1fr));
                 gap: 0.85rem;
             }
 
@@ -371,6 +553,46 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 color: #111827;
                 font-size: 1.35rem;
             }
+
+            .role-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: max-content;
+                min-height: 1.7rem;
+                padding: 0.2rem 0.6rem;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 800;
+                border: 1px solid transparent;
+            }
+
+            .privacy-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: max-content;
+                min-height: 1.7rem;
+                padding: 0.2rem 0.6rem;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 800;
+                border: 1px solid transparent;
+            }
+
+            .role-responsabile { background: #dbeafe; color: #17335f; border-color: #bfdbfe; }
+            .role-corresponsabile { background: #ede9fe; color: #4c1d95; border-color: #ddd6fe; }
+            .role-cantore { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
+            .role-ostiario { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+            .role-fratello { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
+            .role-presbitero { background: #fce7f3; color: #831843; border-color: #fbcfe8; }
+            .role-catechista { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+            .privacy-da-inviare { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
+            .privacy-inviato { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+            .privacy-da-raccogliere { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+            .privacy-raccolto { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+            .privacy-negato { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+            .privacy-revocato { background: #ede9fe; color: #312e81; border-color: #c4b5fd; }
 
             .row-actions {
                 justify-content: flex-end;
@@ -390,11 +612,8 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
 
             .member-card-head strong {
                 display: block;
+                margin-bottom: 0.45rem;
                 font-size: 1.05rem;
-            }
-
-            .member-card-head span {
-                color: #64748b;
             }
 
             .member-card dl {
@@ -409,12 +628,102 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 font-weight: 700;
             }
 
+            .modal-backdrop {
+                position: fixed;
+                inset: 0;
+                z-index: 1100;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                background: rgba(15, 23, 42, 0.45);
+            }
+
+            .app-modal {
+                width: min(100%, 430px);
+                padding: 1.25rem;
+                border-radius: 18px;
+                background: #fff;
+                box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+            }
+
+            .app-modal-wide {
+                width: min(100%, 560px);
+            }
+
+            .app-modal h2,
+            .app-modal p {
+                margin: 0;
+            }
+
+            .email-preview,
+            .mock-email {
+                display: grid;
+                gap: 0.25rem;
+                padding: 0.85rem;
+                border-radius: 12px;
+                background: #f8fafc;
+                border: 1px solid #e5e7eb;
+                color: #475569;
+            }
+
+            .mock-email code,
+            .privacy-link {
+                overflow-wrap: anywhere;
+            }
+
+            .privacy-warning {
+                padding: 0.75rem;
+                border-radius: 12px;
+                background: #fffbeb;
+                color: #92400e;
+                border: 1px solid #fde68a;
+                font-weight: 700;
+            }
+
+            .policy-preview {
+                max-height: 86vh;
+                overflow: auto;
+            }
+
+            .policy-preview h3 {
+                margin: 0.4rem 0 0;
+            }
+
+            .policy-preview ul {
+                margin: 0;
+                padding-left: 1.25rem;
+                color: #475569;
+            }
+
+            .consent-preview {
+                display: grid;
+                gap: 0.25rem;
+                padding: 0.7rem;
+                border-radius: 12px;
+                background: #f8fafc;
+                border: 1px solid #e5e7eb;
+            }
+
+            .consent-preview span {
+                color: #92400e;
+                font-size: 0.78rem;
+            }
+
+            .privacy-link {
+                display: inline-flex;
+                width: fit-content;
+                color: #17335f;
+                font-weight: 800;
+            }
+
             @media (max-width: 1024px) {
                 .member-form {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
 
-                .role-summary {
+                .role-summary,
+                .catechisti-grid {
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                 }
             }
@@ -427,7 +736,8 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
 
                 .page-heading,
                 .identity-card,
-                .controls-card {
+                .controls-card,
+                .section-title {
                     flex-direction: column;
                     align-items: stretch;
                 }
@@ -438,7 +748,8 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                 }
 
                 .member-form,
-                .role-summary {
+                .role-summary,
+                .catechisti-grid {
                     grid-template-columns: 1fr;
                 }
 
@@ -451,13 +762,15 @@ type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
                     gap: 1rem;
                 }
 
-                .card-actions {
+                .card-actions,
+                .app-modal footer {
                     flex-direction: column;
                 }
 
                 .card-actions button,
                 .page-heading button,
-                .form-actions button {
+                .form-actions button,
+                .app-modal footer button {
                     width: 100%;
                     min-height: 44px;
                 }
@@ -469,18 +782,34 @@ export class Comunita {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
 
-    ruoli: RuoloComunitaPilota[] = ['Presbitero', 'Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Ostiario', 'Fratello'];
-    ruoliFiltro: RuoloComunitaPilota[] = this.ruoli;
+    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Ostiario', 'Fratello'];
+    ruoliForm = this.ruoliOperativi;
+    ruoliFiltro: Exclude<RuoloComunitaPilota, 'Catechista'>[] = ['Presbitero', ...this.ruoliOperativi];
     statiMembro: StatoMembro[] = ['Attivo', 'Temporaneamente assente', 'Da contattare'];
     accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
-    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
+    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
 
     ricerca = '';
-    ruoloFiltro: RuoloComunitaPilota | null = null;
+    ruoloFiltro: Exclude<RuoloComunitaPilota, 'Catechista'> | null = null;
     formVisibile = false;
     membroInModifica: MembroComunitaPilota | null = null;
-    messaggioPrivacy = '';
+    messaggio = '';
 
+    ruoloModalMembro: MembroComunitaPilota | null = null;
+    nuovoRuolo: RuoloOperativoComunita = 'Fratello';
+    privacyModalMembro: MembroComunitaPilota | null = null;
+    nuovaPrivacy: ConsensoPrivacyPilota = 'Da inviare';
+    privacyModuloRicevuto = false;
+    privacyInvioAperto = false;
+    privacyInvioMembro: MembroComunitaPilota | null = null;
+    invioMassivo = false;
+    anteprimaMembro: MembroComunitaPilota | null = null;
+    policyTitle = PRIVACY_POLICY_DRAFT_TITLE;
+    policyParagraphs = PRIVACY_POLICY_DRAFT_PARAGRAPHS;
+    policyDataItems = PRIVACY_POLICY_DRAFT_DATA_ITEMS;
+    policyConsents = PRIVACY_CONSENTS_DRAFT;
+
+    catechisti: CatechistaComunita[] = this.isDemo ? [] : CATECHISTI_COMUNITA_PILOTA.map((catechista) => ({ ...catechista }));
     membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro }));
     private prossimoId = this.membri.length + 1;
     form: MembroForm = this.creaFormVuoto();
@@ -516,10 +845,30 @@ export class Comunita {
     }
 
     get conteggiRuolo() {
-        return this.ruoli.map((ruolo) => ({
+        return this.ruoliFiltro.map((ruolo) => ({
             ruolo,
             totale: this.membri.filter((membro) => membro.ruolo === ruolo).length
         }));
+    }
+
+    get membriDaInviare() {
+        return this.membri.filter((membro) => membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Da raccogliere');
+    }
+
+    get membriSelezionatiInvio() {
+        return this.membriDaInviare;
+    }
+
+    get membriConEmailSelezionati() {
+        return this.membriSelezionatiInvio.filter((membro) => membro.email);
+    }
+
+    get membriSenzaEmailSelezionati() {
+        return this.membriSelezionatiInvio.filter((membro) => !membro.email);
+    }
+
+    get membriEsclusiInvio() {
+        return this.membri.filter((membro) => !this.membriSelezionatiInvio.some((selected) => selected.id === membro.id));
     }
 
     toggleForm() {
@@ -536,6 +885,8 @@ export class Comunita {
             nome: this.form.nome.trim(),
             cognome: this.form.cognome.trim(),
             nomeCompleto: `${this.form.nome.trim()} ${this.form.cognome.trim()}`.trim(),
+            email: '',
+            dataInvioModuloPrivacy: this.form.consensoPrivacyStato === 'Inviato' ? this.oggiIso() : '',
             note: this.form.note.trim()
         };
 
@@ -553,7 +904,7 @@ export class Comunita {
         this.form = {
             nome: membro.nome,
             cognome: membro.cognome,
-            ruolo: membro.ruolo,
+            ruolo: membro.ruolo === 'Presbitero' ? 'Fratello' : membro.ruolo,
             accessoApp: membro.accessoApp,
             statoMembro: membro.statoMembro,
             consensoPrivacyStato: membro.consensoPrivacyStato,
@@ -564,6 +915,86 @@ export class Comunita {
         this.formVisibile = true;
     }
 
+    apriModificaRuolo(membro: MembroComunitaPilota) {
+        this.ruoloModalMembro = membro;
+        this.nuovoRuolo = membro.ruolo === 'Presbitero' ? 'Fratello' : membro.ruolo;
+    }
+
+    salvaRuolo() {
+        if (!this.ruoloModalMembro) {
+            return;
+        }
+        this.membri = this.membri.map((membro) => (membro.id === this.ruoloModalMembro?.id ? { ...membro, ruolo: this.nuovoRuolo } : membro));
+        this.messaggio = 'Ruolo aggiornato';
+        this.chiudiModali();
+    }
+
+    apriModificaPrivacy(membro: MembroComunitaPilota) {
+        this.privacyModalMembro = membro;
+        this.nuovaPrivacy = membro.consensoPrivacyStato;
+        this.privacyModuloRicevuto = membro.moduloPrivacyRicevuto;
+    }
+
+    salvaPrivacy() {
+        if (!this.privacyModalMembro) {
+            return;
+        }
+        this.membri = this.membri.map((membro) =>
+            membro.id === this.privacyModalMembro?.id
+                ? {
+                      ...membro,
+                      consensoPrivacyStato: this.nuovaPrivacy,
+                      moduloPrivacyRicevuto: this.privacyModuloRicevuto
+                  }
+                : membro
+        );
+        this.messaggio = 'Privacy aggiornata';
+        this.chiudiModali();
+    }
+
+    apriInvioPrivacy(membro: MembroComunitaPilota) {
+        this.privacyInvioMembro = membro;
+        this.invioMassivo = false;
+        this.privacyInvioAperto = true;
+    }
+
+    apriInvioPrivacyMassivo() {
+        this.privacyInvioMembro = null;
+        this.invioMassivo = true;
+        this.privacyInvioAperto = true;
+    }
+
+    apriAnteprimaPrivacy(membro: MembroComunitaPilota) {
+        this.anteprimaMembro = membro;
+    }
+
+    confermaInvioPrivacy() {
+        const dataInvioModuloPrivacy = this.oggiIso();
+        const ids = this.invioMassivo ? this.membriSelezionatiInvio.map((membro) => membro.id) : this.privacyInvioMembro ? [this.privacyInvioMembro.id] : [];
+        this.membri = this.membri.map((membro) =>
+            ids.includes(membro.id)
+                ? {
+                      ...membro,
+                      consensoPrivacyStato: 'Inviato',
+                      moduloPrivacyInviato: true,
+                      dataInvioModuloPrivacy
+                  }
+                : membro
+        );
+        this.messaggio = this.invioMassivo ? `Invio mock completato: ${ids.length} moduli segnati come inviati` : 'Modulo privacy segnato come inviato';
+        this.chiudiModali();
+    }
+
+    copiaLinkPrivacy(membro: MembroComunitaPilota) {
+        const link = this.linkPrivacy(membro);
+        navigator.clipboard?.writeText(link);
+        this.messaggio = 'Link modulo privacy copiato in modalità mock';
+    }
+
+    linkPrivacy(membro: MembroComunitaPilota) {
+        return `${window.location.origin}/gestionale-cn/privacy/compila?membroId=${membro.id}`;
+    }
+
     eliminaMembro(id: number) {
         this.membri = this.membri.filter((membro) => membro.id !== id);
         if (this.membroInModifica?.id === id) {
@@ -571,9 +1002,13 @@ export class Comunita {
         }
     }
 
-    inviaModuloPrivacy(membro: MembroComunitaPilota) {
-        this.membri = this.membri.map((item) => (item.id === membro.id ? { ...item, moduloPrivacyInviato: true } : item));
-        this.messaggioPrivacy = 'Invio modulo privacy predisposto. Sarà collegato al backend email in una fase successiva.';
+    chiudiModali() {
+        this.ruoloModalMembro = null;
+        this.privacyModalMembro = null;
+        this.privacyInvioAperto = false;
+        this.privacyInvioMembro = null;
+        this.invioMassivo = false;
+        this.anteprimaMembro = null;
     }
 
     annullaForm() {
@@ -582,22 +1017,8 @@ export class Comunita {
         this.formVisibile = false;
     }
 
-    getRuoloSeverity(ruolo: RuoloComunitaPilota) {
-        switch (ruolo) {
-            case 'Presbitero':
-                return 'contrast';
-            case 'Responsabile':
-                return 'success';
-            case 'Corresponsabile':
-                return 'info';
-            case 'Catechista':
-                return 'warn';
-            case 'Cantore':
-            case 'Ostiario':
-                return 'secondary';
-            default:
-                return 'secondary';
-        }
+    getRuoloClass(ruolo: RuoloComunitaPilota) {
+        return `role-${ruolo.toLowerCase()}`;
     }
 
     getAccessoSeverity(accesso: AccessoApp) {
@@ -628,6 +1049,8 @@ export class Comunita {
         switch (stato) {
             case 'Raccolto':
                 return 'success';
+            case 'Inviato':
+                return 'info';
             case 'Da inviare':
             case 'Da raccogliere':
                 return 'warn';
@@ -639,18 +1062,24 @@ export class Comunita {
         }
     }
 
+    getPrivacyClass(stato: ConsensoPrivacyPilota) {
+        return `privacy-${stato.toLowerCase().replace(/\s+/g, '-')}`;
+    }
+
     private creaMembriDemo(): MembroComunitaPilota[] {
         return DEMO_MEMBRI.map((membro, index) => ({
             id: index + 1,
             nome: membro.nome,
             cognome: membro.cognome,
             nomeCompleto: `${membro.nome} ${membro.cognome}`,
-            ruolo: membro.ruolo as RuoloComunitaPilota,
+            ruolo: membro.ruolo === 'Catechista' ? 'Fratello' : (membro.ruolo as MembroComunitaPilota['ruolo']),
             accessoApp: membro.accessoApp as AccessoApp,
             statoMembro: membro.stato as StatoMembro,
             consensoPrivacyStato: membro.privacy as ConsensoPrivacyPilota,
             moduloPrivacyInviato: membro.privacy === 'Raccolto',
             moduloPrivacyRicevuto: membro.privacy === 'Raccolto',
+            dataInvioModuloPrivacy: '',
+            email: '',
             note: 'Dato dimostrativo'
         }));
     }
@@ -667,5 +1096,9 @@ export class Comunita {
             moduloPrivacyRicevuto: false,
             note: ''
         };
+    }
+
+    private oggiIso() {
+        return new Date().toISOString().slice(0, 10);
     }
 }

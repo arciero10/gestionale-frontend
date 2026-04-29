@@ -1,20 +1,35 @@
 export type RuoloComunitaPilota = 'Presbitero' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Ostiario' | 'Fratello';
+export type RuoloOperativoComunita = 'Responsabile' | 'Corresponsabile' | 'Cantore' | 'Ostiario' | 'Fratello';
 export type StatoMembroPilota = 'Attivo' | 'Temporaneamente assente' | 'Da contattare';
 export type AccessoAppPilota = 'Nessuno' | 'Invitato' | 'Attivo' | 'In attesa';
-export type ConsensoPrivacyPilota = 'Da inviare' | 'Da raccogliere' | 'Raccolto' | 'Negato' | 'Revocato';
+export type ConsensoPrivacyPilota = 'Da inviare' | 'Inviato' | 'Da raccogliere' | 'Raccolto' | 'Negato' | 'Revocato';
 
 export interface MembroComunitaPilota {
     id: number;
     nome: string;
     cognome: string;
     nomeCompleto: string;
-    ruolo: RuoloComunitaPilota;
+    ruolo: Exclude<RuoloComunitaPilota, 'Catechista'>;
     accessoApp: AccessoAppPilota;
     statoMembro: StatoMembroPilota;
     consensoPrivacyStato: ConsensoPrivacyPilota;
     moduloPrivacyInviato: boolean;
     moduloPrivacyRicevuto: boolean;
+    dataInvioModuloPrivacy: string;
+    email: string;
     note: string;
+}
+
+export interface CatechistaComunita {
+    id: number;
+    nome: string;
+    cognome: string;
+    ruolo: 'Catechista';
+    tipo: 'Accompagnatore';
+    comunitaPropria: string;
+    parrocchiaPropria: string;
+    note: string;
+    operativo: false;
 }
 
 export const COMUNITA_PILOTA = {
@@ -31,10 +46,12 @@ const baseMembro = {
     consensoPrivacyStato: 'Da inviare' as const,
     moduloPrivacyInviato: false,
     moduloPrivacyRicevuto: false,
+    dataInvioModuloPrivacy: '',
+    email: '',
     note: ''
 };
 
-function membro(id: number, nome: string, cognome: string, ruolo: RuoloComunitaPilota): MembroComunitaPilota {
+function membro(id: number, nome: string, cognome: string, ruolo: MembroComunitaPilota['ruolo']): MembroComunitaPilota {
     return {
         id,
         nome,
@@ -42,6 +59,20 @@ function membro(id: number, nome: string, cognome: string, ruolo: RuoloComunitaP
         nomeCompleto: `${nome} ${cognome}`,
         ruolo,
         ...baseMembro
+    };
+}
+
+function catechista(id: number, nome: string, cognome: string): CatechistaComunita {
+    return {
+        id,
+        nome,
+        cognome,
+        ruolo: 'Catechista',
+        tipo: 'Accompagnatore',
+        comunitaPropria: 'Da verificare',
+        parrocchiaPropria: 'Da verificare',
+        note: 'Riferimento esterno / accompagnatore',
+        operativo: false
     };
 }
 
@@ -105,12 +136,15 @@ export const MEMBRI_COMUNITA_PILOTA: MembroComunitaPilota[] = [
     membro(57, 'Salvatore', 'Nicolini', 'Fratello'),
     membro(58, 'Stefano', 'Serranti', 'Fratello'),
     membro(59, 'Antonella', 'Serranti', 'Fratello'),
-    membro(60, 'Vittoria', 'Cocciolito', 'Fratello'),
-    membro(61, 'Paolo', 'Bencetti', 'Catechista'),
-    membro(62, 'Angela', 'Bencetti', 'Catechista'),
-    membro(63, 'Franco', 'Meloni', 'Catechista'),
-    membro(64, 'Annamaria', 'Meloni', 'Catechista'),
-    membro(65, 'Danilo', 'Greco', 'Catechista'),
-    membro(66, 'Fiorella', 'Greco', 'Catechista'),
-    membro(67, 'Rosanna', 'Lentini', 'Catechista')
+    membro(60, 'Vittoria', 'Cocciolito', 'Fratello')
+];
+
+export const CATECHISTI_COMUNITA_PILOTA: CatechistaComunita[] = [
+    catechista(1, 'Paolo', 'Bencetti'),
+    catechista(2, 'Angela', 'Bencetti'),
+    catechista(3, 'Franco', 'Meloni'),
+    catechista(4, 'Annamaria', 'Meloni'),
+    catechista(5, 'Danilo', 'Greco'),
+    catechista(6, 'Fiorella', 'Greco'),
+    catechista(7, 'Rosanna', 'Lentini')
 ];
