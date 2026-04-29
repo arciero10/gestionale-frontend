@@ -5,7 +5,6 @@ import { filter, Subscription } from 'rxjs';
 import { AppTopbar } from './app.topbar';
 import { AppSidebar } from './app.sidebar';
 import { LayoutService } from '@/layout/service/layout.service';
-import { AppConfigurator } from './app.configurator';
 import { AppBreadcrumb } from './app.breadcrumb';
 
 @Component({
@@ -17,21 +16,15 @@ import { AppBreadcrumb } from './app.breadcrumb';
         <div app-sidebar></div>
 
         <div class="layout-content-wrapper" [ngClass]="{ 'layout-dashboard-full': isDashboardRoute() }">
-            <div class="demo-ribbon" *ngIf="isDemoRoute()">
-                <strong>Modalità demo</strong>
-                <span>I dati mostrati sono dimostrativi.</span>
-            </div>
             <nav app-breadcrumb *ngIf="!isDashboardRoute()"></nav>
             <div class="layout-content">
                 <router-outlet></router-outlet>
             </div>
             <footer class="internal-footer">
                 <span>All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
-                <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
+                <span>Iscrizione RUNTS: Rep. n. 165890 - Det. n. G03684 del 19/03/2026</span>
             </footer>
         </div>
-        <!-- <app-configurator></app-configurator> -->
-        <!-- <div class="layout-mask animate-fadein"></div> -->
     </div> `,
     styles: [
         `
@@ -46,38 +39,11 @@ import { AppBreadcrumb } from './app.breadcrumb';
                 line-height: 1.45;
                 text-align: center;
             }
-
-            .demo-ribbon {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 0.75rem;
-                padding: 0.55rem 1rem;
-                background: #fff7ed;
-                border-bottom: 1px solid #fed7aa;
-                color: #7c2d12;
-                font-size: 0.85rem;
-                text-align: center;
-            }
-
-            .demo-ribbon strong {
-                text-transform: uppercase;
-                letter-spacing: 0.03em;
-            }
-
-            @media (max-width: 767px) {
-                .demo-ribbon {
-                    flex-direction: column;
-                    gap: 0.1rem;
-                    line-height: 1.35;
-                }
-            }
         `
     ]
 })
 export class AppLayout implements OnDestroy {
     isDashboardRoute = signal(false);
-    isDemoRoute = signal(false);
 
     overlayMenuOpenSubscription: Subscription;
 
@@ -115,7 +81,7 @@ export class AppLayout implements OnDestroy {
             }
 
             if ((this.layoutService.isSlim() || this.layoutService.isSlimPlus()) && !this.menuScrollListener) {
-                this.menuScrollListener = this.renderer.listen(this.appSidebar.appMenu.menuContainer.nativeElement, 'scroll', (event) => {
+                this.menuScrollListener = this.renderer.listen(this.appSidebar.appMenu.menuContainer.nativeElement, 'scroll', () => {
                     if (this.layoutService.isDesktop()) {
                         this.hideMenu();
                     }
@@ -135,8 +101,7 @@ export class AppLayout implements OnDestroy {
 
     private updateDashboardRoute(url: string) {
         const normalizedUrl = url.split('?')[0].split('#')[0];
-        this.isDemoRoute.set(normalizedUrl === '/demo' || normalizedUrl.startsWith('/demo/'));
-        this.isDashboardRoute.set(normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard' || normalizedUrl === '/demo' || normalizedUrl === '/demo/dashboard');
+        this.isDashboardRoute.set(normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard');
     }
 
     @HostListener('document:keydown.escape')
@@ -193,8 +158,7 @@ export class AppLayout implements OnDestroy {
             'layout-mobile-active': layoutState.staticMenuMobileActive,
             'layout-menu-profile-active': layoutState.rightMenuActive,
             'layout-sidebar-active': layoutState.sidebarActive,
-            'layout-sidebar-anchored': layoutState.anchored,
-            'layout-demo': this.isDemoRoute()
+            'layout-sidebar-anchored': layoutState.anchored
         };
     });
 

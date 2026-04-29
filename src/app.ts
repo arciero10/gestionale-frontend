@@ -18,7 +18,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
               <h2>Accedi al gestionale</h2>
             </div>
 
-            <button type="button" (click)="login()" class="login-button">
+            <button type="button" (click)="login($event)" class="login-button">
               Accedi con email
             </button>
 
@@ -49,28 +49,41 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
   styles: [
     `
       .login-page {
+        position: relative;
+        isolation: isolate;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
         padding: 14vh 24px 32px;
-        background-image:
-          linear-gradient(180deg, rgba(5, 15, 31, .42), rgba(15, 23, 42, .22) 44%, rgba(15, 23, 42, .14)),
-          url('/assets/images/login-bg.jpg');
+        overflow: hidden;
+        background-image: url('/assets/images/login-bg.jpg');
         background-size: cover;
         background-position: 50% 42%;
         background-repeat: no-repeat;
         font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
+      .login-page::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: linear-gradient(180deg, rgba(5, 15, 31, .42), rgba(15, 23, 42, .22) 44%, rgba(15, 23, 42, .14));
+      }
+
       .login-shell {
+        position: relative;
+        z-index: 2;
         width: 100%;
         max-width: 760px;
         display: grid;
         gap: 3.5rem;
         justify-items: center;
         margin: 0 auto;
+        pointer-events: auto;
       }
 
       .login-copy {
@@ -88,6 +101,8 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       }
 
       .login-card {
+        position: relative;
+        z-index: 3;
         width: 330px;
         max-width: 100%;
         background: rgba(255, 255, 255, .1);
@@ -101,6 +116,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         flex-direction: column;
         align-items: center;
         text-align: center;
+        pointer-events: auto;
       }
 
       .login-card-head {
@@ -115,6 +131,10 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       }
 
       .login-button {
+        position: relative;
+        z-index: 4;
+        appearance: none;
+        -webkit-appearance: none;
         width: 240px;
         max-width: 100%;
         min-height: 48px;
@@ -126,6 +146,8 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         font-size: 16px;
         font-weight: 700;
         cursor: pointer;
+        pointer-events: auto;
+        touch-action: manipulation;
         box-shadow: 0 10px 20px rgba(23, 55, 94, .18);
         transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
       }
@@ -137,11 +159,14 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       }
 
       .demo-link {
+        position: relative;
+        z-index: 4;
         margin-top: 1rem;
         color: rgba(255, 255, 255, .88);
         font-size: .92rem;
         text-decoration: none;
         border-bottom: 1px solid rgba(255, 255, 255, .42);
+        pointer-events: auto;
       }
 
       .demo-link:hover {
@@ -155,6 +180,8 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       }
 
       .app-footer {
+        position: relative;
+        z-index: 2;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
@@ -174,10 +201,11 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       @media (max-width: 900px) {
         .login-page {
           padding: 10vh 18px 24px;
-          background-image:
-            linear-gradient(180deg, rgba(5, 15, 31, .48), rgba(15, 23, 42, .24)),
-            url('/assets/images/login-bg.jpg');
           background-position: 50% 18%;
+        }
+
+        .login-page::before {
+          background: linear-gradient(180deg, rgba(5, 15, 31, .48), rgba(15, 23, 42, .24));
         }
 
         .login-shell {
@@ -264,7 +292,9 @@ export class App {
     return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/completa-profilo';
   }
 
-  login(): void {
+  login(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
     this.clearAuthState();
     this.msalService.initialize().subscribe({
       next: () => {

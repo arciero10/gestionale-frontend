@@ -1,12 +1,13 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from '@/layout/components/app.layout';
+import { DemoLayout } from '@/features/demo/demo-layout';
 import { Forbidden } from '@/features/forbidden/forbidden';
 import { NotFound } from '@/features/not-found/not.found';
 
 export const routes: Routes = [
   {
     path: 'demo',
-    component: AppLayout,
+    component: DemoLayout,
     data: { demo: true },
     children: [
       {
