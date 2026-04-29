@@ -1,4 +1,4 @@
-﻿import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -8,34 +8,12 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
-import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
+import { COMUNITA_PILOTA, MEMBRI_COMUNITA_PILOTA, MembroComunitaPilota, RuoloComunitaPilota, ConsensoPrivacyPilota } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 
-type RuoloComunita = 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Fratello';
-type StatoMembro = 'Attivo' | 'Temporaneamente assente' | 'Da contattare';
-type AccessoApp = 'Nessuno' | 'Invitato' | 'Attivo' | 'In attesa';
-type ConsensoPrivacyStato = 'Da raccogliere' | 'Raccolto' | 'Negato' | 'Revocato';
-type ConsensoPrivacyMetodo = 'Digitale' | 'Cartaceo' | 'Raccolto dal responsabile' | 'Non indicato';
-
-interface MembroComunita {
-    id: number;
-    nome: string;
-    cognome: string;
-    ruolo: RuoloComunita;
-    telefono: string;
-    email: string;
-    statoMembro: StatoMembro;
-    accessoApp: AccessoApp;
-    note: string;
-    consensoPrivacyStato: ConsensoPrivacyStato;
-    consensoPrivacyMetodo: ConsensoPrivacyMetodo;
-    consensoPrivacyData: string;
-    consensoPrivacyRaccoltoDa: string;
-    consensoDatiParticolari: boolean;
-    consensoCondivisioneStrutture: boolean;
-    moduloPrivacyRicevuto: boolean;
-    consensoNote: string;
-}
+type StatoMembro = MembroComunitaPilota['statoMembro'];
+type AccessoApp = MembroComunitaPilota['accessoApp'];
+type MembroForm = Omit<MembroComunitaPilota, 'id' | 'nomeCompleto'>;
 
 @Component({
     selector: 'app-comunita',
@@ -46,42 +24,30 @@ interface MembroComunita {
             <header class="page-heading">
                 <div>
                     <h1>La tua Comunità</h1>
-                    <p>Anagrafica comunità e accessi app opzionali.</p>
+                    <p>Anagrafica comunità e gestione iniziale dei consensi.</p>
                 </div>
                 <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
             </header>
 
             <section class="identity-card">
-                <div class="identity-head">
-                    <div>
-                        <span>Comunità associata</span>
-                        <h2>{{ nomeComunita }}</h2>
-                    </div>
-                    <small>Questa è la comunità associata al tuo profilo.</small>
+                <div>
+                    <span>Comunità associata</span>
+                    <h2>{{ nomeComunita }}</h2>
+                    <p>{{ parrocchiaComunita }}</p>
                 </div>
-
-                <div class="identity-summary">
-                    <div><span>Parrocchia</span><strong>{{ parrocchiaComunita }}</strong></div>
-                    <div><span>Settore</span><strong>{{ settoreComunita }}</strong></div>
-                    <div><span>Diocesi</span><strong>{{ diocesiComunita }}</strong></div>
-                    <div><span>Responsabile</span><strong>{{ responsabileComunita }}</strong></div>
+                <div class="identity-meta">
+                    <strong>Settore {{ settoreComunita }}</strong>
+                    <strong>{{ diocesiComunita }}</strong>
+                    <small>{{ isDemo ? 'I dati mostrati sono dimostrativi.' : 'Questi dati sono visibili solo nell’ambiente autenticato.' }}</small>
                 </div>
-
-                <p class="identity-note">Le modifiche all’associazione comunità saranno gestite da un responsabile autorizzato.</p>
             </section>
 
-            <section class="community-data">
-                @for (item of datiComunita; track item.label) {
-                    <div>
-                        <span>{{ item.label }}</span>
-                        <strong>{{ item.value }}</strong>
-                    </div>
-                }
-            </section>
-
-            <section class="privacy-note">
-                Il gestionale aiuta a tracciare lo stato dei consensi. Prima della produzione sarà necessario validare informativa privacy, modalità di raccolta consenso e ruoli autorizzativi.
-            </section>
+            @if (messaggioPrivacy) {
+                <section class="action-message">
+                    <i class="pi pi-info-circle"></i>
+                    <span>{{ messaggioPrivacy }}</span>
+                </section>
+            }
 
             @if (formVisibile) {
                 <section class="card p-6">
@@ -100,69 +66,29 @@ interface MembroComunita {
                             <p-select inputId="ruolo" name="ruolo" appendTo="body" [options]="ruoli" [(ngModel)]="form.ruolo" required></p-select>
                         </div>
                         <div>
-                            <label for="telefono">Telefono</label>
-                            <input id="telefono" name="telefono" pInputText [(ngModel)]="form.telefono" />
-                        </div>
-                        <div>
-                            <label for="email">Email</label>
-                            <input id="email" name="email" type="email" pInputText [(ngModel)]="form.email" />
-                        </div>
-                        <div>
                             <label for="accessoApp">Accesso app</label>
                             <p-select inputId="accessoApp" name="accessoApp" appendTo="body" [options]="accessiApp" [(ngModel)]="form.accessoApp"></p-select>
                         </div>
                         <div>
-                            <label for="statoMembro">Stato membro</label>
+                            <label for="statoMembro">Stato</label>
                             <p-select inputId="statoMembro" name="statoMembro" appendTo="body" [options]="statiMembro" [(ngModel)]="form.statoMembro"></p-select>
                         </div>
+                        <div>
+                            <label for="consensoPrivacyStato">Privacy</label>
+                            <p-select inputId="consensoPrivacyStato" name="consensoPrivacyStato" appendTo="body" [options]="statiPrivacy" [(ngModel)]="form.consensoPrivacyStato"></p-select>
+                        </div>
+                        <label class="check-row">
+                            <input type="checkbox" name="moduloPrivacyInviato" [(ngModel)]="form.moduloPrivacyInviato" />
+                            Modulo privacy inviato
+                        </label>
+                        <label class="check-row">
+                            <input type="checkbox" name="moduloPrivacyRicevuto" [(ngModel)]="form.moduloPrivacyRicevuto" />
+                            Modulo privacy ricevuto
+                        </label>
                         <div class="form-notes">
                             <label for="note">Note</label>
                             <textarea id="note" name="note" pTextarea rows="3" [(ngModel)]="form.note"></textarea>
                         </div>
-                        <section class="privacy-form">
-                            <div class="privacy-form-head">
-                                <h3>Privacy e consensi</h3>
-                                <p>Prima di condividere dati personali o particolari con strutture esterne è necessario verificare il consenso dell’interessato.</p>
-                            </div>
-                            @if (form.consensoPrivacyStato === 'Da raccogliere') {
-                                <div class="privacy-alert warning">Consenso privacy da raccogliere prima di eventuali condivisioni.</div>
-                            }
-                            @if (form.consensoPrivacyStato === 'Negato' || form.consensoPrivacyStato === 'Revocato') {
-                                <div class="privacy-alert danger">Consenso negato o revocato: i dati non devono essere condivisi con strutture esterne.</div>
-                            }
-                            <div>
-                                <label for="consensoPrivacyStato">Stato consenso privacy</label>
-                                <p-select inputId="consensoPrivacyStato" name="consensoPrivacyStato" appendTo="body" [options]="statiConsensoPrivacy" [(ngModel)]="form.consensoPrivacyStato"></p-select>
-                            </div>
-                            <div>
-                                <label for="consensoPrivacyMetodo">Metodo consenso</label>
-                                <p-select inputId="consensoPrivacyMetodo" name="consensoPrivacyMetodo" appendTo="body" [options]="metodiConsensoPrivacy" [(ngModel)]="form.consensoPrivacyMetodo"></p-select>
-                            </div>
-                            <div>
-                                <label for="consensoPrivacyData">Data consenso</label>
-                                <input id="consensoPrivacyData" name="consensoPrivacyData" type="date" pInputText [(ngModel)]="form.consensoPrivacyData" />
-                            </div>
-                            <div>
-                                <label for="consensoPrivacyRaccoltoDa">Raccolto da</label>
-                                <input id="consensoPrivacyRaccoltoDa" name="consensoPrivacyRaccoltoDa" pInputText [(ngModel)]="form.consensoPrivacyRaccoltoDa" />
-                            </div>
-                            <label class="check-row">
-                                <input type="checkbox" name="consensoDatiParticolari" [(ngModel)]="form.consensoDatiParticolari" />
-                                Consenso dati particolari
-                            </label>
-                            <label class="check-row">
-                                <input type="checkbox" name="consensoCondivisioneStrutture" [(ngModel)]="form.consensoCondivisioneStrutture" />
-                                Consenso condivisione dati con strutture
-                            </label>
-                            <label class="check-row">
-                                <input type="checkbox" name="moduloPrivacyRicevuto" [(ngModel)]="form.moduloPrivacyRicevuto" />
-                                Modulo privacy ricevuto
-                            </label>
-                            <div class="form-notes">
-                                <label for="consensoNote">Note privacy</label>
-                                <textarea id="consensoNote" name="consensoNote" pTextarea rows="3" [(ngModel)]="form.consensoNote"></textarea>
-                            </div>
-                        </section>
                         <div class="form-actions">
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="annullaForm()"></button>
                             <button pButton type="submit" icon="pi pi-check" [label]="membroInModifica ? 'Salva modifiche' : 'Salva membro'" [disabled]="membroForm.invalid"></button>
@@ -171,12 +97,36 @@ interface MembroComunita {
                 </section>
             }
 
+            <section class="controls-card">
+                <div class="search-box">
+                    <label for="ricerca">Cerca membro</label>
+                    <input id="ricerca" pInputText type="search" placeholder="Nome o cognome" [(ngModel)]="ricerca" />
+                </div>
+                <div class="search-box">
+                    <label for="filtroRuolo">Filtra ruolo</label>
+                    <p-select inputId="filtroRuolo" appendTo="body" [options]="ruoliFiltro" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i ruoli"></p-select>
+                </div>
+                <div class="totals">
+                    <strong>{{ membriFiltrati.length }}</strong>
+                    <span>membri visualizzati su {{ membri.length }}</span>
+                </div>
+            </section>
+
+            <section class="role-summary" aria-label="Conteggio per ruolo">
+                @for (item of conteggiRuolo; track item.ruolo) {
+                    <article>
+                        <span>{{ item.ruolo }}</span>
+                        <strong>{{ item.totale }}</strong>
+                    </article>
+                }
+            </section>
+
             <section class="card member-table">
-                <p-table [value]="membri" dataKey="id" responsiveLayout="scroll" [paginator]="membri.length > 8" [rows]="8">
+                <p-table [value]="membriFiltrati" dataKey="id" responsiveLayout="scroll" [paginator]="membriFiltrati.length > 12" [rows]="12">
                     <ng-template #caption>
                         <div class="table-caption">
-                            <strong>Membri comunitÃ </strong>
-                            <span>{{ membri.length }} membri</span>
+                            <strong>Membri comunità</strong>
+                            <span>{{ membri.length }} membri totali</span>
                         </div>
                     </ng-template>
                     <ng-template #header>
@@ -184,8 +134,6 @@ interface MembroComunita {
                             <th>Nome</th>
                             <th>Cognome</th>
                             <th>Ruolo</th>
-                            <th>Telefono</th>
-                            <th>Email</th>
                             <th>Accesso app</th>
                             <th>Privacy</th>
                             <th>Stato</th>
@@ -197,41 +145,47 @@ interface MembroComunita {
                             <td>{{ membro.nome }}</td>
                             <td>{{ membro.cognome }}</td>
                             <td><p-tag [value]="membro.ruolo" [severity]="getRuoloSeverity(membro.ruolo)" /></td>
-                            <td>{{ membro.telefono || '-' }}</td>
-                            <td>{{ membro.email || '-' }}</td>
                             <td><p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" /></td>
                             <td><p-tag [value]="membro.consensoPrivacyStato" [severity]="getPrivacySeverity(membro.consensoPrivacyStato)" /></td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
                             <td>
                                 <div class="row-actions">
-                                    <p-button icon="pi pi-pencil" [text]="true" severity="info" ariaLabel="Modifica" (click)="modificaMembro(membro)" />
-                                    <p-button icon="pi pi-trash" [text]="true" severity="danger" ariaLabel="Elimina" (click)="eliminaMembro(membro.id)" />
+                                    <button pButton type="button" label="Modifica ruolo" icon="pi pi-user-edit" severity="info" text (click)="modificaMembro(membro)"></button>
+                                    <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="modificaMembro(membro)"></button>
+                                    <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="inviaModuloPrivacy(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-trash" severity="danger" text ariaLabel="Elimina" (click)="eliminaMembro(membro.id)"></button>
                                 </div>
                             </td>
+                        </tr>
+                    </ng-template>
+                    <ng-template #emptymessage>
+                        <tr>
+                            <td colspan="7">Nessun membro trovato con i filtri attuali.</td>
                         </tr>
                     </ng-template>
                 </p-table>
             </section>
 
-            <section class="member-cards" aria-label="Membri comunitÃ ">
-                @for (membro of membri; track membro.id) {
+            <section class="member-cards" aria-label="Membri comunità">
+                @for (membro of membriFiltrati; track membro.id) {
                     <article class="member-card">
                         <div class="member-card-head">
                             <div>
-                                <strong>{{ membro.nome }} {{ membro.cognome }}</strong>
+                                <strong>{{ membro.nomeCompleto }}</strong>
                                 <span>{{ membro.ruolo }}</span>
                             </div>
                             <p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" />
                         </div>
                         <dl>
-                            <div><dt>Telefono</dt><dd>{{ membro.telefono || '-' }}</dd></div>
-                            <div><dt>Email</dt><dd>{{ membro.email || '-' }}</dd></div>
                             <div><dt>Accesso app</dt><dd>{{ membro.accessoApp }}</dd></div>
                             <div><dt>Privacy</dt><dd>{{ membro.consensoPrivacyStato }}</dd></div>
+                            <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'Sì' : 'No' }}</dd></div>
+                            <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'Sì' : 'No' }}</dd></div>
                         </dl>
                         <div class="card-actions">
-                            <button pButton type="button" icon="pi pi-pencil" label="Modifica" severity="info" outlined (click)="modificaMembro(membro)"></button>
-                            <button pButton type="button" icon="pi pi-trash" label="Elimina" severity="danger" outlined (click)="eliminaMembro(membro.id)"></button>
+                            <button pButton type="button" icon="pi pi-user-edit" label="Modifica ruolo" severity="info" outlined (click)="modificaMembro(membro)"></button>
+                            <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="modificaMembro(membro)"></button>
+                            <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="inviaModuloPrivacy(membro)"></button>
                         </div>
                     </article>
                 }
@@ -245,10 +199,19 @@ interface MembroComunita {
                 gap: 1.5rem;
             }
 
-            .page-heading {
+            .page-heading,
+            .table-caption,
+            .row-actions,
+            .card-actions,
+            .identity-card,
+            .controls-card {
                 display: flex;
-                justify-content: space-between;
                 gap: 1rem;
+            }
+
+            .page-heading,
+            .table-caption {
+                justify-content: space-between;
                 align-items: center;
             }
 
@@ -262,116 +225,59 @@ interface MembroComunita {
                 color: #64748b;
             }
 
-            .community-data {
-                display: grid;
-                grid-template-columns: repeat(5, minmax(0, 1fr));
-                gap: 1rem;
-            }
-
-            .identity-card {
-                padding: 1.25rem;
+            .identity-card,
+            .controls-card,
+            .role-summary article,
+            .member-card,
+            .action-message {
+                padding: 1rem;
                 border-radius: 14px;
                 background: #fff;
                 border: 1px solid #e5e7eb;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-                display: grid;
-                gap: 1rem;
             }
 
-            .identity-head {
-                display: flex;
+            .identity-card {
                 justify-content: space-between;
-                gap: 1rem;
                 align-items: flex-start;
-            }
-
-            .identity-head span {
-                display: block;
-                margin-bottom: 0.3rem;
-                color: #64748b;
-                font-size: 0.82rem;
-                font-weight: 700;
-                text-transform: uppercase;
-            }
-
-            .identity-head h2 {
-                margin: 0;
-                color: #111827;
-                font-size: 1.35rem;
-            }
-
-            .identity-head small {
-                max-width: 24rem;
-                color: #64748b;
-                line-height: 1.45;
-            }
-
-            .identity-summary {
-                display: grid;
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-                gap: 1rem;
-            }
-
-            .identity-summary div {
-                padding: 0.9rem;
-                border-radius: 12px;
                 background: #fbfbf8;
-                border: 1px solid #e5e7eb;
-                display: grid;
-                gap: 0.25rem;
             }
 
-            .identity-summary span {
-                color: #64748b;
-                font-size: 0.82rem;
-            }
-
-            .identity-summary strong {
-                color: #111827;
-            }
-
-            .identity-note {
-                margin: 0;
-                color: #64748b;
-                font-size: 0.9rem;
-            }
-
-            .privacy-note {
-                padding: 0.85rem 1rem;
-                border-radius: 12px;
-                background: #f8fafc;
-                border: 1px solid #e5e7eb;
-                color: #64748b;
-                font-size: 0.9rem;
-                line-height: 1.5;
-            }
-
-            .community-data div,
-            .member-card {
-                padding: 1rem;
-                border-radius: 12px;
-                background: #fff;
-                border: 1px solid #e5e7eb;
-                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-            }
-
-            .community-data span,
+            .identity-card span,
+            .search-box label,
+            .role-summary span,
             .member-card dt {
-                display: block;
                 color: #64748b;
                 font-size: 0.82rem;
-            }
-
-            .community-data strong,
-            .member-card dd {
-                margin: 0.2rem 0 0;
-                color: #111827;
                 font-weight: 700;
             }
 
-            .form-title {
-                margin: 0 0 1rem;
-                font-size: 1.25rem;
+            .identity-card h2 {
+                margin: 0.25rem 0;
+                color: #111827;
+                font-size: 1.45rem;
+            }
+
+            .identity-card p,
+            .identity-meta small {
+                margin: 0;
+                color: #64748b;
+            }
+
+            .identity-meta {
+                display: grid;
+                gap: 0.3rem;
+                text-align: right;
+            }
+
+            .action-message {
+                display: flex;
+                align-items: center;
+                gap: 0.65rem;
+                color: #075985;
+                background: #f0f9ff;
+                border-color: #bae6fd;
+                font-weight: 700;
             }
 
             .member-form {
@@ -392,57 +298,20 @@ interface MembroComunita {
 
             .member-form input,
             .member-form textarea,
-            .member-form p-select {
+            .member-form p-select,
+            .search-box input,
+            .search-box p-select {
                 width: 100%;
             }
 
-            .form-notes {
+            .form-title {
+                margin: 0 0 1rem;
+                font-size: 1.25rem;
+            }
+
+            .form-notes,
+            .form-actions {
                 grid-column: 1 / -1;
-            }
-
-            .privacy-form {
-                grid-column: 1 / -1;
-                display: grid;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 1rem;
-                padding: 1rem;
-                border-radius: 14px;
-                border: 1px solid #e5e7eb;
-                background: #fbfbf8;
-            }
-
-            .privacy-form-head,
-            .privacy-alert {
-                grid-column: 1 / -1;
-            }
-
-            .privacy-form-head h3 {
-                margin: 0 0 0.35rem;
-                color: #111827;
-            }
-
-            .privacy-form-head p {
-                margin: 0;
-                color: #64748b;
-                line-height: 1.5;
-            }
-
-            .privacy-alert {
-                padding: 0.75rem;
-                border-radius: 12px;
-                font-weight: 700;
-            }
-
-            .privacy-alert.warning {
-                background: #fffbeb;
-                color: #92400e;
-                border: 1px solid #fde68a;
-            }
-
-            .privacy-alert.danger {
-                background: #fef2f2;
-                color: #991b1b;
-                border: 1px solid #fecaca;
             }
 
             .check-row {
@@ -455,24 +324,57 @@ interface MembroComunita {
             }
 
             .form-actions {
-                grid-column: 1 / -1;
                 display: flex !important;
                 justify-content: flex-end;
                 grid-template-columns: none !important;
-                flex-direction: row;
             }
 
-            .table-caption,
-            .row-actions,
-            .card-actions {
-                display: flex;
-                align-items: center;
+            .controls-card {
+                align-items: end;
                 justify-content: space-between;
-                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+
+            .search-box {
+                display: grid;
+                gap: 0.4rem;
+                min-width: min(100%, 260px);
+            }
+
+            .totals {
+                display: grid;
+                gap: 0.15rem;
+                text-align: right;
+            }
+
+            .totals strong {
+                font-size: 1.6rem;
+                color: #111827;
+            }
+
+            .totals span {
+                color: #64748b;
+            }
+
+            .role-summary {
+                display: grid;
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+                gap: 0.85rem;
+            }
+
+            .role-summary article {
+                display: grid;
+                gap: 0.2rem;
+            }
+
+            .role-summary strong {
+                color: #111827;
+                font-size: 1.35rem;
             }
 
             .row-actions {
                 justify-content: flex-end;
+                flex-wrap: wrap;
             }
 
             .member-cards {
@@ -501,12 +403,19 @@ interface MembroComunita {
                 margin: 1rem 0;
             }
 
+            .member-card dd {
+                margin: 0.2rem 0 0;
+                color: #111827;
+                font-weight: 700;
+            }
+
             @media (max-width: 1024px) {
-                .community-data,
-                .identity-summary,
-                .privacy-form,
                 .member-form {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                .role-summary {
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
                 }
             }
 
@@ -516,25 +425,20 @@ interface MembroComunita {
                     overflow-x: hidden;
                 }
 
-                .page-heading {
+                .page-heading,
+                .identity-card,
+                .controls-card {
+                    flex-direction: column;
                     align-items: stretch;
-                    flex-direction: column;
                 }
 
-                .identity-head {
-                    flex-direction: column;
+                .identity-meta,
+                .totals {
+                    text-align: left;
                 }
 
-                .page-heading button,
-                .form-actions button,
-                .card-actions button {
-                    min-height: 44px;
-                }
-
-                .community-data,
-                .identity-summary,
-                .privacy-form,
-                .member-form {
+                .member-form,
+                .role-summary {
                     grid-template-columns: 1fr;
                 }
 
@@ -551,8 +455,11 @@ interface MembroComunita {
                     flex-direction: column;
                 }
 
-                .card-actions button {
+                .card-actions button,
+                .page-heading button,
+                .form-actions button {
                     width: 100%;
+                    min-height: 44px;
                 }
             }
         `
@@ -562,15 +469,21 @@ export class Comunita {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
 
-    ruoli: RuoloComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Fratello'];
+    ruoli: RuoloComunitaPilota[] = ['Presbitero', 'Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Ostiario', 'Fratello'];
+    ruoliFiltro: RuoloComunitaPilota[] = this.ruoli;
     statiMembro: StatoMembro[] = ['Attivo', 'Temporaneamente assente', 'Da contattare'];
     accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
-    statiConsensoPrivacy: ConsensoPrivacyStato[] = ['Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
-    metodiConsensoPrivacy: ConsensoPrivacyMetodo[] = ['Digitale', 'Cartaceo', 'Raccolto dal responsabile', 'Non indicato'];
-    diocesi = DIOCESI_MOCK;
-    settori = SETTORI_MOCK;
-    parrocchie = PARROCCHIE_MOCK;
-    comunitaAttiva = { ...COMUNITA_ATTIVA_MOCK };
+    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
+
+    ricerca = '';
+    ruoloFiltro: RuoloComunitaPilota | null = null;
+    formVisibile = false;
+    membroInModifica: MembroComunitaPilota | null = null;
+    messaggioPrivacy = '';
+
+    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro }));
+    private prossimoId = this.membri.length + 1;
+    form: MembroForm = this.creaFormVuoto();
 
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];
@@ -578,68 +491,36 @@ export class Comunita {
     }
 
     get nomeComunita() {
-        return this.isDemo ? DEMO_COMUNITA.nome : generaNomeComunita(this.comunitaAttiva.numero);
-    }
-
-    get diocesiSelezionata() {
-        return this.diocesi.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId);
-    }
-
-    get settoreSelezionato() {
-        return this.settori.find((settore) => settore.id === this.comunitaAttiva.settoreId);
-    }
-
-    get parrocchiaSelezionata() {
-        return this.parrocchie.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId);
-    }
-
-    get datiComunita() {
-        if (this.isDemo) {
-            return [
-                { label: 'Comunità', value: DEMO_COMUNITA.nome },
-                { label: 'Parrocchia', value: DEMO_COMUNITA.parrocchia },
-                { label: 'Settore', value: DEMO_COMUNITA.settore },
-                { label: 'Diocesi', value: DEMO_COMUNITA.diocesi },
-                { label: 'Responsabile', value: DEMO_COMUNITA.responsabile }
-            ];
-        }
-
-        return [
-            { label: 'Comunità', value: generaNomeComunita(this.comunitaAttiva.numero) },
-            { label: 'Parrocchia', value: this.parrocchiaSelezionata?.nome ?? '-' },
-            { label: 'Settore', value: this.settoreSelezionato ? `Settore ${this.settoreSelezionato.nome}` : '-' },
-            { label: 'Diocesi', value: this.diocesiSelezionata?.nome ?? '-' },
-            { label: 'Responsabile', value: this.comunitaAttiva.responsabilePrincipale }
-        ];
-    }
-
-    get responsabileComunita() {
-        return this.isDemo ? DEMO_COMUNITA.responsabile : this.comunitaAttiva.responsabilePrincipale;
+        return this.isDemo ? DEMO_COMUNITA.nome : COMUNITA_PILOTA.nomeVisualizzato;
     }
 
     get parrocchiaComunita() {
-        return this.isDemo ? DEMO_COMUNITA.parrocchia : (this.parrocchiaSelezionata?.nome ?? '-');
+        return this.isDemo ? DEMO_COMUNITA.parrocchia : COMUNITA_PILOTA.parrocchia;
     }
 
     get settoreComunita() {
-        return this.isDemo ? DEMO_COMUNITA.settore : (this.settoreSelezionato ? `Settore ${this.settoreSelezionato.nome}` : '-');
+        return this.isDemo ? DEMO_COMUNITA.settore.replace(/^Settore\s+/i, '') : COMUNITA_PILOTA.settore;
     }
 
     get diocesiComunita() {
-        return this.isDemo ? DEMO_COMUNITA.diocesi : (this.diocesiSelezionata?.nome ?? '-');
+        return this.isDemo ? DEMO_COMUNITA.diocesi : COMUNITA_PILOTA.diocesi;
     }
 
-    membri: MembroComunita[] = this.isDemo ? this.creaMembriDemo() : [
-        { id: 1, nome: 'Mario', cognome: 'Rossi', ruolo: 'Responsabile', telefono: '333 1234567', email: 'mario.rossi@example.com', statoMembro: 'Attivo', accessoApp: 'Attivo', note: 'Responsabile principale', consensoPrivacyStato: 'Raccolto', consensoPrivacyMetodo: 'Digitale', consensoPrivacyData: '2026-04-12', consensoPrivacyRaccoltoDa: 'Segreteria', consensoDatiParticolari: true, consensoCondivisioneStrutture: true, moduloPrivacyRicevuto: true, consensoNote: 'Consenso completo mock.' },
-        { id: 2, nome: 'Lucia', cognome: 'Bianchi', ruolo: 'Catechista', telefono: '333 7654321', email: '', statoMembro: 'Attivo', accessoApp: 'Nessuno', note: '', consensoPrivacyStato: 'Da raccogliere', consensoPrivacyMetodo: 'Non indicato', consensoPrivacyData: '', consensoPrivacyRaccoltoDa: '', consensoDatiParticolari: false, consensoCondivisioneStrutture: false, moduloPrivacyRicevuto: false, consensoNote: 'Da verificare al prossimo incontro.' },
-        { id: 3, nome: 'Paolo', cognome: 'Verdi', ruolo: 'Cantore', telefono: '', email: '', statoMembro: 'Da contattare', accessoApp: 'In attesa', note: 'Verificare disponibilità', consensoPrivacyStato: 'Negato', consensoPrivacyMetodo: 'Cartaceo', consensoPrivacyData: '2026-03-20', consensoPrivacyRaccoltoDa: 'Mario Rossi', consensoDatiParticolari: false, consensoCondivisioneStrutture: false, moduloPrivacyRicevuto: true, consensoNote: 'Non condividere dati con strutture esterne.' }
-    ];
+    get membriFiltrati() {
+        const query = this.ricerca.trim().toLowerCase();
+        return this.membri.filter((membro) => {
+            const matchQuery = !query || membro.nome.toLowerCase().includes(query) || membro.cognome.toLowerCase().includes(query) || membro.nomeCompleto.toLowerCase().includes(query);
+            const matchRuolo = !this.ruoloFiltro || membro.ruolo === this.ruoloFiltro;
+            return matchQuery && matchRuolo;
+        });
+    }
 
-    formVisibile = false;
-    membroInModifica: MembroComunita | null = null;
-    private prossimoId = this.isDemo ? DEMO_MEMBRI.length + 1 : 4;
-
-    form: Omit<MembroComunita, 'id'> = this.creaFormVuoto();
+    get conteggiRuolo() {
+        return this.ruoli.map((ruolo) => ({
+            ruolo,
+            totale: this.membri.filter((membro) => membro.ruolo === ruolo).length
+        }));
+    }
 
     toggleForm() {
         if (this.formVisibile) {
@@ -654,8 +535,7 @@ export class Comunita {
             ...this.form,
             nome: this.form.nome.trim(),
             cognome: this.form.cognome.trim(),
-            telefono: this.form.telefono.trim(),
-            email: this.form.email.trim(),
+            nomeCompleto: `${this.form.nome.trim()} ${this.form.cognome.trim()}`.trim(),
             note: this.form.note.trim()
         };
 
@@ -668,9 +548,19 @@ export class Comunita {
         this.annullaForm();
     }
 
-    modificaMembro(membro: MembroComunita) {
+    modificaMembro(membro: MembroComunitaPilota) {
         this.membroInModifica = membro;
-        this.form = { ...membro };
+        this.form = {
+            nome: membro.nome,
+            cognome: membro.cognome,
+            ruolo: membro.ruolo,
+            accessoApp: membro.accessoApp,
+            statoMembro: membro.statoMembro,
+            consensoPrivacyStato: membro.consensoPrivacyStato,
+            moduloPrivacyInviato: membro.moduloPrivacyInviato,
+            moduloPrivacyRicevuto: membro.moduloPrivacyRicevuto,
+            note: membro.note
+        };
         this.formVisibile = true;
     }
 
@@ -681,14 +571,21 @@ export class Comunita {
         }
     }
 
+    inviaModuloPrivacy(membro: MembroComunitaPilota) {
+        this.membri = this.membri.map((item) => (item.id === membro.id ? { ...item, moduloPrivacyInviato: true } : item));
+        this.messaggioPrivacy = 'Invio modulo privacy predisposto. Sarà collegato al backend email in una fase successiva.';
+    }
+
     annullaForm() {
         this.form = this.creaFormVuoto();
         this.membroInModifica = null;
         this.formVisibile = false;
     }
 
-    getRuoloSeverity(ruolo: RuoloComunita) {
+    getRuoloSeverity(ruolo: RuoloComunitaPilota) {
         switch (ruolo) {
+            case 'Presbitero':
+                return 'contrast';
             case 'Responsabile':
                 return 'success';
             case 'Corresponsabile':
@@ -696,9 +593,10 @@ export class Comunita {
             case 'Catechista':
                 return 'warn';
             case 'Cantore':
+            case 'Ostiario':
                 return 'secondary';
             default:
-                return 'contrast';
+                return 'secondary';
         }
     }
 
@@ -726,10 +624,11 @@ export class Comunita {
         }
     }
 
-    getPrivacySeverity(stato: ConsensoPrivacyStato) {
+    getPrivacySeverity(stato: ConsensoPrivacyPilota) {
         switch (stato) {
             case 'Raccolto':
                 return 'success';
+            case 'Da inviare':
             case 'Da raccogliere':
                 return 'warn';
             case 'Negato':
@@ -740,46 +639,33 @@ export class Comunita {
         }
     }
 
-    private creaMembriDemo(): MembroComunita[] {
+    private creaMembriDemo(): MembroComunitaPilota[] {
         return DEMO_MEMBRI.map((membro, index) => ({
             id: index + 1,
             nome: membro.nome,
             cognome: membro.cognome,
-            ruolo: membro.ruolo as RuoloComunita,
-            telefono: '',
-            email: '',
-            statoMembro: membro.stato as StatoMembro,
+            nomeCompleto: `${membro.nome} ${membro.cognome}`,
+            ruolo: membro.ruolo as RuoloComunitaPilota,
             accessoApp: membro.accessoApp as AccessoApp,
-            note: 'Dato dimostrativo',
-            consensoPrivacyStato: membro.privacy as ConsensoPrivacyStato,
-            consensoPrivacyMetodo: membro.privacy === 'Raccolto' ? 'Digitale' : 'Non indicato',
-            consensoPrivacyData: membro.privacy === 'Raccolto' ? '2026-04-01' : '',
-            consensoPrivacyRaccoltoDa: membro.privacy === 'Raccolto' ? 'Responsabile demo' : '',
-            consensoDatiParticolari: membro.privacy === 'Raccolto',
-            consensoCondivisioneStrutture: membro.privacy === 'Raccolto',
+            statoMembro: membro.stato as StatoMembro,
+            consensoPrivacyStato: membro.privacy as ConsensoPrivacyPilota,
+            moduloPrivacyInviato: membro.privacy === 'Raccolto',
             moduloPrivacyRicevuto: membro.privacy === 'Raccolto',
-            consensoNote: 'Dato privacy dimostrativo.'
+            note: 'Dato dimostrativo'
         }));
     }
 
-    private creaFormVuoto(): Omit<MembroComunita, 'id'> {
+    private creaFormVuoto(): MembroForm {
         return {
             nome: '',
             cognome: '',
             ruolo: 'Fratello',
-            telefono: '',
-            email: '',
-            statoMembro: 'Attivo',
             accessoApp: 'Nessuno',
-            note: '',
-            consensoPrivacyStato: 'Da raccogliere',
-            consensoPrivacyMetodo: 'Non indicato',
-            consensoPrivacyData: '',
-            consensoPrivacyRaccoltoDa: '',
-            consensoDatiParticolari: false,
-            consensoCondivisioneStrutture: false,
+            statoMembro: 'Attivo',
+            consensoPrivacyStato: 'Da inviare',
+            moduloPrivacyInviato: false,
             moduloPrivacyRicevuto: false,
-            consensoNote: ''
+            note: ''
         };
     }
 }
