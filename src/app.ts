@@ -14,6 +14,10 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
     @if (!isLoggedIn() && !isPublicRoute()) {
       <main class="login-page">
         <section class="login-shell">
+          <div class="login-copy">
+            <h1 class="brand-neocat">Gestionale per le comunità<br />del cammino neocatecumenale</h1>
+          </div>
+
           <div class="login-card">
             <div class="login-card-head">
               <h2>Accedi al gestionale</h2>
@@ -25,10 +29,6 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
             <a routerLink="/demo" class="demo-link">Guarda la demo</a>
             <a routerLink="/faq" class="demo-link secondary-link">FAQ</a>
-          </div>
-
-          <div class="login-copy">
-            <h1 class="brand-neocat">Gestionale per le comunità<br />del cammino neocatecumenale</h1>
           </div>
         </section>
 
@@ -57,7 +57,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
-        padding: 14vh 24px 32px;
+        padding: 12vh 24px 32px;
         overflow: hidden;
         background-image: url('/assets/images/login-bg.jpg');
         background-size: cover;
@@ -81,7 +81,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         width: 100%;
         max-width: 760px;
         display: grid;
-        gap: 3.5rem;
+        gap: 1.85rem;
         justify-items: center;
         margin: 0 auto;
         pointer-events: auto;
@@ -201,7 +201,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
       @media (max-width: 900px) {
         .login-page {
-          padding: 10vh 18px 24px;
+          padding: 9vh 18px 24px;
           background-position: 50% 18%;
         }
 
@@ -210,7 +210,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
         }
 
         .login-shell {
-          gap: 2.5rem;
+          gap: 1.5rem;
         }
 
         .login-copy h1 {
