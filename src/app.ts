@@ -1,9 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
+import { filter } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 
@@ -11,7 +12,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink],
   template: `
-    @if (!isLoggedIn() && !isPublicRoute()) {
+    @if (showLogin()) {
       <main class="login-page">
         <section class="login-shell">
           <div class="login-copy">
@@ -39,11 +40,7 @@ const DASHBOARD_URL = '/gestionale-cn/dashboard';
       </main>
     }
 
-    @if (isLoggedIn() && !isPublicRoute()) {
-      <router-outlet></router-outlet>
-    }
-
-    @if (isPublicRoute()) {
+    @if (!showLogin()) {
       <router-outlet></router-outlet>
     }
   `,
@@ -236,10 +233,17 @@ export class App {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly msalService = inject(MsalService);
+  private readonly currentPath = signal(window.location.pathname);
+  private readonly authenticated = signal(false);
 
   constructor() {
     this.clearInvalidLegacyToken();
     this.handleMicrosoftRedirect();
+    this.authenticated.set(this.isLoggedIn());
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
+      this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
+      this.authenticated.set(this.isLoggedIn());
+    });
   }
 
   private handleMicrosoftRedirect(): void {
@@ -249,6 +253,7 @@ export class App {
           const activeAccount = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
           if (activeAccount) {
             this.msalService.instance.setActiveAccount(activeAccount);
+            this.authenticated.set(true);
           }
           return;
         }
@@ -260,6 +265,7 @@ export class App {
           this.authService.refreshState();
         }
 
+        this.authenticated.set(true);
         this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
       },
       error: (error) => {
@@ -289,8 +295,17 @@ export class App {
   }
 
   isPublicRoute(): boolean {
-    const path = window.location.pathname;
+    const path = this.currentPath();
     return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/completa-profilo';
+  }
+
+  isInternalRoute(): boolean {
+    const path = this.currentPath();
+    return path === '/gestionale-cn' || path.startsWith('/gestionale-cn/') || path === '/profile' || path.startsWith('/profile/');
+  }
+
+  showLogin(): boolean {
+    return !this.authenticated() && !this.isPublicRoute() && !this.isInternalRoute();
   }
 
   login(): void {

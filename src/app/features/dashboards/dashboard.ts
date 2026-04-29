@@ -23,6 +23,7 @@ interface DashboardModule {
             <div class="dashboard-overlay"></div>
 
             <div class="dashboard-content">
+                <span class="auth-render-check" *ngIf="!isDemo">Dashboard autenticata caricata</span>
                 <aside class="community-summary" aria-label="Dati comunità">
                     <span class="summary-eyebrow">{{ isDemo ? 'Comunità demo' : 'Comunità attiva' }}</span>
                     <h1>{{ nomeComunita }}</h1>
@@ -107,6 +108,19 @@ interface DashboardModule {
                 grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
                 gap: clamp(1rem, 2vw, 1.5rem);
                 align-items: stretch;
+            }
+
+            .auth-render-check {
+                position: absolute;
+                top: -0.2rem;
+                right: 0;
+                padding: 0.3rem 0.65rem;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.82);
+                color: #0f2440;
+                font-size: 0.78rem;
+                font-weight: 800;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
             }
 
             .community-summary,
