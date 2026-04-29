@@ -14,9 +14,9 @@ export const DEMO_MEMBRI = [
 ] as const;
 
 export const DEMO_CONVIVENZE = [
-    { titolo: 'Convivenza di Avvento', dataInizio: '2026-12-06', dataFine: '2026-12-08', stato: 'Confermata', luogo: 'Casa San Giuseppe' },
-    { titolo: 'Convivenza di Quaresima', dataInizio: '2027-03-14', dataFine: '2027-03-16', stato: 'Richiesta inviata', luogo: 'Centro Fraternità' },
-    { titolo: 'Convivenza estiva', dataInizio: '2027-07-12', dataFine: '2027-07-15', stato: 'Bozza', luogo: 'Da assegnare' }
+    { titolo: 'Convivenza di Avvento', dataInizio: '2026-12-06', dataFine: '2026-12-08', stato: 'Confermata', luogo: 'Casa San Giuseppe', richiesta: 'Confermata', partecipanti: '32/38' },
+    { titolo: 'Convivenza di Quaresima', dataInizio: '2027-03-14', dataFine: '2027-03-16', stato: 'Richiesta inviata', luogo: 'Centro Fraternità', richiesta: 'Inviata', partecipanti: '24/35' },
+    { titolo: 'Convivenza estiva', dataInizio: '2027-07-12', dataFine: '2027-07-15', stato: 'Bozza', luogo: 'Da assegnare', richiesta: 'Non inviata', partecipanti: '18/40' }
 ] as const;
 
 export const DEMO_POSTI = [
