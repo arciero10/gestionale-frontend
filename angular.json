@@ -50,7 +50,10 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "ignore": [
+                  "demo/**"
+                ]
               },
               {
                 "glob": "**/*",

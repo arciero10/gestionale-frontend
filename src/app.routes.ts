@@ -50,7 +50,12 @@ export const routes: Routes = [
           import('@/features/gestionaleCN/placeholder/gestionale-placeholder').then((c) => c.GestionalePlaceholder),
         data: { breadcrumb: 'Viaggi / Pellegrinaggi demo', title: 'Viaggi / Pellegrinaggi - demo', demo: true }
       },
-      { path: '**', redirectTo: 'dashboard' }
+      {
+        path: '**',
+        loadComponent: () =>
+          import('@/features/gestionaleCN/placeholder/gestionale-placeholder').then((c) => c.GestionalePlaceholder),
+        data: { breadcrumb: 'Demo', title: 'Modulo demo - in sviluppo', demo: true }
+      }
     ]
   },
   {
