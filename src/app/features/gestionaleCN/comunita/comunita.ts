@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -24,12 +24,12 @@ import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
-type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
+type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'telefono' | 'email' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
 
 @Component({
     selector: 'app-comunita',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule],
     template: `
         <div class="community-page">
             <header class="page-heading">
@@ -53,6 +53,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                     <small>{{ isDemo ? 'I dati mostrati sono dimostrativi.' : 'Questi dati sono visibili solo nell’ambiente autenticato.' }}</small>
                     @if (!isDemo) {
                         <button pButton type="button" label="Modifica tappa" icon="pi pi-flag" severity="secondary" outlined (click)="apriModificaTappa()"></button>
+                        <a class="preview-link" routerLink="/gestionale-cn/onboarding-comunita-preview">Anteprima primo accesso utente</a>
                     }
                 </div>
             </section>
@@ -61,9 +62,9 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                 <section class="catechisti-card">
                     <div class="section-title">
                         <div>
-                            <span>Catechisti accompagnatori</span>
-                            <h2>Catechisti della comunità</h2>
-                            <p>Riferimenti super partes: non sono inclusi nei conteggi dei membri operativi.</p>
+                            <span>Riferimenti collegati</span>
+                            <h2>Equipe dei catechisti</h2>
+                            <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
                         </div>
                         <strong>{{ catechisti.length }}</strong>
                     </div>
@@ -72,7 +73,12 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                             <article>
                                 <strong>{{ catechista.nome }} {{ catechista.cognome }}</strong>
                                 <span class="role-badge role-catechista">{{ catechista.ruolo }}</span>
-                                <small>{{ catechista.note }}</small>
+                                <small>Tipo: {{ catechista.tipo }}</small>
+                                <dl class="contact-list">
+                                    <div><dt>Telefono</dt><dd>{{ displayContact(catechista.telefono) }}</dd></div>
+                                    <div><dt>Email</dt><dd>{{ displayContact(catechista.email) }}</dd></div>
+                                </dl>
+                                <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiCatechista(catechista)"></button>
                             </article>
                         }
                     </div>
@@ -101,6 +107,14 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                         <div>
                             <label for="ruolo">Ruolo</label>
                             <p-select inputId="ruolo" name="ruolo" appendTo="body" [options]="ruoliForm" [(ngModel)]="form.ruolo" required></p-select>
+                        </div>
+                        <div>
+                            <label for="telefono">Telefono</label>
+                            <input id="telefono" name="telefono" pInputText [(ngModel)]="form.telefono" />
+                        </div>
+                        <div>
+                            <label for="email">Email</label>
+                            <input id="email" name="email" pInputText type="email" [(ngModel)]="form.email" />
                         </div>
                         <div>
                             <label for="accessoApp">Accesso app</label>
@@ -148,7 +162,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                     <strong>{{ membriFiltrati.length }}</strong>
                     <span>membri visualizzati su {{ membri.length }}</span>
                     @if (!isDemo) {
-                        <small>Catechisti accompagnatori: {{ catechisti.length }}</small>
+                        <small>Equipe dei catechisti: {{ catechisti.length }}</small>
                     }
                 </div>
             </section>
@@ -175,6 +189,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                             <th>Nome</th>
                             <th>Cognome</th>
                             <th>Ruolo</th>
+                            <th>Telefono</th>
+                            <th>Email</th>
                             <th>Accesso app</th>
                             <th>Privacy</th>
                             <th>Stato</th>
@@ -186,12 +202,15 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                             <td>{{ membro.nome }}</td>
                             <td>{{ membro.cognome }}</td>
                             <td><span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ membro.ruolo }}</span></td>
+                            <td>{{ displayContact(membro.telefono) }}</td>
+                            <td>{{ displayContact(membro.email) }}</td>
                             <td><p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" /></td>
                             <td><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
                             <td>
                                 <div class="row-actions">
                                     <button pButton type="button" label="Modifica ruolo" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
+                                    <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" text (click)="apriModificaContattiMembro(membro)"></button>
                                     <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
                                     <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
                                     <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
@@ -202,7 +221,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                     </ng-template>
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="7">Nessun membro trovato con i filtri attuali.</td>
+                            <td colspan="9">Nessun membro trovato con i filtri attuali.</td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -219,6 +238,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                             <p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" />
                         </div>
                         <dl>
+                            <div><dt>Telefono</dt><dd>{{ displayContact(membro.telefono) }}</dd></div>
+                            <div><dt>Email</dt><dd>{{ displayContact(membro.email) }}</dd></div>
                             <div><dt>Accesso app</dt><dd>{{ membro.accessoApp }}</dd></div>
                             <div><dt>Privacy</dt><dd><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></dd></div>
                             <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'Sì' : 'No' }}</dd></div>
@@ -226,6 +247,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                         </dl>
                         <div class="card-actions">
                             <button pButton type="button" icon="pi pi-user-edit" label="Modifica ruolo" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
+                            <button pButton type="button" icon="pi pi-address-book" label="Contatti" severity="secondary" outlined (click)="apriModificaContattiMembro(membro)"></button>
                             <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
                             <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
                             <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="apriInvioPrivacy(membro)"></button>
@@ -247,6 +269,26 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
                             <button pButton type="button" label="Salva ruolo" icon="pi pi-check" (click)="salvaRuolo()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
+            @if (contattiModalMembro || contattiModalCatechista) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica contatti" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Modifica contatti</span>
+                            <h2>{{ contattiNome }}</h2>
+                        </header>
+                        <p class="privacy-warning">I contatti personali sono visibili solo agli utenti autorizzati del gestionale.</p>
+                        <label for="telefonoContatto">Telefono</label>
+                        <input id="telefonoContatto" pInputText [(ngModel)]="telefonoContatto" />
+                        <label for="emailContatto">Email</label>
+                        <input id="emailContatto" pInputText type="email" [(ngModel)]="emailContatto" />
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            <button pButton type="button" label="Salva contatti" icon="pi pi-check" (click)="salvaContatti()"></button>
                         </footer>
                     </section>
                 </div>
@@ -469,6 +511,41 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'acc
 
             .catechisti-grid small {
                 color: #64748b;
+            }
+
+            .contact-list {
+                display: grid;
+                gap: 0.35rem;
+                margin: 0;
+            }
+
+            .contact-list div {
+                display: grid;
+                gap: 0.1rem;
+            }
+
+            .contact-list dt {
+                color: #64748b;
+                font-size: 0.75rem;
+                font-weight: 800;
+            }
+
+            .contact-list dd {
+                margin: 0;
+                color: #111827;
+                font-weight: 700;
+                overflow-wrap: anywhere;
+            }
+
+            .preview-link {
+                color: #17335f;
+                font-size: 0.85rem;
+                font-weight: 800;
+                text-decoration: none;
+            }
+
+            .preview-link:hover {
+                text-decoration: underline;
             }
 
             .action-message {
@@ -847,6 +924,10 @@ export class Comunita {
     privacyInvioMembro: MembroComunitaPilota | null = null;
     invioMassivo = false;
     anteprimaMembro: MembroComunitaPilota | null = null;
+    contattiModalMembro: MembroComunitaPilota | null = null;
+    contattiModalCatechista: CatechistaComunita | null = null;
+    telefonoContatto = '';
+    emailContatto = '';
     tappaCammino: TappaCammino = (this.isDemo ? DEMO_COMUNITA.tappaCammino : COMUNITA_PILOTA.tappaCammino) as TappaCammino;
     nuovaTappa: TappaCammino = this.tappaCammino;
     tappaModalAperta = false;
@@ -917,6 +998,18 @@ export class Comunita {
         return this.membri.filter((membro) => !this.membriSelezionatiInvio.some((selected) => selected.id === membro.id));
     }
 
+    get contattiNome() {
+        if (this.contattiModalMembro) {
+            return this.contattiModalMembro.nomeCompleto;
+        }
+
+        if (this.contattiModalCatechista) {
+            return `${this.contattiModalCatechista.nome} ${this.contattiModalCatechista.cognome}`;
+        }
+
+        return '';
+    }
+
     toggleForm() {
         if (this.formVisibile) {
             this.annullaForm();
@@ -931,7 +1024,8 @@ export class Comunita {
             nome: this.form.nome.trim(),
             cognome: this.form.cognome.trim(),
             nomeCompleto: `${this.form.nome.trim()} ${this.form.cognome.trim()}`.trim(),
-            email: '',
+            telefono: this.form.telefono.trim(),
+            email: this.form.email.trim(),
             dataInvioModuloPrivacy: this.form.consensoPrivacyStato === 'Inviato' ? this.oggiIso() : '',
             note: this.form.note.trim()
         };
@@ -951,6 +1045,8 @@ export class Comunita {
             nome: membro.nome,
             cognome: membro.cognome,
             ruolo: membro.ruolo === 'Presbitero' ? 'Fratello' : membro.ruolo,
+            telefono: membro.telefono,
+            email: membro.email,
             accessoApp: membro.accessoApp,
             statoMembro: membro.statoMembro,
             consensoPrivacyStato: membro.consensoPrivacyStato,
@@ -972,6 +1068,36 @@ export class Comunita {
         }
         this.membri = this.membri.map((membro) => (membro.id === this.ruoloModalMembro?.id ? { ...membro, ruolo: this.nuovoRuolo } : membro));
         this.messaggio = 'Ruolo aggiornato';
+        this.chiudiModali();
+    }
+
+    apriModificaContattiMembro(membro: MembroComunitaPilota) {
+        this.contattiModalMembro = membro;
+        this.contattiModalCatechista = null;
+        this.telefonoContatto = membro.telefono;
+        this.emailContatto = membro.email;
+    }
+
+    apriModificaContattiCatechista(catechista: CatechistaComunita) {
+        this.contattiModalCatechista = catechista;
+        this.contattiModalMembro = null;
+        this.telefonoContatto = catechista.telefono;
+        this.emailContatto = catechista.email;
+    }
+
+    salvaContatti() {
+        const telefono = this.telefonoContatto.trim();
+        const email = this.emailContatto.trim();
+
+        if (this.contattiModalMembro) {
+            this.membri = this.membri.map((membro) => (membro.id === this.contattiModalMembro?.id ? { ...membro, telefono, email } : membro));
+        }
+
+        if (this.contattiModalCatechista) {
+            this.catechisti = this.catechisti.map((catechista) => (catechista.id === this.contattiModalCatechista?.id ? { ...catechista, telefono, email } : catechista));
+        }
+
+        this.messaggio = 'Contatti aggiornati';
         this.chiudiModali();
     }
 
@@ -1066,6 +1192,10 @@ export class Comunita {
         this.privacyInvioMembro = null;
         this.invioMassivo = false;
         this.anteprimaMembro = null;
+        this.contattiModalMembro = null;
+        this.contattiModalCatechista = null;
+        this.telefonoContatto = '';
+        this.emailContatto = '';
         this.tappaModalAperta = false;
     }
 
@@ -1124,6 +1254,10 @@ export class Comunita {
         return `privacy-${stato.toLowerCase().replace(/\s+/g, '-')}`;
     }
 
+    displayContact(value: string) {
+        return value?.trim() || 'Da inserire';
+    }
+
     private creaMembriDemo(): MembroComunitaPilota[] {
         return DEMO_MEMBRI.map((membro, index) => ({
             id: index + 1,
@@ -1137,6 +1271,7 @@ export class Comunita {
             moduloPrivacyInviato: membro.privacy === 'Raccolto',
             moduloPrivacyRicevuto: membro.privacy === 'Raccolto',
             dataInvioModuloPrivacy: '',
+            telefono: '',
             email: '',
             note: 'Dato dimostrativo'
         }));
@@ -1147,6 +1282,8 @@ export class Comunita {
             nome: '',
             cognome: '',
             ruolo: 'Fratello',
+            telefono: '',
+            email: '',
             accessoApp: 'Nessuno',
             statoMembro: 'Attivo',
             consensoPrivacyStato: 'Da inviare',

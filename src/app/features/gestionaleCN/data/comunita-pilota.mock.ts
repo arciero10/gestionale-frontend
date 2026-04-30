@@ -16,6 +16,7 @@ export interface MembroComunitaPilota {
     moduloPrivacyInviato: boolean;
     moduloPrivacyRicevuto: boolean;
     dataInvioModuloPrivacy: string;
+    telefono: string;
     email: string;
     note: string;
 }
@@ -25,9 +26,11 @@ export interface CatechistaComunita {
     nome: string;
     cognome: string;
     ruolo: 'Catechista';
-    tipo: 'Accompagnatore';
+    tipo: 'Equipe dei catechisti';
     comunitaPropria: string;
     parrocchiaPropria: string;
+    telefono: string;
+    email: string;
     note: string;
     operativo: false;
 }
@@ -48,18 +51,20 @@ const baseMembro = {
     moduloPrivacyInviato: false,
     moduloPrivacyRicevuto: false,
     dataInvioModuloPrivacy: '',
+    telefono: '',
     email: '',
     note: ''
 };
 
-function membro(id: number, nome: string, cognome: string, ruolo: MembroComunitaPilota['ruolo']): MembroComunitaPilota {
+function membro(id: number, nome: string, cognome: string, ruolo: MembroComunitaPilota['ruolo'], overrides: Partial<MembroComunitaPilota> = {}): MembroComunitaPilota {
     return {
         id,
         nome,
         cognome,
         nomeCompleto: `${nome} ${cognome}`,
         ruolo,
-        ...baseMembro
+        ...baseMembro,
+        ...overrides
     };
 }
 
@@ -69,10 +74,12 @@ function catechista(id: number, nome: string, cognome: string): CatechistaComuni
         nome,
         cognome,
         ruolo: 'Catechista',
-        tipo: 'Accompagnatore',
+        tipo: 'Equipe dei catechisti',
         comunitaPropria: 'Da verificare',
         parrocchiaPropria: 'Da verificare',
-        note: 'Riferimento esterno / accompagnatore',
+        telefono: '',
+        email: '',
+        note: 'Equipe dei catechisti',
         operativo: false
     };
 }
@@ -87,7 +94,7 @@ export const MEMBRI_COMUNITA_PILOTA: MembroComunitaPilota[] = [
     membro(7, 'Giulio', 'Longo', 'Corresponsabile'),
     membro(8, 'Barbara', 'Longo', 'Corresponsabile'),
     membro(9, 'Massimiliano', 'Crivellari', 'Corresponsabile'),
-    membro(10, 'Chiara', 'Crivellari', 'Corresponsabile'),
+    membro(10, 'Chiara', 'Filippi', 'Fratello', { email: 'chiarafili77@yahoo.it' }),
     membro(11, 'Angela', 'Carnovale', 'Fratello'),
     membro(12, 'Angelo', 'Casale', 'Fratello'),
     membro(13, 'Clotilde', 'Casale', 'Fratello'),

@@ -17,6 +17,16 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'Dashboard' }
     },
         {
+        path: 'onboarding-comunita',
+        loadComponent: () => import('./onboarding-comunita/onboarding-comunita').then((c) => c.OnboardingComunita),
+        data: { breadcrumb: 'Associa comunità' }
+    },
+        {
+        path: 'onboarding-comunita-preview',
+        loadComponent: () => import('./onboarding-comunita/onboarding-comunita').then((c) => c.OnboardingComunita),
+        data: { breadcrumb: 'Anteprima primo accesso', preview: true }
+    },
+        {
         path: 'faq',
         loadComponent: () => import('../faq/faq').then((c) => c.Faq),
         data: { breadcrumb: 'Aiuto / FAQ', visibilita: 'interna' }

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
+import { hasSelectedCommunity } from '../gestionaleCN/data/community-selection.storage';
 
 interface DashboardModule {
     title: string;
@@ -333,6 +334,14 @@ export class Dashboard {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
+
+    constructor() {
+        const normalizedUrl = this.router.url.split('?')[0].split('#')[0];
+
+        if (!this.isDemo && (normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard') && !hasSelectedCommunity()) {
+            this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
+        }
+    }
 
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];

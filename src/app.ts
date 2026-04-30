@@ -4,9 +4,11 @@ import { AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
+import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
 import { filter, firstValueFrom } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
+const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
 
 @Component({
   selector: 'app-root',
@@ -266,11 +268,11 @@ export class App {
 
           if (result.idToken && this.isValidToken(result.idToken)) {
             localStorage.setItem('id_token', result.idToken);
-            this.authService.refreshState();
+          this.authService.refreshState();
           }
 
           this.authenticated.set(true);
-          this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
+          this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
           return;
         }
 
@@ -329,6 +331,10 @@ export class App {
   }
 
   showLogin(): boolean {
+    if (this.currentPath() === '/') {
+      return true;
+    }
+
     return !this.authenticated() && !this.isPublicRoute() && !this.isInternalRoute();
   }
 

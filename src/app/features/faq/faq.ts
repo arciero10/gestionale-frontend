@@ -54,7 +54,7 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
             </section>
 
             <footer>
-                <span>All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
+                <span>© All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
                 <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
             </footer>
         </main>

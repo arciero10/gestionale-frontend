@@ -2,7 +2,7 @@ export type FaqVisibilita = 'pubblica' | 'interna';
 
 export interface FaqItem {
     id: number;
-    categoria: 'Accesso' | 'Demo' | 'Comunità' | 'Membri' | 'Convivenze' | 'Posti di Convivenza' | 'Richieste strutture' | 'Privacy e Consensi' | 'Strutture';
+    categoria: 'Accesso' | 'Demo' | 'Comunità' | 'Membri' | 'Convivenze' | 'Posti di Convivenza' | 'Richieste strutture' | 'Privacy e Consensi' | 'Strutture' | 'Primo accesso e scelta comunità';
     domanda: string;
     risposta: string;
     visibilita: FaqVisibilita;
@@ -48,5 +48,12 @@ export const FAQ_MOCK: FaqItem[] = [
     { id: 124, categoria: 'Richieste strutture', domanda: 'Come vengono riconosciute le risposte delle strutture?', risposta: 'Ogni richiesta contiene un codice univoco nell’oggetto, ad esempio [EC-2026-000001]. Il sistema userà questo codice per collegare automaticamente le risposte alla richiesta corretta.', visibilita: 'interna', ordine: 24, tag: ['codice richiesta', 'risposte', 'graph'] },
     { id: 125, categoria: 'Richieste strutture', domanda: 'L’invio email è già reale?', risposta: 'In questa fase può essere in modalità mock/front-end se il backend non è ancora collegato. L’invio reale sarà gestito tramite Microsoft Graph e configurazione sicura.', visibilita: 'interna', ordine: 25, tag: ['mock', 'email', 'backend'] },
     { id: 126, categoria: 'Richieste strutture', domanda: 'Dove vengono salvati client secret o credenziali Graph?', risposta: 'Non devono essere salvati nel codice. Devono essere configurati tramite environment/appsettings o segreti dell’ambiente Azure.', visibilita: 'interna', ordine: 26, tag: ['secret', 'graph', 'azure'] },
-    { id: 127, categoria: 'Richieste strutture', domanda: 'La demo usa richieste reali?', risposta: 'No. La demo deve usare solo dati finti e non deve contenere richieste reali, strutture reali o dati personali reali.', visibilita: 'interna', ordine: 27, tag: ['demo', 'dati finti'] }
+    { id: 127, categoria: 'Richieste strutture', domanda: 'La demo usa richieste reali?', risposta: 'No. La demo deve usare solo dati finti e non deve contenere richieste reali, strutture reali o dati personali reali.', visibilita: 'interna', ordine: 27, tag: ['demo', 'dati finti'] },
+    { id: 128, categoria: 'Primo accesso e scelta comunità', domanda: 'Cosa succede al primo accesso?', risposta: 'Dopo l’accesso con email, se l’utente non ha ancora una comunità associata, il gestionale mostra una pagina per scegliere la parrocchia e il numero della comunità.', visibilita: 'interna', ordine: 28, tag: ['primo accesso', 'onboarding'] },
+    { id: 129, categoria: 'Primo accesso e scelta comunità', domanda: 'Devo scegliere diocesi e settore?', risposta: 'No. Diocesi e settore vengono compilati automaticamente in base alla parrocchia scelta.', visibilita: 'interna', ordine: 29, tag: ['diocesi', 'settore', 'parrocchia'] },
+    { id: 130, categoria: 'Primo accesso e scelta comunità', domanda: 'Posso scegliere la mia comunità?', risposta: 'Sì. In fase iniziale l’utente può indicare la propria comunità scegliendo parrocchia e numero comunità. La scelta potrà essere verificata dal responsabile.', visibilita: 'interna', ordine: 30, tag: ['comunità', 'verifica'] },
+    { id: 131, categoria: 'Primo accesso e scelta comunità', domanda: 'La demo richiede questa scelta?', risposta: 'No. La demo pubblica usa dati finti e non richiede login né scelta comunità reale.', visibilita: 'interna', ordine: 31, tag: ['demo', 'onboarding'] },
+    { id: 132, categoria: 'Primo accesso e scelta comunità', domanda: 'Il responsabile può vedere un fac simile?', risposta: 'Sì. Nell’ambiente gestionale è disponibile un’anteprima del primo accesso utente per verificare il flusso prima di invitare i membri.', visibilita: 'interna', ordine: 32, tag: ['anteprima', 'responsabile'] },
+    { id: 133, categoria: 'Primo accesso e scelta comunità', domanda: 'Dove vengono gestiti telefono ed email dei membri?', risposta: 'Telefono ed email dei membri sono gestiti solo nell’ambiente autenticato e sono visibili agli utenti autorizzati del gestionale.', visibilita: 'interna', ordine: 33, tag: ['contatti', 'membri'] },
+    { id: 134, categoria: 'Primo accesso e scelta comunità', domanda: 'L’equipe dei catechisti fa parte della tabella membri?', risposta: 'No. L’equipe dei catechisti è collegata alla comunità ma viene mostrata in uno specchietto separato e non viene conteggiata come elenco membri/fratelli della comunità.', visibilita: 'interna', ordine: 34, tag: ['equipe', 'catechisti'] }
 ];
