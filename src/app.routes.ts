@@ -70,6 +70,10 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/completa-profilo/completa-profilo').then((c) => c.CompletaProfilo)
   },
   {
+    path: 'completa-anagrafica/:token',
+    loadComponent: () => import('@/features/gestionaleCN/censimento-comunita/completa-anagrafica').then((c) => c.CompletaAnagrafica)
+  },
+  {
     path: 'gestionale-cn',
     component: AppLayout,
     canMatch: [gestionaleAuthGuard],

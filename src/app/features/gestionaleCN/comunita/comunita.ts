@@ -38,7 +38,12 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                     <h1>La tua ComunitÃ </h1>
                     <p>Anagrafica comunitÃ  e gestione iniziale dei consensi.</p>
                 </div>
-                <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
+                <div class="heading-actions">
+                    @if (!isDemo) {
+                        <a pButton routerLink="/gestionale-cn/censimento-comunita" icon="pi pi-list-check" label="Censisci comunità" severity="secondary" outlined></a>
+                    }
+                    <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
+                </div>
             </header>
 
             <section class="identity-card">
@@ -491,6 +496,13 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             .section-title {
                 justify-content: space-between;
                 align-items: center;
+            }
+
+            .heading-actions {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.65rem;
             }
 
             .page-heading h1,

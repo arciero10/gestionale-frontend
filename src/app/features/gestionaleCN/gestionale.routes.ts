@@ -42,6 +42,11 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'La tua Comunità' }
     },
         {
+        path: 'censimento-comunita',
+        loadComponent: () => import('./censimento-comunita/censimento-comunita').then((c) => c.CensimentoComunita),
+        data: { breadcrumb: 'Censimento comunità' }
+    },
+        {
         path: 'posti-convivenza/mappa',
         loadComponent: () => import('./posti-convivenza/posti-convivenza-mappa').then((c) => c.PostiConvivenzaMappa),
         data: { breadcrumb: 'Mappa posti di Convivenza' }

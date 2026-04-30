@@ -2,12 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 import { hasSelectedCommunity } from '../gestionaleCN/data/community-selection.storage';
-import { TIPI_CONVIVENZA, TipoConvivenza } from '../gestionaleCN/data/tappe-cammino.mock';
+import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 
 interface DashboardModule {
     title: string;
@@ -21,7 +22,7 @@ interface DashboardModule {
 @Component({
     selector: 'app-dashboard',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, SelectModule, TagModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, SelectModule, TagModule],
     template: `
         <section class="dashboard-stage">
             <div class="dashboard-overlay"></div>
@@ -46,18 +47,26 @@ interface DashboardModule {
                         <div class="summary-tappa">
                             <dt>Tappa del Cammino</dt>
                             <dd>
-                                @if (isDemo) {
-                                    {{ tappaCammino }}
+                                @if (tappaInModifica && currentUserCanEditCommunity && !isDemo) {
+                                    <div class="tappa-edit">
+                                        <p-select
+                                            inputId="dashboardTappaCammino"
+                                            appendTo="body"
+                                            panelStyleClass="dashboard-dropdown-panel"
+                                            [options]="tappeOptions"
+                                            [(ngModel)]="tappaInBozza"
+                                            ariaLabel="Tappa del Cammino"
+                                        ></p-select>
+                                        <button pButton type="button" label="Salva" size="small" (click)="salvaTappa()"></button>
+                                        <button pButton type="button" label="Annulla" size="small" severity="secondary" outlined (click)="annullaTappa()"></button>
+                                    </div>
                                 } @else {
-                                    <p-select
-                                        inputId="dashboardTappaCammino"
-                                        appendTo="body"
-                                        panelStyleClass="dashboard-dropdown-panel"
-                                        [options]="tappeOptions"
-                                        [(ngModel)]="tappaCammino"
-                                        (ngModelChange)="aggiornaTappa($event)"
-                                        ariaLabel="Tappa del Cammino"
-                                    ></p-select>
+                                    <div class="tappa-readonly" [title]="tappaCammino">
+                                        <span>{{ tappaCammino }}</span>
+                                        @if (currentUserCanEditCommunity && !isDemo) {
+                                            <button pButton type="button" icon="pi pi-pencil" label="Modifica" size="small" text (click)="modificaTappa()"></button>
+                                        }
+                                    </div>
                                 }
                             </dd>
                         </div>
@@ -199,8 +208,8 @@ interface DashboardModule {
             }
 
             .community-summary dl div.summary-tappa {
-                flex: 2 1 20rem;
-                min-width: min(100%, 19rem);
+                flex: 3 1 29rem;
+                min-width: min(100%, 29rem);
             }
 
             .community-summary dt {
@@ -215,9 +224,34 @@ interface DashboardModule {
                 line-height: 1.15;
             }
 
+            .tappa-readonly,
+            .tappa-edit {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                min-width: 0;
+            }
+
+            .tappa-readonly span {
+                min-width: 0;
+                max-width: 25rem;
+                padding: 0.45rem 0.65rem;
+                border-radius: 10px;
+                color: #334155;
+                background: #eef2f7;
+                border: 1px solid #dbe3ec;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .tappa-edit p-select {
+                flex: 1 1 21rem;
+            }
+
             .community-summary p-select {
                 display: block;
-                min-width: 18rem;
+                min-width: 22rem;
                 max-width: 100%;
             }
 
@@ -229,9 +263,9 @@ interface DashboardModule {
             }
 
             :host ::ng-deep .community-summary .p-select-label {
-                white-space: normal;
-                overflow: visible;
-                text-overflow: clip;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
                 line-height: 1.2;
                 padding-top: 0.45rem;
                 padding-bottom: 0.45rem;
@@ -403,6 +437,15 @@ interface DashboardModule {
                 .community-summary p-select {
                     min-width: 0;
                 }
+
+                .tappa-readonly,
+                .tappa-edit {
+                    flex-wrap: wrap;
+                }
+
+                .tappa-readonly span {
+                    max-width: 100%;
+                }
             }
         `
     ]
@@ -411,10 +454,14 @@ export class Dashboard {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
-    private readonly tappaStorageKey = 'eventiComunità.tappaCammino';
+    private readonly tappaStorageKey = 'eventiComunita.tappaCammino';
 
-    tappeOptions = [...TIPI_CONVIVENZA];
-    tappaCammino: TipoConvivenza = 'Precatecumenato';
+    readonly currentUserRole = 'Responsabile';
+    readonly currentUserCanEditCommunity = this.currentUserRole === 'Responsabile';
+    tappeOptions = [...TAPPE_CAMMINO];
+    tappaCammino: TappaCammino = 'Precatecumenato';
+    tappaInBozza: TappaCammino = 'Precatecumenato';
+    tappaInModifica = false;
     messaggio = '';
 
     constructor() {
@@ -424,7 +471,8 @@ export class Dashboard {
             this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
         }
 
-        this.tappaCammino = this.isDemo ? (DEMO_COMUNITA.tappaCammino as TipoConvivenza) : this.leggiTappaSalvata();
+        this.tappaCammino = this.isDemo ? normalizeTappaCammino(DEMO_COMUNITA.tappaCammino) : this.leggiTappaSalvata();
+        this.tappaInBozza = this.tappaCammino;
     }
 
     get isDemo() {
@@ -501,14 +549,28 @@ export class Dashboard {
         ];
     }
 
-    aggiornaTappa(tappa: TipoConvivenza) {
-        this.tappaCammino = tappa;
-        localStorage.setItem(this.tappaStorageKey, tappa);
-        this.messaggio = 'Tappa aggiornata';
+    modificaTappa() {
+        if (!this.currentUserCanEditCommunity) {
+            return;
+        }
+        this.tappaInBozza = this.tappaCammino;
+        this.tappaInModifica = true;
     }
 
-    private leggiTappaSalvata(): TipoConvivenza {
-        const saved = localStorage.getItem(this.tappaStorageKey) as TipoConvivenza | null;
-        return saved && this.tappeOptions.includes(saved) ? saved : (this.comunitaAttiva.tappaCammino as TipoConvivenza);
+    salvaTappa() {
+        this.tappaCammino = this.tappaInBozza;
+        localStorage.setItem(this.tappaStorageKey, this.tappaCammino);
+        this.tappaInModifica = false;
+        this.messaggio = 'Tappa del Cammino aggiornata';
+    }
+
+    annullaTappa() {
+        this.tappaInBozza = this.tappaCammino;
+        this.tappaInModifica = false;
+    }
+
+    private leggiTappaSalvata(): TappaCammino {
+        const saved = localStorage.getItem(this.tappaStorageKey) ?? localStorage.getItem('eventiComunità.tappaCammino') ?? '';
+        return saved ? normalizeTappaCammino(saved) : normalizeTappaCammino(this.comunitaAttiva.tappaCammino);
     }
 }

@@ -15,7 +15,7 @@ import { GRAPH_SENDER_MAILBOX_PLACEHOLDER } from './graph-email.placeholder';
 export class RichiesteStruttureService {
     private readonly convivenze: RichiestaStrutturaOption[] = [
         { id: 1, label: 'Convivenza Inizio Corso 2025', descrizione: '05-12-2026 - 08-12-2026, 42 partecipanti indicativi', dataInizio: '2026-12-05', dataFine: '2026-12-08', partecipanti: 42 },
-        { id: 2, label: 'Passaggio 1 Scrutinio', descrizione: '12-03-2027 - 14-03-2027, 40 partecipanti indicativi', dataInizio: '2027-03-12', dataFine: '2027-03-14', partecipanti: 40 },
+        { id: 2, label: 'Passaggio 1° Scrutinio', descrizione: '12-03-2027 - 14-03-2027, 40 partecipanti indicativi', dataInizio: '2027-03-12', dataFine: '2027-03-14', partecipanti: 40 },
         { id: 3, label: 'Convivenza di Pentecoste', descrizione: '22-05-2027 - 24-05-2027, 38 partecipanti indicativi', dataInizio: '2027-05-22', dataFine: '2027-05-24', partecipanti: 38 }
     ];
 

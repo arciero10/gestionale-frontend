@@ -37,6 +37,11 @@ export class AppMenu {
                     routerLink: ['/gestionale-cn/comunita']
                 },
                 {
+                    label: 'Censimento comunità',
+                    icon: 'pi pi-fw pi-user-plus',
+                    routerLink: ['/gestionale-cn/censimento-comunita']
+                },
+                {
                     label: 'Convivenze',
                     icon: 'pi pi-fw pi-calendar',
                     routerLink: ['/gestionale-cn/convivenze']

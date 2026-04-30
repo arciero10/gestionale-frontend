@@ -242,8 +242,8 @@ export class Convivenze {
         },
         {
             id: 2,
-            titolo: 'Passaggio 1 Scrutinio',
-            tipoConvivenza: '1 Scrutinio',
+            titolo: 'Passaggio 1° Scrutinio',
+            tipoConvivenza: '1° Scrutinio',
             dataInizio: '2027-03-12',
             dataFine: '2027-03-14',
             stato: 'Bozza',
