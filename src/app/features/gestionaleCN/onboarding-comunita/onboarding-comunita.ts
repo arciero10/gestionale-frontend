@@ -142,7 +142,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 display: grid;
                 place-items: center;
                 padding: clamp(1rem, 3vw, 2rem);
-                background: #f5f7fb;
+                background: transparent;
             }
             .onboarding-card {
                 width: min(100%, 760px);

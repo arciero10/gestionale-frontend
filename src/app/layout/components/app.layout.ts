@@ -15,7 +15,12 @@ import { AppBreadcrumb } from './app.breadcrumb';
         <div app-topbar></div>
         <div app-sidebar></div>
 
-        <div class="layout-content-wrapper" [ngClass]="{ 'layout-dashboard-full': isDashboardRoute() }">
+        <div
+            class="layout-content-wrapper"
+            [class.layout-dashboard-full]="isDashboardRoute()"
+            [class.layout-page-background]="!isDashboardRoute()"
+            [style.--page-background-image]="pageBackgroundStyle()"
+        >
             <nav app-breadcrumb *ngIf="!isDashboardRoute()"></nav>
             <div class="layout-content">
                 <router-outlet></router-outlet>
@@ -39,11 +44,43 @@ import { AppBreadcrumb } from './app.breadcrumb';
                 line-height: 1.45;
                 text-align: center;
             }
+
+            .layout-content-wrapper.layout-page-background {
+                background-image:
+                    linear-gradient(180deg, rgba(245, 247, 251, 0.9), rgba(245, 247, 251, 0.95)),
+                    var(--page-background-image, url('/images/backgrounds/comunita-bg.jpg'));
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+            }
+
+            .layout-content-wrapper.layout-page-background nav,
+            .layout-content-wrapper.layout-page-background .layout-content,
+            .layout-content-wrapper.layout-page-background .internal-footer {
+                position: relative;
+                z-index: 1;
+            }
         `
     ]
 })
 export class AppLayout implements OnDestroy {
     isDashboardRoute = signal(false);
+    currentContentBackground = signal('/images/backgrounds/comunita-bg.jpg');
+    pageBackgroundStyle = computed(() => `url("${this.currentContentBackground()}")`);
+
+    private readonly fallbackContentBackground = '/images/backgrounds/comunita-bg.jpg';
+    private readonly contentBackgrounds = [
+        { path: '/gestionale-cn/comunita', image: '/images/backgrounds/comunita-bg.jpg' },
+        { path: '/gestionale-cn/convivenze', image: '/images/backgrounds/convivenze-bg.jpg' },
+        { path: '/gestionale-cn/posti-convivenza', image: '/images/backgrounds/posti-convivenza-bg.jpg' },
+        { path: '/gestionale-cn/richieste-strutture', image: '/images/backgrounds/richieste-strutture-bg.jpg' },
+        { path: '/gestionale-cn/censimento-comunita', image: '/images/backgrounds/censimento-comunita-bg.jpg' },
+        { path: '/gestionale-cn/onboarding-comunita-preview', image: '/images/backgrounds/onboarding-comunita-bg.jpg' },
+        { path: '/gestionale-cn/onboarding-comunita', image: '/images/backgrounds/onboarding-comunita-bg.jpg' },
+        { path: '/gestionale-cn/faq', image: '/images/backgrounds/faq-bg.jpg' },
+        { path: '/gestionale-cn/privacy', image: '/images/backgrounds/faq-bg.jpg' },
+        { path: '/gestionale-cn/viaggi', image: '/images/backgrounds/convivenze-bg.jpg' }
+    ];
 
     overlayMenuOpenSubscription: Subscription;
 
@@ -60,7 +97,7 @@ export class AppLayout implements OnDestroy {
         public renderer: Renderer2,
         public router: Router
     ) {
-        this.updateDashboardRoute(this.router.url);
+        this.updateRouteState(this.router.url);
 
         this.overlayMenuOpenSubscription = this.layoutService.overlayOpen$.subscribe(() => {
             if (!this.menuOutsideClickListener) {
@@ -94,14 +131,19 @@ export class AppLayout implements OnDestroy {
         });
 
         this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
-            this.updateDashboardRoute(event.urlAfterRedirects);
+            this.updateRouteState(event.urlAfterRedirects);
             this.hideMenu();
         });
     }
 
-    private updateDashboardRoute(url: string) {
+    private updateRouteState(url: string) {
         const normalizedUrl = url.split('?')[0].split('#')[0];
         this.isDashboardRoute.set(normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard');
+        this.currentContentBackground.set(this.resolveContentBackground(normalizedUrl));
+    }
+
+    private resolveContentBackground(url: string) {
+        return this.contentBackgrounds.find((item) => url === item.path || url.startsWith(`${item.path}/`))?.image ?? this.fallbackContentBackground;
     }
 
     @HostListener('document:keydown.escape')

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, HostBinding, inject } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 
@@ -137,6 +137,19 @@ import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
     `,
     styles: [
         `
+            :host {
+                display: block;
+            }
+            :host.public-privacy-page {
+                min-height: 100vh;
+                padding: clamp(1rem, 3vw, 2rem);
+                background-image:
+                    linear-gradient(180deg, rgba(245, 247, 251, 0.9), rgba(245, 247, 251, 0.95)),
+                    url('/images/backgrounds/faq-bg.jpg');
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+            }
             .privacy-info-page { display: grid; gap: 1.25rem; max-width: 1100px; margin: 0 auto; }
             .privacy-hero, .owner-card, .privacy-section { border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; box-shadow: 0 12px 28px rgba(15, 23, 42, .06); }
             .privacy-hero { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.35rem; }
@@ -161,5 +174,12 @@ import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
     ]
 })
 export class PrivacyInfo {
+    private readonly route = inject(ActivatedRoute);
+
+    @HostBinding('class.public-privacy-page')
+    get isPublicPrivacyPage() {
+        return this.route.snapshot.data['visibilita'] === 'pubblica';
+    }
+
     privacy = PRIVACY_CONFIG;
 }
