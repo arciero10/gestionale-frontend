@@ -49,11 +49,11 @@ import { CreaRichiestaStrutturaPayload, MessaggioRichiestaStruttura, RichiestaSt
                     <form class="request-form" #richiestaForm="ngForm" (ngSubmit)="creaRichiesta()">
                         <div>
                             <label for="convivenza">Convivenza</label>
-                            <p-select inputId="convivenza" name="convivenza" appendTo="body" [options]="convivenzeOptions" optionLabel="label" optionValue="id" [(ngModel)]="form.convivenzaId" (onChange)="aggiornaBozza()" required></p-select>
+                            <p-select inputId="convivenza" name="convivenza" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="convivenzeOptions" optionLabel="label" optionValue="id" [(ngModel)]="form.convivenzaId" (onChange)="aggiornaBozza()" required></p-select>
                         </div>
                         <div>
                             <label for="struttura">Struttura</label>
-                            <p-select inputId="struttura" name="struttura" appendTo="body" [options]="struttureOptions" optionLabel="label" optionValue="id" [(ngModel)]="form.strutturaId" required></p-select>
+                            <p-select inputId="struttura" name="struttura" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="struttureOptions" optionLabel="label" optionValue="id" [(ngModel)]="form.strutturaId" required></p-select>
                         </div>
                         <div>
                             <label for="comunitaCoinvolte">Comunità coinvolte</label>

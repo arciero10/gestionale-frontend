@@ -41,8 +41,8 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                 <input pInputText placeholder="Cerca nome, indirizzo, citta, email" [(ngModel)]="filtroTesto" />
                 <input pInputText placeholder="Citta o regione" [(ngModel)]="filtroLuogo" />
                 <input pInputText type="number" placeholder="Capienza minima" [(ngModel)]="filtroCapienza" />
-                <p-select [options]="tipologie" [(ngModel)]="filtroTipologia" placeholder="Tipologia" [showClear]="true"></p-select>
-                <p-select [options]="statiRelazione" [(ngModel)]="filtroStato" placeholder="Stato relazione" [showClear]="true"></p-select>
+                <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipologie" [(ngModel)]="filtroTipologia" placeholder="Tipologia" [showClear]="true"></p-select>
+                <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="statiRelazione" [(ngModel)]="filtroStato" placeholder="Stato relazione" [showClear]="true"></p-select>
                 <div class="service-filter">
                     @for (servizio of serviziFiltri; track servizio.key) {
                         <button type="button" [class.active]="hasServizioFilter(servizio.key)" (click)="toggleServizio(servizio.key)">

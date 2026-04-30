@@ -35,6 +35,30 @@ export interface CatechistaComunita {
     operativo: false;
 }
 
+export type TipoUnitaEquipeCatechisti = 'Coppia' | 'Fratello singolo' | 'Sorella singola';
+export type GenereMembroEquipeCatechisti = 'Fratello' | 'Sorella';
+
+export interface MembroEquipeCatechisti {
+    id: number;
+    nome: string;
+    cognome: string;
+    genere: GenereMembroEquipeCatechisti;
+    telefono: string;
+    email: string;
+    capoEquipe: boolean;
+}
+
+export interface EquipeCatechistiUnita {
+    id: number;
+    tipoUnita: TipoUnitaEquipeCatechisti;
+    nomeVisualizzato: string;
+    membri: MembroEquipeCatechisti[];
+    capoEquipe: boolean;
+    telefono: string;
+    email: string;
+    note: string;
+}
+
 export const COMUNITA_PILOTA = {
     numero: 3,
     nomeVisualizzato: '3ª Comunità',
@@ -155,4 +179,56 @@ export const CATECHISTI_COMUNITA_PILOTA: CatechistaComunita[] = [
     catechista(5, 'Danilo', 'Greco'),
     catechista(6, 'Fiorella', 'Greco'),
     catechista(7, 'Rosanna', 'Lentini')
+];
+
+export const EQUIPE_CATECHISTI_UNITA_PILOTA: EquipeCatechistiUnita[] = [
+    {
+        id: 1,
+        tipoUnita: 'Coppia',
+        nomeVisualizzato: 'Paolo e Angela Bencetti',
+        membri: [
+            { id: 1, nome: 'Paolo', cognome: 'Bencetti', genere: 'Fratello', telefono: '', email: '', capoEquipe: false },
+            { id: 2, nome: 'Angela', cognome: 'Bencetti', genere: 'Sorella', telefono: '', email: '', capoEquipe: false }
+        ],
+        capoEquipe: false,
+        telefono: '',
+        email: '',
+        note: ''
+    },
+    {
+        id: 2,
+        tipoUnita: 'Coppia',
+        nomeVisualizzato: 'Franco e Annamaria Meloni',
+        membri: [
+            { id: 3, nome: 'Franco', cognome: 'Meloni', genere: 'Fratello', telefono: '', email: '', capoEquipe: false },
+            { id: 4, nome: 'Annamaria', cognome: 'Meloni', genere: 'Sorella', telefono: '', email: '', capoEquipe: false }
+        ],
+        capoEquipe: false,
+        telefono: '',
+        email: '',
+        note: ''
+    },
+    {
+        id: 3,
+        tipoUnita: 'Coppia',
+        nomeVisualizzato: 'Danilo e Fiorella Greco',
+        membri: [
+            { id: 5, nome: 'Danilo', cognome: 'Greco', genere: 'Fratello', telefono: '', email: '', capoEquipe: false },
+            { id: 6, nome: 'Fiorella', cognome: 'Greco', genere: 'Sorella', telefono: '', email: '', capoEquipe: false }
+        ],
+        capoEquipe: false,
+        telefono: '',
+        email: '',
+        note: ''
+    },
+    {
+        id: 4,
+        tipoUnita: 'Sorella singola',
+        nomeVisualizzato: 'Rosanna Lentini',
+        membri: [{ id: 7, nome: 'Rosanna', cognome: 'Lentini', genere: 'Sorella', telefono: '', email: '', capoEquipe: false }],
+        capoEquipe: false,
+        telefono: '',
+        email: '',
+        note: ''
+    }
 ];

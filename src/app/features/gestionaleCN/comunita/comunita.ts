@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -9,18 +9,18 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
-    CATECHISTI_COMUNITA_PILOTA,
     COMUNITA_PILOTA,
+    EQUIPE_CATECHISTI_UNITA_PILOTA,
     MEMBRI_COMUNITA_PILOTA,
-    CatechistaComunita,
     ConsensoPrivacyPilota,
+    EquipeCatechistiUnita,
     MembroComunitaPilota,
     RuoloComunitaPilota,
-    RuoloOperativoComunita
+    RuoloOperativoComunita,
+    TipoUnitaEquipeCatechisti
 } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
-import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
@@ -34,25 +34,21 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
         <div class="community-page">
             <header class="page-heading">
                 <div>
-                    <h1>La tua Comunità</h1>
-                    <p>Anagrafica comunità e gestione iniziale dei consensi.</p>
+                    <h1>La tua ComunitÃ </h1>
+                    <p>Anagrafica comunitÃ  e gestione iniziale dei consensi.</p>
                 </div>
                 <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
             </header>
 
             <section class="identity-card">
                 <div>
-                    <span>Comunità associata</span>
+                    <span>ComunitÃ  associata</span>
                     <h2>{{ nomeComunita }}</h2>
                     <p>{{ parrocchiaComunita }}</p>
                 </div>
                 <div class="identity-meta">
-                    <span class="tappa-badge">Tappa del Cammino: {{ tappaCammino }}</span>
-                    <strong>Settore {{ settoreComunita }}</strong>
-                    <strong>{{ diocesiComunita }}</strong>
-                    <small>{{ isDemo ? 'I dati mostrati sono dimostrativi.' : 'Questi dati sono visibili solo nell’ambiente autenticato.' }}</small>
+                    <small>{{ isDemo ? 'I dati mostrati sono dimostrativi.' : 'Questi dati sono visibili solo nellâ€™ambiente autenticato.' }}</small>
                     @if (!isDemo) {
-                        <button pButton type="button" label="Modifica tappa" icon="pi pi-flag" severity="secondary" outlined (click)="apriModificaTappa()"></button>
                         <a class="preview-link" routerLink="/gestionale-cn/onboarding-comunita-preview">Anteprima primo accesso utente</a>
                     }
                 </div>
@@ -66,19 +62,33 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <h2>Equipe dei catechisti</h2>
                             <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
                         </div>
-                        <strong>{{ catechisti.length }}</strong>
+                        <strong>{{ equipeCatechisti.length }}</strong>
                     </div>
                     <div class="catechisti-grid">
-                        @for (catechista of catechisti; track catechista.id) {
+                        @for (unita of equipeCatechisti; track unita.id) {
                             <article>
-                                <strong>{{ catechista.nome }} {{ catechista.cognome }}</strong>
-                                <span class="role-badge role-catechista">{{ catechista.ruolo }}</span>
-                                <small>Tipo: {{ catechista.tipo }}</small>
+                                <strong>{{ unita.nomeVisualizzato }}</strong>
+                                <div class="unit-badges">
+                                    <span class="role-badge role-catechista">{{ unita.tipoUnita }}</span>
+                                    @if (unita.capoEquipe) {
+                                        <span class="role-badge role-responsabile">Capo equipe</span>
+                                    } @else {
+                                        <span class="role-badge role-fratello">Capo equipe: Da indicare</span>
+                                    }
+                                </div>
+                                <ul class="unit-members">
+                                    @for (membro of unita.membri; track membro.id) {
+                                        <li>{{ membro.nome }} {{ membro.cognome }}</li>
+                                    }
+                                </ul>
                                 <dl class="contact-list">
-                                    <div><dt>Telefono</dt><dd>{{ displayContact(catechista.telefono) }}</dd></div>
-                                    <div><dt>Email</dt><dd>{{ displayContact(catechista.email) }}</dd></div>
+                                    <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
+                                    <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
                                 </dl>
-                                <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiCatechista(catechista)"></button>
+                                <div class="unit-actions">
+                                    <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
+                                    <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
+                                </div>
                             </article>
                         }
                     </div>
@@ -106,7 +116,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         </div>
                         <div>
                             <label for="ruolo">Ruolo</label>
-                            <p-select inputId="ruolo" name="ruolo" appendTo="body" [options]="ruoliForm" [(ngModel)]="form.ruolo" required></p-select>
+                            <p-select inputId="ruolo" name="ruolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="ruoliForm" [(ngModel)]="form.ruolo" required></p-select>
                         </div>
                         <div>
                             <label for="telefono">Telefono</label>
@@ -118,15 +128,15 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         </div>
                         <div>
                             <label for="accessoApp">Accesso app</label>
-                            <p-select inputId="accessoApp" name="accessoApp" appendTo="body" [options]="accessiApp" [(ngModel)]="form.accessoApp"></p-select>
+                            <p-select inputId="accessoApp" name="accessoApp" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="accessiApp" [(ngModel)]="form.accessoApp"></p-select>
                         </div>
                         <div>
                             <label for="statoMembro">Stato</label>
-                            <p-select inputId="statoMembro" name="statoMembro" appendTo="body" [options]="statiMembro" [(ngModel)]="form.statoMembro"></p-select>
+                            <p-select inputId="statoMembro" name="statoMembro" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="statiMembro" [(ngModel)]="form.statoMembro"></p-select>
                         </div>
                         <div>
                             <label for="consensoPrivacyStato">Privacy</label>
-                            <p-select inputId="consensoPrivacyStato" name="consensoPrivacyStato" appendTo="body" [options]="statiPrivacy" [(ngModel)]="form.consensoPrivacyStato"></p-select>
+                            <p-select inputId="consensoPrivacyStato" name="consensoPrivacyStato" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="statiPrivacy" [(ngModel)]="form.consensoPrivacyStato"></p-select>
                         </div>
                         <label class="check-row">
                             <input type="checkbox" name="moduloPrivacyInviato" [(ngModel)]="form.moduloPrivacyInviato" />
@@ -155,14 +165,14 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 </div>
                 <div class="search-box">
                     <label for="filtroRuolo">Filtra ruolo</label>
-                    <p-select inputId="filtroRuolo" appendTo="body" [options]="ruoliFiltro" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i ruoli"></p-select>
+                    <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="ruoliFiltro" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i ruoli"></p-select>
                 </div>
                 <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
                 <div class="totals">
                     <strong>{{ membriFiltrati.length }}</strong>
                     <span>membri visualizzati su {{ membri.length }}</span>
                     @if (!isDemo) {
-                        <small>Equipe dei catechisti: {{ catechisti.length }}</small>
+                        <small>Equipe dei catechisti: {{ equipeCatechisti.length }}</small>
                     }
                 </div>
             </section>
@@ -180,7 +190,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 <p-table [value]="membriFiltrati" dataKey="id" responsiveLayout="scroll" [paginator]="membriFiltrati.length > 12" [rows]="12">
                     <ng-template #caption>
                         <div class="table-caption">
-                            <strong>Membri comunità</strong>
+                            <strong>Membri comunitÃ </strong>
                             <span>{{ membri.length }} membri totali</span>
                         </div>
                     </ng-template>
@@ -227,7 +237,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 </p-table>
             </section>
 
-            <section class="member-cards" aria-label="Membri comunità">
+            <section class="member-cards" aria-label="Membri comunitÃ ">
                 @for (membro of membriFiltrati; track membro.id) {
                     <article class="member-card">
                         <div class="member-card-head">
@@ -242,8 +252,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <div><dt>Email</dt><dd>{{ displayContact(membro.email) }}</dd></div>
                             <div><dt>Accesso app</dt><dd>{{ membro.accessoApp }}</dd></div>
                             <div><dt>Privacy</dt><dd><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></dd></div>
-                            <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'Sì' : 'No' }}</dd></div>
-                            <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'Sì' : 'No' }}</dd></div>
+                            <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'SÃ¬' : 'No' }}</dd></div>
+                            <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'SÃ¬' : 'No' }}</dd></div>
                         </dl>
                         <div class="card-actions">
                             <button pButton type="button" icon="pi pi-user-edit" label="Modifica ruolo" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
@@ -294,6 +304,33 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 </div>
             }
 
+            @if (unitaEquipeModal) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" aria-label="Modifica unità equipe" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Equipe dei catechisti</span>
+                            <h2>Modifica unità</h2>
+                        </header>
+                        <label for="tipoUnitaEquipe">Tipo unità</label>
+                        <p-select inputId="tipoUnitaEquipe" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiUnitaEquipe" [(ngModel)]="tipoUnitaEquipe"></p-select>
+                        <label for="nomeVisualizzatoEquipe">Nome visualizzato</label>
+                        <input id="nomeVisualizzatoEquipe" pInputText [(ngModel)]="nomeVisualizzatoEquipe" />
+                        <label for="membriEquipeTesto">Membri della unità</label>
+                        <textarea id="membriEquipeTesto" pTextarea rows="4" [(ngModel)]="membriEquipeTesto"></textarea>
+                        <label class="check-row">
+                            <input type="checkbox" [(ngModel)]="capoEquipeUnita" />
+                            Capo equipe
+                        </label>
+                        <label for="noteEquipe">Note</label>
+                        <textarea id="noteEquipe" pTextarea rows="3" [(ngModel)]="noteEquipe"></textarea>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            <button pButton type="button" label="Salva unità" icon="pi pi-check" (click)="salvaUnitaEquipe()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
             @if (privacyModalMembro) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
                     <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica privacy" (click)="$event.stopPropagation()">
@@ -315,24 +352,6 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 </div>
             }
 
-            @if (tappaModalAperta) {
-                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
-                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica tappa del Cammino" (click)="$event.stopPropagation()">
-                        <header>
-                            <span>Modifica tappa</span>
-                            <h2>{{ nomeComunita }}</h2>
-                        </header>
-                        <p>Tappa attuale: <strong>{{ tappaCammino }}</strong></p>
-                        <label for="nuovaTappa">Nuova tappa</label>
-                        <p-select inputId="nuovaTappa" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tappeCammino" [(ngModel)]="nuovaTappa"></p-select>
-                        <footer>
-                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
-                            <button pButton type="button" label="Salva tappa" icon="pi pi-check" (click)="salvaTappa()"></button>
-                        </footer>
-                    </section>
-                </div>
-            }
-
             @if (privacyInvioAperto) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
                     <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" aria-label="Invia modulo privacy" (click)="$event.stopPropagation()">
@@ -340,7 +359,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <span>Invio modulo privacy</span>
                             <h2>{{ invioMassivo ? 'Moduli privacy mancanti' : privacyInvioMembro?.nomeCompleto }}</h2>
                         </header>
-                        <p>Il fratello riceverà un link personale per completare i propri dati e consensi. L’invio reale sarà collegato al backend email in una fase successiva.</p>
+                        <p>Il fratello riceverÃ  un link personale per completare i propri dati e consensi. Lâ€™invio reale sarÃ  collegato al backend email in una fase successiva.</p>
                         @if (!invioMassivo && privacyInvioMembro) {
                             <div class="email-preview">
                                 <strong>Destinatario</strong>
@@ -350,20 +369,20 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         @if (invioMassivo) {
                             <div class="email-preview">
                                 <strong>{{ membriSelezionatiInvio.length }} moduli selezionati</strong>
-                                <span>Con email: {{ membriConEmailSelezionati.length }} · Senza email: {{ membriSenzaEmailSelezionati.length }} · Esclusi: {{ membriEsclusiInvio.length }}</span>
+                                <span>Con email: {{ membriConEmailSelezionati.length }} Â· Senza email: {{ membriSenzaEmailSelezionati.length }} Â· Esclusi: {{ membriEsclusiInvio.length }}</span>
                             </div>
                         }
                         <div class="mock-email">
                             <strong>Oggetto</strong>
-                            <p>Modulo privacy – Gestionale Comunità</p>
+                            <p>Modulo privacy â€“ Gestionale ComunitÃ </p>
                             <strong>Testo email mock</strong>
-                            <p>Pace. Ti inviamo il link personale per leggere l’informativa privacy e completare i consensi necessari alla gestione della comunità e delle convivenze.</p>
+                            <p>Pace. Ti inviamo il link personale per leggere lâ€™informativa privacy e completare i consensi necessari alla gestione della comunitÃ  e delle convivenze.</p>
                             @if (!invioMassivo && privacyInvioMembro) {
                                 <strong>Link personale mock</strong>
                                 <code>{{ linkPrivacy(privacyInvioMembro) }}</code>
                             }
                         </div>
-                        <p class="privacy-warning">Bozza ambiente test. L’invio email reale sarà collegato al backend in una fase successiva.</p>
+                        <p class="privacy-warning">Bozza ambiente test. Lâ€™invio email reale sarÃ  collegato al backend in una fase successiva.</p>
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
                             @if (!invioMassivo && privacyInvioMembro) {
@@ -511,6 +530,24 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
 
             .catechisti-grid small {
                 color: #64748b;
+            }
+
+            .unit-badges,
+            .unit-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.45rem;
+            }
+
+            .unit-members {
+                margin: 0;
+                padding-left: 1.1rem;
+                color: #334155;
+                line-height: 1.45;
+            }
+
+            .unit-actions button {
+                min-height: 40px;
             }
 
             .contact-list {
@@ -907,7 +944,7 @@ export class Comunita {
     statiMembro: StatoMembro[] = ['Attivo', 'Temporaneamente assente', 'Da contattare'];
     accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
-    tappeCammino = [...TAPPE_CAMMINO];
+    tipiUnitaEquipe: TipoUnitaEquipeCatechisti[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
 
     ricerca = '';
     ruoloFiltro: Exclude<RuoloComunitaPilota, 'Catechista'> | null = null;
@@ -925,18 +962,21 @@ export class Comunita {
     invioMassivo = false;
     anteprimaMembro: MembroComunitaPilota | null = null;
     contattiModalMembro: MembroComunitaPilota | null = null;
-    contattiModalCatechista: CatechistaComunita | null = null;
+    contattiModalCatechista: EquipeCatechistiUnita | null = null;
+    unitaEquipeModal: EquipeCatechistiUnita | null = null;
+    tipoUnitaEquipe: TipoUnitaEquipeCatechisti = 'Coppia';
+    nomeVisualizzatoEquipe = '';
+    membriEquipeTesto = '';
+    capoEquipeUnita = false;
+    noteEquipe = '';
     telefonoContatto = '';
     emailContatto = '';
-    tappaCammino: TappaCammino = (this.isDemo ? DEMO_COMUNITA.tappaCammino : COMUNITA_PILOTA.tappaCammino) as TappaCammino;
-    nuovaTappa: TappaCammino = this.tappaCammino;
-    tappaModalAperta = false;
     policyTitle = PRIVACY_POLICY_DRAFT_TITLE;
     policyParagraphs = PRIVACY_POLICY_DRAFT_PARAGRAPHS;
     policyDataItems = PRIVACY_POLICY_DRAFT_DATA_ITEMS;
     policyConsents = PRIVACY_CONSENTS_DRAFT;
 
-    catechisti: CatechistaComunita[] = this.isDemo ? [] : CATECHISTI_COMUNITA_PILOTA.map((catechista) => ({ ...catechista }));
+    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo ? [] : EQUIPE_CATECHISTI_UNITA_PILOTA.map((unita) => ({ ...unita, membri: unita.membri.map((membro) => ({ ...membro })) }));
     membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro }));
     private prossimoId = this.membri.length + 1;
     form: MembroForm = this.creaFormVuoto();
@@ -1004,7 +1044,7 @@ export class Comunita {
         }
 
         if (this.contattiModalCatechista) {
-            return `${this.contattiModalCatechista.nome} ${this.contattiModalCatechista.cognome}`;
+            return this.contattiModalCatechista.nomeVisualizzato;
         }
 
         return '';
@@ -1078,11 +1118,20 @@ export class Comunita {
         this.emailContatto = membro.email;
     }
 
-    apriModificaContattiCatechista(catechista: CatechistaComunita) {
-        this.contattiModalCatechista = catechista;
+    apriModificaContattiEquipe(unita: EquipeCatechistiUnita) {
+        this.contattiModalCatechista = unita;
         this.contattiModalMembro = null;
-        this.telefonoContatto = catechista.telefono;
-        this.emailContatto = catechista.email;
+        this.telefonoContatto = unita.telefono;
+        this.emailContatto = unita.email;
+    }
+
+    apriModificaUnitaEquipe(unita: EquipeCatechistiUnita) {
+        this.unitaEquipeModal = unita;
+        this.tipoUnitaEquipe = unita.tipoUnita;
+        this.nomeVisualizzatoEquipe = unita.nomeVisualizzato;
+        this.membriEquipeTesto = unita.membri.map((membro) => `${membro.nome} ${membro.cognome}`).join('\n');
+        this.capoEquipeUnita = unita.capoEquipe;
+        this.noteEquipe = unita.note;
     }
 
     salvaContatti() {
@@ -1094,10 +1143,50 @@ export class Comunita {
         }
 
         if (this.contattiModalCatechista) {
-            this.catechisti = this.catechisti.map((catechista) => (catechista.id === this.contattiModalCatechista?.id ? { ...catechista, telefono, email } : catechista));
+            this.equipeCatechisti = this.equipeCatechisti.map((unita) => (unita.id === this.contattiModalCatechista?.id ? { ...unita, telefono, email } : unita));
         }
 
         this.messaggio = 'Contatti aggiornati';
+        this.chiudiModali();
+    }
+
+    salvaUnitaEquipe() {
+        if (!this.unitaEquipeModal) {
+            return;
+        }
+
+        const membri = this.membriEquipeTesto
+            .split('\n')
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .map((nomeCompleto, index) => {
+                const parti = nomeCompleto.split(/\s+/);
+                const nome = parti.shift() ?? '';
+                const cognome = parti.join(' ');
+                return {
+                    id: index + 1,
+                    nome,
+                    cognome,
+                    genere: this.tipoUnitaEquipe === 'Fratello singolo' ? 'Fratello' as const : 'Sorella' as const,
+                    telefono: '',
+                    email: '',
+                    capoEquipe: this.capoEquipeUnita && index === 0
+                };
+            });
+
+        this.equipeCatechisti = this.equipeCatechisti.map((unita) =>
+            unita.id === this.unitaEquipeModal?.id
+                ? {
+                      ...unita,
+                      tipoUnita: this.tipoUnitaEquipe,
+                      nomeVisualizzato: this.nomeVisualizzatoEquipe.trim() || unita.nomeVisualizzato,
+                      membri,
+                      capoEquipe: this.capoEquipeUnita,
+                      note: this.noteEquipe.trim()
+                  }
+                : unita
+        );
+        this.messaggio = 'Unità equipe aggiornata';
         this.chiudiModali();
     }
 
@@ -1121,17 +1210,6 @@ export class Comunita {
                 : membro
         );
         this.messaggio = 'Privacy aggiornata';
-        this.chiudiModali();
-    }
-
-    apriModificaTappa() {
-        this.nuovaTappa = this.tappaCammino;
-        this.tappaModalAperta = true;
-    }
-
-    salvaTappa() {
-        this.tappaCammino = this.nuovaTappa;
-        this.messaggio = 'Tappa aggiornata';
         this.chiudiModali();
     }
 
@@ -1171,7 +1249,7 @@ export class Comunita {
     copiaLinkPrivacy(membro: MembroComunitaPilota) {
         const link = this.linkPrivacy(membro);
         navigator.clipboard?.writeText(link);
-        this.messaggio = 'Link modulo privacy copiato in modalità mock';
+        this.messaggio = 'Link modulo privacy copiato in modalitÃ  mock';
     }
 
     linkPrivacy(membro: MembroComunitaPilota) {
@@ -1196,7 +1274,11 @@ export class Comunita {
         this.contattiModalCatechista = null;
         this.telefonoContatto = '';
         this.emailContatto = '';
-        this.tappaModalAperta = false;
+        this.unitaEquipeModal = null;
+        this.nomeVisualizzatoEquipe = '';
+        this.membriEquipeTesto = '';
+        this.capoEquipeUnita = false;
+        this.noteEquipe = '';
     }
 
     annullaForm() {

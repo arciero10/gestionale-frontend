@@ -1,10 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 import { hasSelectedCommunity } from '../gestionaleCN/data/community-selection.storage';
+import { TIPI_CONVIVENZA, TipoConvivenza } from '../gestionaleCN/data/tappe-cammino.mock';
 
 interface DashboardModule {
     title: string;
@@ -18,7 +21,7 @@ interface DashboardModule {
 @Component({
     selector: 'app-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterLink, TagModule],
+    imports: [CommonModule, FormsModule, RouterLink, SelectModule, TagModule],
     template: `
         <section class="dashboard-stage">
             <div class="dashboard-overlay"></div>
@@ -42,7 +45,21 @@ interface DashboardModule {
                         </div>
                         <div>
                             <dt>Tappa del Cammino</dt>
-                            <dd>{{ tappaCammino }}</dd>
+                            <dd>
+                                @if (isDemo) {
+                                    {{ tappaCammino }}
+                                } @else {
+                                    <p-select
+                                        inputId="dashboardTappaCammino"
+                                        appendTo="body"
+                                        panelStyleClass="dashboard-dropdown-panel"
+                                        [options]="tappeOptions"
+                                        [(ngModel)]="tappaCammino"
+                                        (ngModelChange)="aggiornaTappa($event)"
+                                        ariaLabel="Tappa del Cammino"
+                                    ></p-select>
+                                }
+                            </dd>
                         </div>
                         <div>
                             <dt>Membri</dt>
@@ -71,6 +88,12 @@ interface DashboardModule {
                         </a>
                     }
                 </div>
+                @if (messaggio) {
+                    <div class="dashboard-message">
+                        <i class="pi pi-check-circle"></i>
+                        <span>{{ messaggio }}</span>
+                    </div>
+                }
             </div>
         </section>
     `,
@@ -186,6 +209,36 @@ interface DashboardModule {
                 line-height: 1.15;
             }
 
+            .community-summary p-select {
+                display: block;
+                min-width: 13rem;
+            }
+
+            :host ::ng-deep .community-summary .p-select {
+                width: 100%;
+                min-height: 2.3rem;
+                border-radius: 10px;
+                background: rgba(255, 255, 255, 0.82);
+            }
+
+            :host ::ng-deep .dashboard-dropdown-panel {
+                z-index: 12000 !important;
+            }
+
+            .dashboard-message {
+                justify-self: end;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.45rem;
+                padding: 0.5rem 0.75rem;
+                border-radius: 999px;
+                color: #166534;
+                background: rgba(220, 252, 231, 0.94);
+                border: 1px solid #bbf7d0;
+                font-weight: 800;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+            }
+
             .dashboard-grid {
                 display: grid;
                 grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -291,6 +344,10 @@ interface DashboardModule {
                     grid-row: auto;
                 }
 
+                .dashboard-message {
+                    justify-self: start;
+                }
+
                 .dashboard-grid {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
@@ -334,6 +391,11 @@ export class Dashboard {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
+    private readonly tappaStorageKey = 'eventiComunità.tappaCammino';
+
+    tappeOptions = [...TIPI_CONVIVENZA];
+    tappaCammino: TipoConvivenza = 'Precatecumenato';
+    messaggio = '';
 
     constructor() {
         const normalizedUrl = this.router.url.split('?')[0].split('#')[0];
@@ -341,6 +403,8 @@ export class Dashboard {
         if (!this.isDemo && (normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard') && !hasSelectedCommunity()) {
             this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
         }
+
+        this.tappaCammino = this.isDemo ? (DEMO_COMUNITA.tappaCammino as TipoConvivenza) : this.leggiTappaSalvata();
     }
 
     get isDemo() {
@@ -366,10 +430,6 @@ export class Dashboard {
 
     get diocesi() {
         return this.isDemo ? DEMO_COMUNITA.diocesi : (DIOCESI_MOCK.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId)?.nome ?? '-');
-    }
-
-    get tappaCammino() {
-        return this.isDemo ? DEMO_COMUNITA.tappaCammino : this.comunitaAttiva.tappaCammino;
     }
 
     get membriCount() {
@@ -419,5 +479,16 @@ export class Dashboard {
                 cta: 'Apri'
             }
         ];
+    }
+
+    aggiornaTappa(tappa: TipoConvivenza) {
+        this.tappaCammino = tappa;
+        localStorage.setItem(this.tappaStorageKey, tappa);
+        this.messaggio = 'Tappa aggiornata';
+    }
+
+    private leggiTappaSalvata(): TipoConvivenza {
+        const saved = localStorage.getItem(this.tappaStorageKey) as TipoConvivenza | null;
+        return saved && this.tappeOptions.includes(saved) ? saved : (this.comunitaAttiva.tappaCammino as TipoConvivenza);
     }
 }

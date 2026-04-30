@@ -69,13 +69,13 @@ interface PostoSintesi {
                         <p>Bozza front-end: il salvataggio reale sarà collegato al backend in una fase successiva.</p>
                     </div>
                     <label for="tipoNuovaConvivenza">Tipo convivenza / passaggio</label>
-                    <p-select inputId="tipoNuovaConvivenza" appendTo="body" [options]="tipiConvivenza" [(ngModel)]="tipoNuovaConvivenza"></p-select>
+                    <p-select inputId="tipoNuovaConvivenza" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiConvivenza" [(ngModel)]="tipoNuovaConvivenza"></p-select>
                 </section>
             }
 
             <section class="filters-card">
                 <label for="tipoConvivenzaFiltro">Filtra per tipo convivenza / passaggio</label>
-                <p-select inputId="tipoConvivenzaFiltro" appendTo="body" [options]="tipiConvivenza" [(ngModel)]="tipoFiltro" [showClear]="true" placeholder="Tutti i tipi"></p-select>
+                <p-select inputId="tipoConvivenzaFiltro" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiConvivenza" [(ngModel)]="tipoFiltro" [showClear]="true" placeholder="Tutti i tipi"></p-select>
             </section>
 
             <div class="workspace">

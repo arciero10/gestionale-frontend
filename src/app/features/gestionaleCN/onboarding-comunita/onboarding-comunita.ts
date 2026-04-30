@@ -3,14 +3,17 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DIOCESI_MOCK, NUMERI_COMUNITA, PARROCCHIE_MOCK, SETTORI_MOCK, creaNomeComunitaVisualizzato, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
 import { saveSelectedCommunity } from '../data/community-selection.storage';
 
+const PARROCCHIA_MANUALE_ID = -1;
+
 @Component({
     selector: 'app-onboarding-comunita',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, SelectModule],
+    imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, SelectModule],
     template: `
         <main class="onboarding-page">
             <section class="onboarding-card">
@@ -47,6 +50,16 @@ import { saveSelectedCommunity } from '../data/community-selection.storage';
                         ></p-select>
                     </div>
 
+                    @if (parrocchiaManualeAttiva) {
+                        <div class="manual-box">
+                            <div class="field">
+                                <label for="parrocchiaManuale">Inserisci nome parrocchia</label>
+                                <input id="parrocchiaManuale" name="parrocchiaManuale" pInputText [(ngModel)]="parrocchiaManuale" required />
+                            </div>
+                            <p class="note">Se la parrocchia non è presente, sarà verificata dal responsabile.</p>
+                        </div>
+                    }
+
                     <div class="field">
                         <label for="numero">Numero comunità</label>
                         <p-select inputId="numero" name="numero" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
@@ -55,11 +68,19 @@ import { saveSelectedCommunity } from '../data/community-selection.storage';
                     <div class="readonly-grid">
                         <div>
                             <span>Settore</span>
-                            <strong>{{ settoreNome || 'Da completare' }}</strong>
+                            @if (parrocchiaManualeAttiva) {
+                                <input name="settoreManuale" pInputText [(ngModel)]="settoreManuale" placeholder="Da verificare" />
+                            } @else {
+                                <strong>{{ settoreNome || 'Da completare' }}</strong>
+                            }
                         </div>
                         <div>
                             <span>Diocesi</span>
-                            <strong>{{ diocesiNome || 'Da completare' }}</strong>
+                            @if (parrocchiaManualeAttiva) {
+                                <input name="diocesiManuale" pInputText [(ngModel)]="diocesiManuale" />
+                            } @else {
+                                <strong>{{ diocesiNome || 'Da completare' }}</strong>
+                            }
                         </div>
                     </div>
 
@@ -144,9 +165,17 @@ import { saveSelectedCommunity } from '../data/community-selection.storage';
             }
 
             .field,
+            .manual-box,
             .preview-box {
                 display: grid;
                 gap: 0.4rem;
+            }
+
+            .manual-box {
+                padding: 0.85rem 1rem;
+                border-radius: 14px;
+                background: #fffbeb;
+                border: 1px solid #fde68a;
             }
 
             label,
@@ -173,6 +202,7 @@ import { saveSelectedCommunity } from '../data/community-selection.storage';
             }
 
             .readonly-grid strong,
+            .readonly-grid input,
             .preview-box strong {
                 color: #0f2440;
                 font-size: 1rem;
@@ -215,15 +245,22 @@ export class OnboardingComunita {
     private readonly router = inject(Router);
 
     readonly isPreview = this.route.snapshot.data['preview'] === true;
-    readonly parrocchieOptions = PARROCCHIE_MOCK;
+    readonly parrocchieOptions = [...PARROCCHIE_MOCK, { id: PARROCCHIA_MANUALE_ID, nome: 'Parrocchia non presente in elenco', diocesiId: 1, settoreId: 0, note: '' }];
     readonly numeriComunita = NUMERI_COMUNITA;
 
     parrocchiaId = 24;
     numeroComunita = 3;
+    parrocchiaManuale = '';
+    settoreManuale = 'Da verificare';
+    diocesiManuale = 'Diocesi di Roma';
     messaggio = '';
 
+    get parrocchiaManualeAttiva() {
+        return this.parrocchiaId === PARROCCHIA_MANUALE_ID;
+    }
+
     get parrocchia() {
-        return PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.parrocchiaId) ?? PARROCCHIE_MOCK[0];
+        return PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.parrocchiaId) ?? PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === 24) ?? PARROCCHIE_MOCK[0];
     }
 
     get settore() {
@@ -235,18 +272,39 @@ export class OnboardingComunita {
     }
 
     get settoreNome() {
+        if (this.parrocchiaManualeAttiva) {
+            return this.settoreManuale.trim();
+        }
+
         return this.settore?.nome ?? '';
     }
 
     get diocesiNome() {
+        if (this.parrocchiaManualeAttiva) {
+            return this.diocesiManuale.trim();
+        }
+
         return this.diocesi?.nome ?? '';
     }
 
+    get parrocchiaNome() {
+        return this.parrocchiaManualeAttiva ? this.parrocchiaManuale.trim() : this.parrocchia.nome;
+    }
+
     get previewComunita() {
-        return creaNomeComunitaVisualizzato(this.numeroComunita, this.parrocchia.nome, this.settoreNome);
+        if (this.parrocchiaManualeAttiva && !this.settoreNome) {
+            return `${generaNomeComunita(this.numeroComunita)} – ${this.parrocchiaNome || 'Parrocchia da inserire'}`;
+        }
+
+        return creaNomeComunitaVisualizzato(this.numeroComunita, this.parrocchiaNome || 'Parrocchia da inserire', this.settoreNome);
     }
 
     conferma() {
+        if (this.parrocchiaManualeAttiva && !this.parrocchiaNome) {
+            this.messaggio = 'Inserisci il nome della parrocchia';
+            return;
+        }
+
         if (this.isPreview) {
             this.messaggio = 'Simulazione completata';
             return;
@@ -255,11 +313,11 @@ export class OnboardingComunita {
         saveSelectedCommunity({
             numero: this.numeroComunita,
             nomeVisualizzato: generaNomeComunita(this.numeroComunita),
-            parrocchiaId: this.parrocchia.id,
-            parrocchiaNome: this.parrocchia.nome,
-            settoreId: this.parrocchia.settoreId,
+            parrocchiaId: this.parrocchiaManualeAttiva ? PARROCCHIA_MANUALE_ID : this.parrocchia.id,
+            parrocchiaNome: this.parrocchiaNome,
+            settoreId: this.parrocchiaManualeAttiva ? 0 : this.parrocchia.settoreId,
             settoreNome: this.settoreNome,
-            diocesiId: this.parrocchia.diocesiId,
+            diocesiId: this.parrocchiaManualeAttiva ? 1 : this.parrocchia.diocesiId,
             diocesiNome: this.diocesiNome
         });
 
