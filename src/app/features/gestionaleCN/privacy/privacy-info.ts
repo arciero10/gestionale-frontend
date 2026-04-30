@@ -144,32 +144,40 @@ import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
                 min-height: 100vh;
                 padding: clamp(1rem, 3vw, 2rem);
                 background-image:
-                    linear-gradient(180deg, rgba(245, 247, 251, 0.9), rgba(245, 247, 251, 0.95)),
+                    linear-gradient(135deg, rgba(7, 18, 34, 0.18), rgba(255, 255, 255, 0.3) 45%, rgba(8, 22, 39, 0.12)),
                     url('/images/backgrounds/faq-bg.jpg');
                 background-position: center;
                 background-repeat: no-repeat;
                 background-size: cover;
+                background-attachment: fixed;
             }
             .privacy-info-page { display: grid; gap: 1.25rem; max-width: 1100px; margin: 0 auto; }
-            .privacy-hero, .owner-card, .privacy-section { border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; box-shadow: 0 12px 28px rgba(15, 23, 42, .06); }
+            .privacy-hero, .owner-card, .privacy-section {
+                border: 1px solid rgba(255, 255, 255, .42);
+                border-radius: 16px;
+                background: rgba(255, 255, 255, .84);
+                box-shadow: 0 18px 45px rgba(15, 23, 42, .14);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
             .privacy-hero { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.35rem; }
             .privacy-hero h1 { margin: .35rem 0; font-size: clamp(1.8rem, 4vw, 2.5rem); color: #0f2440; }
             .privacy-hero p, .privacy-section p, .privacy-section li, .owner-card span, dd { color: #64748b; line-height: 1.55; }
             .draft-badge { display: inline-flex; padding: .28rem .7rem; border-radius: 999px; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-weight: 800; font-size: .8rem; }
             .owner-card { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .85rem; padding: 1rem; }
-            .owner-card div { display: grid; gap: .25rem; padding: .85rem; border-radius: 12px; background: #f8fafc; }
+            .owner-card div { display: grid; gap: .25rem; padding: .85rem; border-radius: 12px; background: rgba(248, 250, 252, .76); }
             .owner-card strong { color: #0f3558; }
             .privacy-section { display: grid; gap: .8rem; padding: 1.2rem; }
             .privacy-section h2 { margin: 0; font-size: 1.15rem; color: #0f2440; }
             .privacy-section p { margin: 0; }
             ul { margin: 0; padding-left: 1.2rem; }
             dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin: 0; }
-            dl div { padding: .75rem; border-radius: 10px; background: #f8fafc; }
+            dl div { padding: .75rem; border-radius: 10px; background: rgba(248, 250, 252, .76); }
             dt { color: #334155; font-weight: 800; }
             dd { margin: .2rem 0 0; }
             .validation-note { padding: .75rem; border-radius: 10px; background: #fffbeb; color: #92400e !important; border: 1px solid #fde68a; font-weight: 800; }
             @media (max-width: 1000px) { .owner-card { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-            @media (max-width: 767px) { .privacy-hero { align-items: flex-start; flex-direction: column; } .owner-card, dl { grid-template-columns: 1fr; } .privacy-hero a { width: 100%; justify-content: center; } }
+            @media (max-width: 767px) { :host.public-privacy-page { background-attachment: scroll; } .privacy-hero { align-items: flex-start; flex-direction: column; } .owner-card, dl { grid-template-columns: 1fr; } .privacy-hero a { width: 100%; justify-content: center; } }
         `
     ]
 })

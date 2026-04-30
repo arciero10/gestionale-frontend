@@ -91,20 +91,44 @@ import { aggiungiNotificaCensimento, aggiornaUnitaCensimento, trovaUnitaDaToken,
     `,
     styles: [
         `
-            .profile-completion { min-height: 100vh; display: grid; place-items: center; padding: 1rem; background: #f5f7fb; color: #0f2440; }
-            .completion-card { width: min(100%, 980px); display: grid; gap: 1rem; padding: clamp(1rem, 2vw, 1.5rem); border-radius: 18px; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 18px 45px rgba(15, 23, 42, .12); }
+            .profile-completion {
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                padding: 1rem;
+                color: #0f2440;
+                background-image:
+                    linear-gradient(135deg, rgba(7, 18, 34, 0.18), rgba(255, 255, 255, 0.28) 44%, rgba(8, 22, 39, 0.14)),
+                    url('/images/backgrounds/censimento-comunita-bg.jpg');
+                background-position: center;
+                background-repeat: no-repeat;
+                background-size: cover;
+                background-attachment: fixed;
+            }
+            .completion-card {
+                width: min(100%, 980px);
+                display: grid;
+                gap: 1rem;
+                padding: clamp(1rem, 2vw, 1.5rem);
+                border-radius: 18px;
+                background: rgba(255, 255, 255, .84);
+                border: 1px solid rgba(255, 255, 255, .42);
+                box-shadow: 0 18px 45px rgba(15, 23, 42, .16);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
             header span { color: #64748b; font-weight: 800; text-transform: uppercase; font-size: .78rem; }
             h1 { margin: .2rem 0; font-size: clamp(1.6rem, 4vw, 2.25rem); }
             header p { margin: 0; color: #475569; font-weight: 800; }
             .notice, .success-message { padding: .85rem; border-radius: 12px; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; line-height: 1.45; }
             .success-message { border-color: #bbf7d0; background: #dcfce7; color: #166534; }
-            .privacy-owner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: .75rem; align-items: center; padding: .85rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc; }
+            .privacy-owner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: .75rem; align-items: center; padding: .85rem; border: 1px solid rgba(255, 255, 255, .42); border-radius: 12px; background: rgba(248,250,252,.76); }
             .privacy-owner div { display: grid; gap: .2rem; }
             .privacy-owner span { color: #64748b; font-size: .78rem; font-weight: 800; text-transform: uppercase; }
             .privacy-owner strong { color: #0f3558; }
             .privacy-owner a { color: #0f3558; font-weight: 800; text-decoration: none; }
             .people-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-            .person-card { display: grid; gap: .85rem; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 14px; background: #fbfbf8; }
+            .person-card { display: grid; gap: .85rem; padding: 1rem; border: 1px solid rgba(255, 255, 255, .42); border-radius: 14px; background: rgba(255, 255, 255, .74); }
             .person-card h2 { margin: 0; font-size: 1.1rem; }
             .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
             .form-grid div { display: grid; gap: .35rem; }
@@ -113,7 +137,7 @@ import { aggiungiNotificaCensimento, aggiornaUnitaCensimento, trovaUnitaDaToken,
             .consents { display: grid; gap: .45rem; }
             .consents label { display: flex; align-items: center; gap: .45rem; font-weight: 700; }
             footer { display: flex; justify-content: flex-end; }
-            @media (max-width: 767px) { .people-grid, .form-grid, .privacy-owner { grid-template-columns: 1fr; } footer button { width: 100%; min-height: 44px; } }
+            @media (max-width: 767px) { .profile-completion { background-attachment: scroll; } .people-grid, .form-grid, .privacy-owner { grid-template-columns: 1fr; } footer button { width: 100%; min-height: 44px; } }
         `
     ]
 })

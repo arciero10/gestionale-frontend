@@ -11,7 +11,7 @@ import { AppBreadcrumb } from './app.breadcrumb';
     selector: 'app-layout',
     standalone: true,
     imports: [CommonModule, AppTopbar, AppSidebar, RouterModule, AppBreadcrumb],
-    template: `<div class="layout-container" [ngClass]="containerClass()">
+    template: `<div class="layout-container layout-immersive" [ngClass]="containerClass()" [style.--page-background-image]="pageBackgroundStyle()">
         <div app-topbar></div>
         <div app-sidebar></div>
 
@@ -19,7 +19,6 @@ import { AppBreadcrumb } from './app.breadcrumb';
             class="layout-content-wrapper"
             [class.layout-dashboard-full]="isDashboardRoute()"
             [class.layout-page-background]="!isDashboardRoute()"
-            [style.--page-background-image]="pageBackgroundStyle()"
         >
             <nav app-breadcrumb *ngIf="!isDashboardRoute()"></nav>
             <div class="layout-content">
@@ -46,12 +45,7 @@ import { AppBreadcrumb } from './app.breadcrumb';
             }
 
             .layout-content-wrapper.layout-page-background {
-                background-image:
-                    linear-gradient(180deg, rgba(245, 247, 251, 0.9), rgba(245, 247, 251, 0.95)),
-                    var(--page-background-image, url('/images/backgrounds/comunita-bg.jpg'));
-                background-position: center;
-                background-repeat: no-repeat;
-                background-size: cover;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.28));
             }
 
             .layout-content-wrapper.layout-page-background nav,
@@ -65,11 +59,12 @@ import { AppBreadcrumb } from './app.breadcrumb';
 })
 export class AppLayout implements OnDestroy {
     isDashboardRoute = signal(false);
-    currentContentBackground = signal('/images/backgrounds/comunita-bg.jpg');
+    currentContentBackground = signal('/assets/images/dashboard-bg.jpg');
     pageBackgroundStyle = computed(() => `url("${this.currentContentBackground()}")`);
 
     private readonly fallbackContentBackground = '/images/backgrounds/comunita-bg.jpg';
     private readonly contentBackgrounds = [
+        { path: '/gestionale-cn/dashboard', image: '/assets/images/dashboard-bg.jpg' },
         { path: '/gestionale-cn/comunita', image: '/images/backgrounds/comunita-bg.jpg' },
         { path: '/gestionale-cn/convivenze', image: '/images/backgrounds/convivenze-bg.jpg' },
         { path: '/gestionale-cn/posti-convivenza', image: '/images/backgrounds/posti-convivenza-bg.jpg' },
@@ -143,6 +138,10 @@ export class AppLayout implements OnDestroy {
     }
 
     private resolveContentBackground(url: string) {
+        if (url === '/gestionale-cn' || url === '/gestionale-cn/dashboard') {
+            return '/assets/images/dashboard-bg.jpg';
+        }
+
         return this.contentBackgrounds.find((item) => url === item.path || url.startsWith(`${item.path}/`))?.image ?? this.fallbackContentBackground;
     }
 
