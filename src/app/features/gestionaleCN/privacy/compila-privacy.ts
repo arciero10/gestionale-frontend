@@ -1,17 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { MEMBRI_COMUNITA_PILOTA } from '../data/comunita-pilota.mock';
+import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from './privacy-policy-draft';
 
 @Component({
     selector: 'app-compila-privacy',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TextareaModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, TextareaModule],
     template: `
         <main class="privacy-page">
             <header>
@@ -31,6 +32,15 @@ import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY
             @if (errore) {
                 <section class="privacy-card error">{{ errore }}</section>
             }
+
+            <section class="privacy-card controller-card">
+                <h2>Titolare del trattamento</h2>
+                <dl>
+                    <div><dt>Titolare</dt><dd>{{ privacyConfig.titolareBreve }}</dd></div>
+                    <div><dt>Email privacy</dt><dd>{{ privacyConfig.emailPrivacy }}</dd></div>
+                </dl>
+                <a routerLink="/privacy" class="privacy-link">Leggi informativa privacy completa</a>
+            </section>
 
             <section class="privacy-card">
                 <details open>
@@ -99,6 +109,11 @@ import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY
             .draft-badge { display: inline-flex; margin-bottom: .5rem; padding: .25rem .65rem; border-radius: 999px; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-weight: 800; }
             .privacy-card { display: grid; gap: 1rem; padding: 1.25rem; border-radius: 16px; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 10px 24px rgba(15, 23, 42, .06); }
             .person-card strong { font-size: 1.2rem; color: #111827; }
+            .controller-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 0; }
+            .controller-card div { padding: .75rem; border-radius: 10px; background: #f8fafc; }
+            .controller-card dt { color: #334155; font-weight: 800; }
+            .controller-card dd { margin: .2rem 0 0; color: #64748b; }
+            .privacy-link { color: #0f3558; font-weight: 800; text-decoration: none; }
             details { display: grid; gap: .85rem; }
             summary { cursor: pointer; font-size: 1.15rem; font-weight: 800; color: #111827; }
             ul { margin: 0; padding-left: 1.25rem; }
@@ -120,6 +135,7 @@ export class CompilaPrivacy {
     policyParagraphs = PRIVACY_POLICY_DRAFT_PARAGRAPHS;
     dataItems = PRIVACY_POLICY_DRAFT_DATA_ITEMS;
     consensi = PRIVACY_CONSENTS_DRAFT;
+    privacyConfig = PRIVACY_CONFIG;
     membroCorrente = MEMBRI_COMUNITA_PILOTA.find((membro) => membro.id === Number(this.route.snapshot.queryParamMap.get('membroId')));
     statoMock = this.membroCorrente?.consensoPrivacyStato ?? 'Da raccogliere';
     firmaNome = this.membroCorrente?.nomeCompleto ?? '';

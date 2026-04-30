@@ -1,15 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { aggiungiNotificaCensimento, aggiornaUnitaCensimento, trovaUnitaDaToken, UnitaCensimentoComunita } from './censimento-comunita.storage';
 
 @Component({
     selector: 'app-completa-anagrafica',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, InputTextModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule],
     template: `
         <main class="profile-completion">
             <section class="completion-card">
@@ -23,6 +24,18 @@ import { aggiungiNotificaCensimento, aggiornaUnitaCensimento, trovaUnitaDaToken,
                     <div class="notice">
                         I consensi sono individuali per ogni persona. Anche se la coppia usa una email comune, ciascuno conferma separatamente i propri dati.
                     </div>
+
+                    <section class="privacy-owner">
+                        <div>
+                            <span>Titolare del trattamento</span>
+                            <strong>{{ privacyConfig.titolareBreve }}</strong>
+                        </div>
+                        <div>
+                            <span>Email privacy</span>
+                            <strong>{{ privacyConfig.emailPrivacy }}</strong>
+                        </div>
+                        <a routerLink="/privacy">Leggi informativa privacy completa</a>
+                    </section>
 
                     <div class="people-grid">
                         @for (persona of unita.persone; track persona.id; let index = $index) {
@@ -85,6 +98,11 @@ import { aggiungiNotificaCensimento, aggiornaUnitaCensimento, trovaUnitaDaToken,
             header p { margin: 0; color: #475569; font-weight: 800; }
             .notice, .success-message { padding: .85rem; border-radius: 12px; border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; line-height: 1.45; }
             .success-message { border-color: #bbf7d0; background: #dcfce7; color: #166534; }
+            .privacy-owner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: .75rem; align-items: center; padding: .85rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc; }
+            .privacy-owner div { display: grid; gap: .2rem; }
+            .privacy-owner span { color: #64748b; font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+            .privacy-owner strong { color: #0f3558; }
+            .privacy-owner a { color: #0f3558; font-weight: 800; text-decoration: none; }
             .people-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
             .person-card { display: grid; gap: .85rem; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 14px; background: #fbfbf8; }
             .person-card h2 { margin: 0; font-size: 1.1rem; }
@@ -95,12 +113,13 @@ import { aggiungiNotificaCensimento, aggiornaUnitaCensimento, trovaUnitaDaToken,
             .consents { display: grid; gap: .45rem; }
             .consents label { display: flex; align-items: center; gap: .45rem; font-weight: 700; }
             footer { display: flex; justify-content: flex-end; }
-            @media (max-width: 767px) { .people-grid, .form-grid { grid-template-columns: 1fr; } footer button { width: 100%; min-height: 44px; } }
+            @media (max-width: 767px) { .people-grid, .form-grid, .privacy-owner { grid-template-columns: 1fr; } footer button { width: 100%; min-height: 44px; } }
         `
     ]
 })
 export class CompletaAnagrafica {
     private readonly route = inject(ActivatedRoute);
+    privacyConfig = PRIVACY_CONFIG;
     unita: UnitaCensimentoComunita | undefined = trovaUnitaDaToken(this.route.snapshot.paramMap.get('token') ?? '');
     messaggio = '';
 

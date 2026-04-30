@@ -65,6 +65,11 @@ export class AppMenu {
                     label: 'Aiuto / FAQ',
                     icon: 'pi pi-fw pi-question-circle',
                     routerLink: ['/gestionale-cn/faq']
+                },
+                {
+                    label: 'Privacy e trattamento dati',
+                    icon: 'pi pi-fw pi-shield',
+                    routerLink: ['/gestionale-cn/privacy']
                 }
             ]
         },

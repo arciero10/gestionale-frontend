@@ -8,6 +8,7 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { TipoUnitaMembroComunita } from '../data/comunita-pilota.mock';
+import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { UnitaCensimentoComunita, creaLinkInvito, generaTokenCensimento, leggiNotificheCensimento, leggiUnitaCensimento, salvaUnitaCensimento } from './censimento-comunita.storage';
 
 @Component({
@@ -145,6 +146,11 @@ import { UnitaCensimentoComunita, creaLinkInvito, generaTokenCensimento, leggiNo
                         <div class="mail-box">[Eventi di Comunità] Completa la tua anagrafica</div>
                         <label>Corpo</label>
                         <pre class="mail-box">{{ corpoMail(mailPreview) }}</pre>
+                        <section class="privacy-owner">
+                            <strong>Titolare del trattamento: {{ privacyConfig.titolareBreve }}</strong>
+                            <span>Email privacy: {{ privacyConfig.emailPrivacy }}</span>
+                            <a routerLink="/gestionale-cn/privacy">Leggi informativa privacy completa</a>
+                        </section>
                         <footer>
                             <button pButton type="button" label="Chiudi" severity="secondary" outlined (click)="mailPreview = null"></button>
                             <button pButton type="button" label="Segna invito inviato" icon="pi pi-send" (click)="inviaInvito(mailPreview)"></button>
@@ -180,12 +186,16 @@ import { UnitaCensimentoComunita, creaLinkInvito, generaTokenCensimento, leggiNo
             .mail-modal { width: min(100%, 680px); display: grid; gap: .7rem; padding: 1.25rem; border-radius: 18px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .25); }
             .mail-modal h2 { margin: .15rem 0 0; }
             .mail-box { padding: .85rem; border-radius: 12px; background: #f8fafc; border: 1px solid #e5e7eb; white-space: pre-wrap; color: #334155; font: inherit; }
+            .privacy-owner { display: grid; gap: .25rem; padding: .85rem; border-radius: 12px; border: 1px solid #e5e7eb; background: #f8fafc; color: #334155; }
+            .privacy-owner strong { color: #0f3558; }
+            .privacy-owner a { color: #0f3558; font-weight: 800; text-decoration: none; }
             @media (max-width: 1100px) { .unit-form, .unit-row { grid-template-columns: 1fr 1fr; } .row-actions { grid-column: 1 / -1; justify-content: flex-start; } }
             @media (max-width: 767px) { .page-head, .section-title { align-items: flex-start; flex-direction: column; } .unit-form, .unit-row { grid-template-columns: 1fr; } .form-actions, .row-actions, .mail-modal footer { flex-direction: column; } button { min-height: 44px; } }
         `
     ]
 })
 export class CensimentoComunita {
+    privacyConfig = PRIVACY_CONFIG;
     tipiUnita: TipoUnitaMembroComunita[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
     tipoUnita: TipoUnitaMembroComunita = 'Coppia';
     unita = leggiUnitaCensimento();
@@ -293,6 +303,10 @@ Per completare i dati, apri questo link:
 ${link}
 
 Il link è personale e serve solo per completare anagrafica e consensi.${coppia}
+Titolare del trattamento: ${PRIVACY_CONFIG.titolareBreve}
+Email privacy: ${PRIVACY_CONFIG.emailPrivacy}
+Informativa privacy completa: ${window.location.origin}/privacy
+
 Grazie.
 
 Eventi di Comunità`;

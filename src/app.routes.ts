@@ -66,6 +66,11 @@ export const routes: Routes = [
     data: { visibilita: 'pubblica' }
   },
   {
+    path: 'privacy',
+    loadComponent: () => import('@/features/gestionaleCN/privacy/privacy-info').then((c) => c.PrivacyInfo),
+    data: { visibilita: 'pubblica' }
+  },
+  {
     path: 'completa-profilo',
     loadComponent: () => import('@/features/completa-profilo/completa-profilo').then((c) => c.CompletaProfilo)
   },

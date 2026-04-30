@@ -21,6 +21,7 @@ import {
     TipoUnitaMembroComunita
 } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
+import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
@@ -384,6 +385,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <span>Modifica privacy</span>
                             <h2>{{ privacyModalMembro.nomeCompleto }}</h2>
                         </header>
+                        <section class="privacy-owner">
+                            <strong>Titolare del trattamento: {{ privacyConfig.titolareBreve }}</strong>
+                            <span>Email privacy: {{ privacyConfig.emailPrivacy }}</span>
+                            <a routerLink="/gestionale-cn/privacy">Leggi informativa privacy completa</a>
+                        </section>
                         <label for="nuovaPrivacy">Stato privacy</label>
                         <p-select inputId="nuovaPrivacy" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="statiPrivacy" [(ngModel)]="nuovaPrivacy"></p-select>
                         <label class="check-row">
@@ -428,6 +434,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                                 <code>{{ linkPrivacy(privacyInvioMembro) }}</code>
                             }
                         </div>
+                        <section class="privacy-owner">
+                            <strong>Titolare del trattamento: {{ privacyConfig.titolareBreve }}</strong>
+                            <span>Email privacy: {{ privacyConfig.emailPrivacy }}</span>
+                            <a routerLink="/gestionale-cn/privacy">Leggi informativa privacy completa</a>
+                        </section>
                         <p class="privacy-warning">Bozza ambiente test. Lâ€™invio email reale sarÃ  collegato al backend in una fase successiva.</p>
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
@@ -464,6 +475,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                                 <p>{{ consenso.text }}</p>
                             </div>
                         }
+                        <section class="privacy-owner">
+                            <strong>Titolare del trattamento: {{ privacyConfig.titolareBreve }}</strong>
+                            <span>Email privacy: {{ privacyConfig.emailPrivacy }}</span>
+                            <a routerLink="/gestionale-cn/privacy">Leggi informativa privacy completa</a>
+                        </section>
                         <a class="privacy-link" [href]="linkPrivacy(anteprimaMembro)" target="_blank" rel="noopener">Apri pagina compilazione</a>
                         <footer>
                             <button pButton type="button" label="Chiudi" severity="secondary" outlined (click)="chiudiModali()"></button>
@@ -888,6 +904,26 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 overflow-wrap: anywhere;
             }
 
+            .privacy-owner {
+                display: grid;
+                gap: 0.25rem;
+                padding: 0.75rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                background: #f8fafc;
+                color: #334155;
+            }
+
+            .privacy-owner strong {
+                color: #0f3558;
+            }
+
+            .privacy-owner a {
+                color: #0f3558;
+                font-weight: 800;
+                text-decoration: none;
+            }
+
             .privacy-warning {
                 padding: 0.75rem;
                 border-radius: 12px;
@@ -1039,6 +1075,7 @@ export class Comunita {
     policyParagraphs = PRIVACY_POLICY_DRAFT_PARAGRAPHS;
     policyDataItems = PRIVACY_POLICY_DRAFT_DATA_ITEMS;
     policyConsents = PRIVACY_CONSENTS_DRAFT;
+    privacyConfig = PRIVACY_CONFIG;
 
     equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo ? [] : EQUIPE_CATECHISTI_UNITA_PILOTA.map((unita) => ({ ...unita, membri: unita.membri.map((membro) => ({ ...membro })) }));
     membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro }));
