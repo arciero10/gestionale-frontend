@@ -17,7 +17,8 @@ import {
     MembroComunitaPilota,
     RuoloComunitaPilota,
     RuoloOperativoComunita,
-    TipoUnitaEquipeCatechisti
+    TipoUnitaEquipeCatechisti,
+    TipoUnitaMembroComunita
 } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
@@ -61,6 +62,9 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <span>Riferimenti collegati</span>
                             <h2>Equipe dei catechisti</h2>
                             <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
+                            @if (!haCapoEquipe) {
+                                <small>Capo equipe non ancora indicato</small>
+                            }
                         </div>
                         <strong>{{ equipeCatechisti.length }}</strong>
                     </div>
@@ -68,19 +72,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         @for (unita of equipeCatechisti; track unita.id) {
                             <article>
                                 <strong>{{ unita.nomeVisualizzato }}</strong>
-                                <div class="unit-badges">
-                                    <span class="role-badge role-catechista">{{ unita.tipoUnita }}</span>
-                                    @if (unita.capoEquipe) {
+                                @if (unita.capoEquipe) {
+                                    <div class="unit-badges">
                                         <span class="role-badge role-responsabile">Capo equipe</span>
-                                    } @else {
-                                        <span class="role-badge role-fratello">Capo equipe: Da indicare</span>
-                                    }
-                                </div>
-                                <ul class="unit-members">
-                                    @for (membro of unita.membri; track membro.id) {
-                                        <li>{{ membro.nome }} {{ membro.cognome }}</li>
-                                    }
-                                </ul>
+                                    </div>
+                                }
                                 <dl class="contact-list">
                                     <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
                                     <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
@@ -106,6 +102,48 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 <section class="card p-6">
                     <h2 class="form-title">{{ membroInModifica ? 'Modifica membro' : 'Aggiungi membro' }}</h2>
                     <form class="member-form" #membroForm="ngForm" (ngSubmit)="salvaMembro()">
+                        @if (!membroInModifica) {
+                            <div>
+                                <label for="tipoInserimentoMembro">Tipo inserimento</label>
+                                <p-select inputId="tipoInserimentoMembro" name="tipoInserimentoMembro" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiInserimentoMembro" [(ngModel)]="tipoInserimentoMembro" required></p-select>
+                            </div>
+                            @if (tipoInserimentoMembro === 'Coppia') {
+                                <div>
+                                    <label for="nomeMarito">Nome marito</label>
+                                    <input id="nomeMarito" name="nomeMarito" pInputText [(ngModel)]="nuovoMembroMinimo.nomeMarito" required />
+                                </div>
+                                <div>
+                                    <label for="cognomeMarito">Cognome marito</label>
+                                    <input id="cognomeMarito" name="cognomeMarito" pInputText [(ngModel)]="nuovoMembroMinimo.cognomeMarito" required />
+                                </div>
+                                <div>
+                                    <label for="nomeMoglie">Nome moglie</label>
+                                    <input id="nomeMoglie" name="nomeMoglie" pInputText [(ngModel)]="nuovoMembroMinimo.nomeMoglie" required />
+                                </div>
+                                <div>
+                                    <label for="cognomeMoglie">Cognome moglie</label>
+                                    <input id="cognomeMoglie" name="cognomeMoglie" pInputText [(ngModel)]="nuovoMembroMinimo.cognomeMoglie" required />
+                                </div>
+                                <div>
+                                    <label for="emailRiferimentoCoppia">Email di riferimento coppia</label>
+                                    <input id="emailRiferimentoCoppia" name="emailRiferimentoCoppia" pInputText type="email" [(ngModel)]="nuovoMembroMinimo.emailRiferimento" />
+                                </div>
+                            } @else {
+                                <div>
+                                    <label for="nomeMinimo">Nome</label>
+                                    <input id="nomeMinimo" name="nomeMinimo" pInputText [(ngModel)]="nuovoMembroMinimo.nome" required />
+                                </div>
+                                <div>
+                                    <label for="cognomeMinimo">Cognome</label>
+                                    <input id="cognomeMinimo" name="cognomeMinimo" pInputText [(ngModel)]="nuovoMembroMinimo.cognome" required />
+                                </div>
+                                <div>
+                                    <label for="emailRiferimentoSingolo">Email</label>
+                                    <input id="emailRiferimentoSingolo" name="emailRiferimentoSingolo" pInputText type="email" [(ngModel)]="nuovoMembroMinimo.emailRiferimento" />
+                                </div>
+                            }
+                            <p class="form-helper">Censimento minimo: il completamento di anagrafica e consensi resta individuale e avverrà tramite modulo personale.</p>
+                        } @else {
                         <div>
                             <label for="nome">Nome</label>
                             <input id="nome" name="nome" pInputText [(ngModel)]="form.nome" required />
@@ -150,6 +188,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <label for="note">Note</label>
                             <textarea id="note" name="note" pTextarea rows="3" [(ngModel)]="form.note"></textarea>
                         </div>
+                        }
                         <div class="form-actions">
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="annullaForm()"></button>
                             <button pButton type="submit" icon="pi pi-check" [label]="membroInModifica ? 'Salva modifiche' : 'Salva membro'" [disabled]="membroForm.invalid"></button>
@@ -315,8 +354,10 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         <p-select inputId="tipoUnitaEquipe" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiUnitaEquipe" [(ngModel)]="tipoUnitaEquipe"></p-select>
                         <label for="nomeVisualizzatoEquipe">Nome visualizzato</label>
                         <input id="nomeVisualizzatoEquipe" pInputText [(ngModel)]="nomeVisualizzatoEquipe" />
-                        <label for="membriEquipeTesto">Membri della unità</label>
-                        <textarea id="membriEquipeTesto" pTextarea rows="4" [(ngModel)]="membriEquipeTesto"></textarea>
+                        <label for="telefonoEquipe">Telefono di riferimento</label>
+                        <input id="telefonoEquipe" pInputText [(ngModel)]="telefonoEquipe" />
+                        <label for="emailEquipe">Email di riferimento</label>
+                        <input id="emailEquipe" pInputText type="email" [(ngModel)]="emailEquipe" />
                         <label class="check-row">
                             <input type="checkbox" [(ngModel)]="capoEquipeUnita" />
                             Capo equipe
@@ -628,8 +669,15 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             }
 
             .form-notes,
+            .form-helper,
             .form-actions {
                 grid-column: 1 / -1;
+            }
+
+            .form-helper {
+                margin: 0;
+                color: #64748b;
+                line-height: 1.45;
             }
 
             .check-row {
@@ -945,11 +993,14 @@ export class Comunita {
     accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
     tipiUnitaEquipe: TipoUnitaEquipeCatechisti[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
+    tipiInserimentoMembro: TipoUnitaMembroComunita[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
 
     ricerca = '';
     ruoloFiltro: Exclude<RuoloComunitaPilota, 'Catechista'> | null = null;
     formVisibile = false;
     membroInModifica: MembroComunitaPilota | null = null;
+    tipoInserimentoMembro: TipoUnitaMembroComunita = 'Fratello singolo';
+    nuovoMembroMinimo = this.creaNuovoMembroMinimo();
     messaggio = '';
 
     ruoloModalMembro: MembroComunitaPilota | null = null;
@@ -966,7 +1017,8 @@ export class Comunita {
     unitaEquipeModal: EquipeCatechistiUnita | null = null;
     tipoUnitaEquipe: TipoUnitaEquipeCatechisti = 'Coppia';
     nomeVisualizzatoEquipe = '';
-    membriEquipeTesto = '';
+    telefonoEquipe = '';
+    emailEquipe = '';
     capoEquipeUnita = false;
     noteEquipe = '';
     telefonoContatto = '';
@@ -1050,6 +1102,10 @@ export class Comunita {
         return '';
     }
 
+    get haCapoEquipe() {
+        return this.equipeCatechisti.some((unita) => unita.capoEquipe);
+    }
+
     toggleForm() {
         if (this.formVisibile) {
             this.annullaForm();
@@ -1059,6 +1115,11 @@ export class Comunita {
     }
 
     salvaMembro() {
+        if (!this.membroInModifica) {
+            this.salvaCensimentoMinimo();
+            return;
+        }
+
         const membro = {
             ...this.form,
             nome: this.form.nome.trim(),
@@ -1070,12 +1131,7 @@ export class Comunita {
             note: this.form.note.trim()
         };
 
-        if (this.membroInModifica) {
-            this.membri = this.membri.map((item) => (item.id === this.membroInModifica?.id ? { ...membro, id: item.id } : item));
-        } else {
-            this.membri = [...this.membri, { ...membro, id: this.prossimoId++ }];
-        }
-
+        this.membri = this.membri.map((item) => (item.id === this.membroInModifica?.id ? { ...membro, id: item.id } : item));
         this.annullaForm();
     }
 
@@ -1129,7 +1185,8 @@ export class Comunita {
         this.unitaEquipeModal = unita;
         this.tipoUnitaEquipe = unita.tipoUnita;
         this.nomeVisualizzatoEquipe = unita.nomeVisualizzato;
-        this.membriEquipeTesto = unita.membri.map((membro) => `${membro.nome} ${membro.cognome}`).join('\n');
+        this.telefonoEquipe = unita.telefono;
+        this.emailEquipe = unita.email;
         this.capoEquipeUnita = unita.capoEquipe;
         this.noteEquipe = unita.note;
     }
@@ -1155,36 +1212,20 @@ export class Comunita {
             return;
         }
 
-        const membri = this.membriEquipeTesto
-            .split('\n')
-            .map((value) => value.trim())
-            .filter(Boolean)
-            .map((nomeCompleto, index) => {
-                const parti = nomeCompleto.split(/\s+/);
-                const nome = parti.shift() ?? '';
-                const cognome = parti.join(' ');
-                return {
-                    id: index + 1,
-                    nome,
-                    cognome,
-                    genere: this.tipoUnitaEquipe === 'Fratello singolo' ? 'Fratello' as const : 'Sorella' as const,
-                    telefono: '',
-                    email: '',
-                    capoEquipe: this.capoEquipeUnita && index === 0
-                };
-            });
-
         this.equipeCatechisti = this.equipeCatechisti.map((unita) =>
             unita.id === this.unitaEquipeModal?.id
                 ? {
                       ...unita,
                       tipoUnita: this.tipoUnitaEquipe,
                       nomeVisualizzato: this.nomeVisualizzatoEquipe.trim() || unita.nomeVisualizzato,
-                      membri,
+                      telefono: this.telefonoEquipe.trim(),
+                      email: this.emailEquipe.trim(),
                       capoEquipe: this.capoEquipeUnita,
                       note: this.noteEquipe.trim()
                   }
-                : unita
+                : this.capoEquipeUnita
+                  ? { ...unita, capoEquipe: false }
+                  : unita
         );
         this.messaggio = 'Unità equipe aggiornata';
         this.chiudiModali();
@@ -1276,13 +1317,16 @@ export class Comunita {
         this.emailContatto = '';
         this.unitaEquipeModal = null;
         this.nomeVisualizzatoEquipe = '';
-        this.membriEquipeTesto = '';
+        this.telefonoEquipe = '';
+        this.emailEquipe = '';
         this.capoEquipeUnita = false;
         this.noteEquipe = '';
     }
 
     annullaForm() {
         this.form = this.creaFormVuoto();
+        this.tipoInserimentoMembro = 'Fratello singolo';
+        this.nuovoMembroMinimo = this.creaNuovoMembroMinimo();
         this.membroInModifica = null;
         this.formVisibile = false;
     }
@@ -1340,6 +1384,46 @@ export class Comunita {
         return value?.trim() || 'Da inserire';
     }
 
+    private salvaCensimentoMinimo() {
+        const email = this.nuovoMembroMinimo.emailRiferimento.trim();
+        const noteCensimento = this.tipoInserimentoMembro === 'Coppia'
+            ? 'Censimento minimo di coppia: i consensi privacy restano individuali.'
+            : 'Censimento minimo: anagrafica e consensi da completare tramite modulo personale.';
+
+        const nuoviMembri =
+            this.tipoInserimentoMembro === 'Coppia'
+                ? [
+                      this.creaMembroMinimo(this.nuovoMembroMinimo.nomeMarito, this.nuovoMembroMinimo.cognomeMarito, email, noteCensimento),
+                      this.creaMembroMinimo(this.nuovoMembroMinimo.nomeMoglie, this.nuovoMembroMinimo.cognomeMoglie, email, noteCensimento)
+                  ]
+                : [this.creaMembroMinimo(this.nuovoMembroMinimo.nome, this.nuovoMembroMinimo.cognome, email, noteCensimento)];
+
+        this.membri = [...this.membri, ...nuoviMembri];
+        this.messaggio = this.tipoInserimentoMembro === 'Coppia' ? 'Coppia censita in modalità mock' : 'Membro censito in modalità mock';
+        this.annullaForm();
+    }
+
+    private creaMembroMinimo(nome: string, cognome: string, email: string, note: string): MembroComunitaPilota {
+        const nomePulito = nome.trim();
+        const cognomePulito = cognome.trim();
+        return {
+            id: this.prossimoId++,
+            nome: nomePulito,
+            cognome: cognomePulito,
+            nomeCompleto: `${nomePulito} ${cognomePulito}`.trim(),
+            ruolo: 'Fratello',
+            accessoApp: 'Nessuno',
+            statoMembro: 'Attivo',
+            consensoPrivacyStato: 'Da inviare',
+            moduloPrivacyInviato: false,
+            moduloPrivacyRicevuto: false,
+            dataInvioModuloPrivacy: '',
+            telefono: '',
+            email,
+            note
+        };
+    }
+
     private creaMembriDemo(): MembroComunitaPilota[] {
         return DEMO_MEMBRI.map((membro, index) => ({
             id: index + 1,
@@ -1372,6 +1456,18 @@ export class Comunita {
             moduloPrivacyInviato: false,
             moduloPrivacyRicevuto: false,
             note: ''
+        };
+    }
+
+    private creaNuovoMembroMinimo() {
+        return {
+            nome: '',
+            cognome: '',
+            nomeMarito: '',
+            cognomeMarito: '',
+            nomeMoglie: '',
+            cognomeMoglie: '',
+            emailRiferimento: ''
         };
     }
 

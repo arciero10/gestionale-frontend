@@ -43,7 +43,7 @@ interface DashboardModule {
                             <dt>Diocesi:</dt>
                             <dd>{{ diocesi }}</dd>
                         </div>
-                        <div>
+                        <div class="summary-tappa">
                             <dt>Tappa del Cammino</dt>
                             <dd>
                                 @if (isDemo) {
@@ -188,6 +188,7 @@ interface DashboardModule {
             }
 
             .community-summary dl div {
+                flex: 1 1 8.5rem;
                 min-height: 3.2rem;
                 display: grid;
                 align-content: center;
@@ -195,6 +196,11 @@ interface DashboardModule {
                 border-radius: 12px;
                 background: rgba(255, 255, 255, 0.66);
                 border: 1px solid rgba(31, 41, 55, 0.08);
+            }
+
+            .community-summary dl div.summary-tappa {
+                flex: 2 1 20rem;
+                min-width: min(100%, 19rem);
             }
 
             .community-summary dt {
@@ -211,7 +217,8 @@ interface DashboardModule {
 
             .community-summary p-select {
                 display: block;
-                min-width: 13rem;
+                min-width: 18rem;
+                max-width: 100%;
             }
 
             :host ::ng-deep .community-summary .p-select {
@@ -219,6 +226,15 @@ interface DashboardModule {
                 min-height: 2.3rem;
                 border-radius: 10px;
                 background: rgba(255, 255, 255, 0.82);
+            }
+
+            :host ::ng-deep .community-summary .p-select-label {
+                white-space: normal;
+                overflow: visible;
+                text-overflow: clip;
+                line-height: 1.2;
+                padding-top: 0.45rem;
+                padding-bottom: 0.45rem;
             }
 
             :host ::ng-deep .dashboard-dropdown-panel {
@@ -382,6 +398,10 @@ interface DashboardModule {
                 .community-summary dl {
                     display: grid;
                     grid-template-columns: 1fr;
+                }
+
+                .community-summary p-select {
+                    min-width: 0;
                 }
             }
         `
