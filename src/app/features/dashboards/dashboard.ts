@@ -36,11 +36,11 @@ interface DashboardModule {
                             <dd>{{ parrocchia }}</dd>
                         </div>
                         <div>
-                            <dt>Settore</dt>
-                            <dd>Settore {{ settore }}</dd>
+                            <dt>Settore:</dt>
+                            <dd>{{ settore }}</dd>
                         </div>
                         <div>
-                            <dt>Diocesi</dt>
+                            <dt>Diocesi:</dt>
                             <dd>{{ diocesi }}</dd>
                         </div>
                         <div>
