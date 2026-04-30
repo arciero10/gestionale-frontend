@@ -31,11 +31,8 @@ interface DashboardModule {
                 <aside class="community-summary" aria-label="Dati comunità">
                     <span class="summary-eyebrow">{{ isDemo ? 'Comunità demo' : 'Comunità attiva' }}</span>
                     <h1>{{ nomeComunita }}</h1>
+                    <p class="summary-parish">{{ parrocchia }}</p>
                     <dl>
-                        <div>
-                            <dt>Parrocchia</dt>
-                            <dd>{{ parrocchia }}</dd>
-                        </div>
                         <div>
                             <dt>Settore:</dt>
                             <dd>{{ settore }}</dd>
@@ -77,10 +74,6 @@ interface DashboardModule {
                         <div>
                             <dt>Convivenze in programma</dt>
                             <dd>{{ convivenzeCount }}</dd>
-                        </div>
-                        <div>
-                            <dt>Posti censiti</dt>
-                            <dd>{{ postiCount }}</dd>
                         </div>
                     </dl>
                 </aside>
@@ -186,6 +179,15 @@ interface DashboardModule {
                 align-self: start;
             }
 
+            .summary-parish {
+                margin: 0.35rem 0 0;
+                color: #334155;
+                font-weight: 700;
+                line-height: 1.25;
+                grid-column: 1;
+                grid-row: 3;
+            }
+
             .community-summary dl {
                 display: flex;
                 flex-wrap: wrap;
@@ -193,7 +195,7 @@ interface DashboardModule {
                 gap: 0.55rem;
                 margin: 0;
                 grid-column: 2;
-                grid-row: 1 / span 2;
+                grid-row: 1 / span 3;
             }
 
             .community-summary dl div {
@@ -390,6 +392,11 @@ interface DashboardModule {
 
                 .community-summary dl {
                     justify-content: flex-start;
+                    grid-column: 1;
+                    grid-row: auto;
+                }
+
+                .summary-parish {
                     grid-column: 1;
                     grid-row: auto;
                 }
