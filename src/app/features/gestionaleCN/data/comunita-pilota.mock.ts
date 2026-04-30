@@ -61,6 +61,20 @@ export interface EquipeCatechistiUnita {
     note: string;
 }
 
+export interface ComunitaFigliaEquipe {
+    id: number;
+    nomeVisualizzato: string;
+    parrocchia: string;
+}
+
+export interface EquipeCatechisti {
+    id: number;
+    nomeEquipe: string;
+    capoEquipeId: number | null;
+    membriEquipe: EquipeCatechistiUnita[];
+    comunitaFiglie: ComunitaFigliaEquipe[];
+}
+
 export interface MembroUnitaComunita {
     id: number;
     membroId?: number;
@@ -308,3 +322,17 @@ export const EQUIPE_CATECHISTI_UNITA_PILOTA: EquipeCatechistiUnita[] = [
         note: ''
     }
 ];
+
+export const EQUIPE_CATECHISTI_PILOTA: EquipeCatechisti = {
+    id: 1,
+    nomeEquipe: 'Equipe di Paolo e Angela Bencetti',
+    capoEquipeId: null,
+    membriEquipe: EQUIPE_CATECHISTI_UNITA_PILOTA,
+    comunitaFiglie: [
+        {
+            id: 1,
+            nomeVisualizzato: COMUNITA_PILOTA.nomeVisualizzato,
+            parrocchia: COMUNITA_PILOTA.parrocchia
+        }
+    ]
+};

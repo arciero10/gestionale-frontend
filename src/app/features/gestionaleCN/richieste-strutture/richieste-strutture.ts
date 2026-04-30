@@ -97,6 +97,12 @@ import {
                             <small>{{ getConvivenzaDescrizione(form.convivenzaId) }}</small>
                         </div>
 
+                        <div class="form-full organizer-summary">
+                            <div><span>Richiedente / organizzatore</span><strong>{{ getConvivenzaOrganizzatore(form.convivenzaId) }}</strong></div>
+                            <div><span>Equipe organizzatrice</span><strong>{{ getConvivenzaEquipe(form.convivenzaId) || 'Non prevista' }}</strong></div>
+                            <div><span>Comunità destinataria</span><strong>{{ getConvivenzaComunitaDestinataria(form.convivenzaId) }}</strong></div>
+                        </div>
+
                         <div>
                             <label for="comunitaCoinvolte">Comunità coinvolte</label>
                             <input id="comunitaCoinvolte" name="comunitaCoinvolte" pInputText [(ngModel)]="comunitaCoinvolteTesto" (ngModelChange)="aggiornaCorpoDaSelezioni()" required />
@@ -162,6 +168,9 @@ import {
 
                             <dl class="detail-grid">
                                 <div><dt>Convivenza</dt><dd>{{ getConvivenzaLabel(selected.convivenzaId) }}</dd></div>
+                                <div><dt>Organizzata da</dt><dd>{{ selected.soggettoOrganizzatore || getConvivenzaOrganizzatore(selected.convivenzaId) }}</dd></div>
+                                <div><dt>Equipe organizzatrice</dt><dd>{{ selected.equipeOrganizzatriceNome || 'Non prevista' }}</dd></div>
+                                <div><dt>Comunità destinataria</dt><dd>{{ selected.comunitaDestinatariaNome || getConvivenzaComunitaDestinataria(selected.convivenzaId) }}</dd></div>
                                 <div><dt>Comunità coinvolte</dt><dd>{{ selected.comunitaCoinvolte.join(', ') }}</dd></div>
                                 <div><dt>Creazione</dt><dd>{{ formatDateIt(selected.dataCreazione) }}</dd></div>
                                 <div><dt>Invio</dt><dd>{{ formatDateIt(selected.dataInvio) || 'Non inviata' }}</dd></div>
@@ -296,6 +305,10 @@ import {
             .structure-summary span { color: #64748b; font-weight: 800; font-size: .85rem; }
             .structure-summary strong { color: #111827; font-size: 1.05rem; }
             .structure-summary em { color: #9a3412; font-style: normal; font-weight: 800; }
+            .organizer-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+            .organizer-summary div { padding: .75rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc; }
+            .organizer-summary span { display: block; color: #64748b; font-size: .8rem; font-weight: 800; }
+            .organizer-summary strong { display: block; margin-top: .25rem; color: #111827; }
             .locked-code {
                 display: inline-flex;
                 align-items: center;
@@ -405,6 +418,7 @@ import {
             .tech-note code { padding: .35rem .55rem; border-radius: 8px; background: #f1f5f9; color: #334155; }
             @media (max-width: 1100px) {
                 .workspace,
+                .organizer-summary,
                 .request-form,
                 .detail-grid { grid-template-columns: 1fr; }
                 .list-panel { max-height: none; }
@@ -530,6 +544,18 @@ export class RichiesteStrutture implements OnInit {
 
     getConvivenzaDescrizione(id: number | null): string {
         return id ? this.service.getConvivenzaDescrizione(id) : '';
+    }
+
+    getConvivenzaOrganizzatore(id: number | null): string {
+        return id ? this.service.getConvivenzaById(id)?.soggettoOrganizzatore ?? 'Comunità' : 'Comunità';
+    }
+
+    getConvivenzaEquipe(id: number | null): string {
+        return id ? this.service.getConvivenzaById(id)?.equipeOrganizzatriceNome ?? '' : '';
+    }
+
+    getConvivenzaComunitaDestinataria(id: number | null): string {
+        return id ? this.service.getConvivenzaById(id)?.comunitaDestinatariaNome ?? this.comunitaCoinvolteTesto : this.comunitaCoinvolteTesto;
     }
 
     getStrutturaLabel(id: number): string {

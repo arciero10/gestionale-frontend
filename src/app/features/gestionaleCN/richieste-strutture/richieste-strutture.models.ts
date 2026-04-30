@@ -19,6 +19,9 @@ export interface RichiestaStruttura {
     oggettoPersonalizzato: string;
     oggettoCompleto: string;
     corpoEmail: string;
+    soggettoOrganizzatore?: string;
+    equipeOrganizzatriceNome?: string;
+    comunitaDestinatariaNome?: string;
     stato: StatoRichiestaStruttura;
     dataCreazione: string;
     dataInvio: string | null;
@@ -55,6 +58,10 @@ export interface RichiestaStrutturaOption {
     dataInizio?: string;
     dataFine?: string;
     partecipanti?: number;
+    categoriaConvivenza?: string;
+    soggettoOrganizzatore?: string;
+    equipeOrganizzatriceNome?: string;
+    comunitaDestinatariaNome?: string;
 }
 
 export const CODICE_RICHIESTA_REGEX = /\[(EC-\d{4}-\d{6})\]/;

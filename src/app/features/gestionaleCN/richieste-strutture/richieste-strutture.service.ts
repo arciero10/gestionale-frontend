@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { COMUNITA_PILOTA, EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
 import { POSTI_CONVIVENZA_MOCK } from '../data/posti-convivenza.mock';
 import {
     CreaRichiestaStrutturaPayload,
@@ -13,10 +14,43 @@ import { GRAPH_SENDER_MAILBOX_PLACEHOLDER } from './graph-email.placeholder';
 
 @Injectable({ providedIn: 'root' })
 export class RichiesteStruttureService {
+    private readonly comunitaDestinatariaNome = `${COMUNITA_PILOTA.nomeVisualizzato} – ${COMUNITA_PILOTA.parrocchia}`;
+
     private readonly convivenze: RichiestaStrutturaOption[] = [
-        { id: 1, label: 'Convivenza Inizio Corso 2025', descrizione: '05-12-2026 - 08-12-2026, 42 partecipanti indicativi', dataInizio: '2026-12-05', dataFine: '2026-12-08', partecipanti: 42 },
-        { id: 2, label: 'Passaggio 1° Scrutinio', descrizione: '12-03-2027 - 14-03-2027, 40 partecipanti indicativi', dataInizio: '2027-03-12', dataFine: '2027-03-14', partecipanti: 40 },
-        { id: 3, label: 'Convivenza di Pentecoste', descrizione: '22-05-2027 - 24-05-2027, 38 partecipanti indicativi', dataInizio: '2027-05-22', dataFine: '2027-05-24', partecipanti: 38 }
+        {
+            id: 1,
+            label: 'Passaggio 2° Scrutinio',
+            descrizione: '12-03-2027 - 14-03-2027, 40 partecipanti indicativi',
+            dataInizio: '2027-03-12',
+            dataFine: '2027-03-14',
+            partecipanti: 40,
+            categoriaConvivenza: 'Catechistica',
+            soggettoOrganizzatore: 'Equipe dei catechisti',
+            equipeOrganizzatriceNome: EQUIPE_CATECHISTI_PILOTA.nomeEquipe,
+            comunitaDestinatariaNome: this.comunitaDestinatariaNome
+        },
+        {
+            id: 2,
+            label: 'Convivenza di Riporto',
+            descrizione: '18-10-2027 - 19-10-2027, 42 partecipanti indicativi',
+            dataInizio: '2027-10-18',
+            dataFine: '2027-10-19',
+            partecipanti: 42,
+            categoriaConvivenza: 'Annuale',
+            soggettoOrganizzatore: 'Comunità',
+            comunitaDestinatariaNome: this.comunitaDestinatariaNome
+        },
+        {
+            id: 3,
+            label: 'Convivenza di Pentecoste',
+            descrizione: '22-05-2027 - 24-05-2027, 38 partecipanti indicativi',
+            dataInizio: '2027-05-22',
+            dataFine: '2027-05-24',
+            partecipanti: 38,
+            categoriaConvivenza: 'Annuale',
+            soggettoOrganizzatore: 'Comunità',
+            comunitaDestinatariaNome: this.comunitaDestinatariaNome
+        }
     ];
 
     private richieste: RichiestaStruttura[] = [
@@ -25,10 +59,13 @@ export class RichiesteStruttureService {
             codiceRichiesta: 'EC-2026-000001',
             convivenzaId: 1,
             strutturaId: 1,
-            comunitaCoinvolte: ['3ª Comunità S. Maria delle Grazie alle Fornaci'],
+            comunitaCoinvolte: [this.comunitaDestinatariaNome],
             oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
             oggettoCompleto: '[EC-2026-000001] Richiesta disponibilità convivenza',
-            corpoEmail: this.creaCorpoEmailBase(1, ['3ª Comunità S. Maria delle Grazie alle Fornaci'], ''),
+            corpoEmail: this.creaCorpoEmailBase(1, [this.comunitaDestinatariaNome], ''),
+            soggettoOrganizzatore: 'Equipe dei catechisti',
+            equipeOrganizzatriceNome: EQUIPE_CATECHISTI_PILOTA.nomeEquipe,
+            comunitaDestinatariaNome: this.comunitaDestinatariaNome,
             stato: 'Inviata',
             dataCreazione: '2026-04-20',
             dataInvio: '2026-04-20',
@@ -39,10 +76,13 @@ export class RichiesteStruttureService {
             codiceRichiesta: 'EC-2026-000002',
             convivenzaId: 3,
             strutturaId: 4,
-            comunitaCoinvolte: ['3ª Comunità S. Maria delle Grazie alle Fornaci', '4ª Comunità'],
+            comunitaCoinvolte: [this.comunitaDestinatariaNome],
             oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
             oggettoCompleto: '[EC-2026-000002] Richiesta disponibilità convivenza',
-            corpoEmail: this.creaCorpoEmailBase(3, ['3ª Comunità S. Maria delle Grazie alle Fornaci', '4ª Comunità'], ''),
+            corpoEmail: this.creaCorpoEmailBase(3, [this.comunitaDestinatariaNome], ''),
+            soggettoOrganizzatore: 'Comunità',
+            equipeOrganizzatriceNome: '',
+            comunitaDestinatariaNome: this.comunitaDestinatariaNome,
             stato: 'RispostaRicevuta',
             dataCreazione: '2026-04-22',
             dataInvio: '2026-04-22',
@@ -57,7 +97,7 @@ export class RichiesteStruttureService {
             mittente: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
             destinatario: this.getStrutturaEmail(1),
             oggetto: '[EC-2026-000001] Richiesta disponibilità convivenza',
-            corpo: this.creaCorpoEmailBase(1, ['3ª Comunità S. Maria delle Grazie alle Fornaci'], ''),
+            corpo: this.creaCorpoEmailBase(1, [this.comunitaDestinatariaNome], ''),
             dataMessaggio: '2026-04-20',
             messageIdGraph: 'mock-sent-ec-2026-000001',
             tipo: 'Inviato'
@@ -68,7 +108,7 @@ export class RichiesteStruttureService {
             mittente: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
             destinatario: this.getStrutturaEmail(4),
             oggetto: '[EC-2026-000002] Richiesta disponibilità convivenza',
-            corpo: this.creaCorpoEmailBase(3, ['3ª Comunità S. Maria delle Grazie alle Fornaci', '4ª Comunità'], ''),
+            corpo: this.creaCorpoEmailBase(3, [this.comunitaDestinatariaNome], ''),
             dataMessaggio: '2026-04-22',
             messageIdGraph: 'mock-sent-ec-2026-000002',
             tipo: 'Inviato'
@@ -107,6 +147,7 @@ export class RichiesteStruttureService {
     creaRichiesta(payload: CreaRichiestaStrutturaPayload): RichiestaStruttura {
         const id = this.prossimoIdRichiesta();
         const codiceRichiesta = payload.codiceRichiesta ?? generaCodiceRichiesta(new Date().getFullYear(), id);
+        const convivenza = this.getConvivenzaById(payload.convivenzaId);
         const richiesta: RichiestaStruttura = {
             id,
             codiceRichiesta,
@@ -116,6 +157,9 @@ export class RichiesteStruttureService {
             oggettoPersonalizzato: payload.oggettoPersonalizzato,
             oggettoCompleto: creaOggettoCompleto(codiceRichiesta, payload.oggettoPersonalizzato),
             corpoEmail: payload.corpoEmail,
+            soggettoOrganizzatore: convivenza?.soggettoOrganizzatore,
+            equipeOrganizzatriceNome: convivenza?.equipeOrganizzatriceNome,
+            comunitaDestinatariaNome: convivenza?.comunitaDestinatariaNome,
             stato: 'Bozza',
             dataCreazione: this.oggiIso(),
             dataInvio: null,
@@ -180,7 +224,12 @@ export class RichiesteStruttureService {
     }
 
     getConvivenzaDescrizione(id: number): string {
-        return this.getConvivenzaById(id)?.descrizione ?? '';
+        const convivenza = this.getConvivenzaById(id);
+        if (!convivenza) {
+            return '';
+        }
+        const equipe = convivenza.equipeOrganizzatriceNome ? ` · Equipe: ${convivenza.equipeOrganizzatriceNome}` : '';
+        return `${convivenza.descrizione} · Organizzata da: ${convivenza.soggettoOrganizzatore}${equipe}`;
     }
 
     getStrutturaById(id: number): RichiestaStrutturaOption | undefined {
@@ -197,11 +246,16 @@ export class RichiesteStruttureService {
 
     creaCorpoEmailBase(convivenzaId: number, comunitaCoinvolte: string[], note: string): string {
         const convivenza = this.getConvivenzaById(convivenzaId);
+        const equipe = convivenza?.equipeOrganizzatriceNome ? `\nEquipe organizzatrice:\n${convivenza.equipeOrganizzatriceNome}\n` : '';
+        const destinataria = convivenza?.comunitaDestinatariaNome ? `\nComunità destinataria:\n${convivenza.comunitaDestinatariaNome}\n` : '';
 
         return `Gentili,
 
 con la presente chiediamo disponibilità per una convivenza.
 
+Organizzata da:
+${convivenza?.soggettoOrganizzatore ?? 'Comunità'}
+${equipe}${destinataria}
 Date:
 dal ${formatDateIt(convivenza?.dataInizio) || 'da completare'} al ${formatDateIt(convivenza?.dataFine) || 'da completare'}
 
