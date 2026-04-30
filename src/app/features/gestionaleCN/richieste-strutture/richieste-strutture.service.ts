@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
+import { POSTI_CONVIVENZA_MOCK } from '../data/posti-convivenza.mock';
 import {
     CreaRichiestaStrutturaPayload,
     MessaggioRichiestaStruttura,
     RichiestaStruttura,
     RichiestaStrutturaOption,
-    creaOggettoRichiesta,
+    creaOggettoCompleto,
+    formatDateIt,
     generaCodiceRichiesta
 } from './richieste-strutture.models';
 import { GRAPH_SENDER_MAILBOX_PLACEHOLDER } from './graph-email.placeholder';
@@ -12,15 +14,9 @@ import { GRAPH_SENDER_MAILBOX_PLACEHOLDER } from './graph-email.placeholder';
 @Injectable({ providedIn: 'root' })
 export class RichiesteStruttureService {
     private readonly convivenze: RichiestaStrutturaOption[] = [
-        { id: 1, label: 'Convivenza Inizio Corso 2025', descrizione: '05/12/2026 - 08/12/2026, 42 partecipanti indicativi' },
-        { id: 2, label: 'Passaggio 1 Scrutinio', descrizione: '12/03/2027 - 14/03/2027, 40 partecipanti indicativi' },
-        { id: 3, label: 'Convivenza di Pentecoste', descrizione: '22/05/2027 - 24/05/2027, 38 partecipanti indicativi' }
-    ];
-
-    private readonly strutture: RichiestaStrutturaOption[] = [
-        { id: 1, label: 'Casa San Giuseppe', descrizione: 'Albano Laziale, Lazio' },
-        { id: 2, label: 'Istituto Santa Marta', descrizione: 'Frascati, Lazio' },
-        { id: 3, label: 'Centro Fraternità', descrizione: 'Scheda struttura da completare' }
+        { id: 1, label: 'Convivenza Inizio Corso 2025', descrizione: '05-12-2026 - 08-12-2026, 42 partecipanti indicativi', dataInizio: '2026-12-05', dataFine: '2026-12-08', partecipanti: 42 },
+        { id: 2, label: 'Passaggio 1 Scrutinio', descrizione: '12-03-2027 - 14-03-2027, 40 partecipanti indicativi', dataInizio: '2027-03-12', dataFine: '2027-03-14', partecipanti: 40 },
+        { id: 3, label: 'Convivenza di Pentecoste', descrizione: '22-05-2027 - 24-05-2027, 38 partecipanti indicativi', dataInizio: '2027-05-22', dataFine: '2027-05-24', partecipanti: 38 }
     ];
 
     private richieste: RichiestaStruttura[] = [
@@ -29,9 +25,10 @@ export class RichiesteStruttureService {
             codiceRichiesta: 'EC-2026-000001',
             convivenzaId: 1,
             strutturaId: 1,
-            comunitaCoinvolte: ['3ª Comunità'],
-            oggetto: '[EC-2026-000001] Richiesta disponibilità convivenza',
-            messaggio: this.creaMessaggioBase('Convivenza Inizio Corso 2025', ['3ª Comunità']),
+            comunitaCoinvolte: ['3ª Comunità S. Maria delle Grazie alle Fornaci'],
+            oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
+            oggettoCompleto: '[EC-2026-000001] Richiesta disponibilità convivenza',
+            corpoEmail: this.creaCorpoEmailBase(1, ['3ª Comunità S. Maria delle Grazie alle Fornaci'], ''),
             stato: 'Inviata',
             dataCreazione: '2026-04-20',
             dataInvio: '2026-04-20',
@@ -41,10 +38,11 @@ export class RichiesteStruttureService {
             id: 2,
             codiceRichiesta: 'EC-2026-000002',
             convivenzaId: 3,
-            strutturaId: 2,
-            comunitaCoinvolte: ['3ª Comunità', '4ª Comunità'],
-            oggetto: '[EC-2026-000002] Richiesta disponibilità convivenza',
-            messaggio: this.creaMessaggioBase('Convivenza di Pentecoste', ['3ª Comunità', '4ª Comunità']),
+            strutturaId: 4,
+            comunitaCoinvolte: ['3ª Comunità S. Maria delle Grazie alle Fornaci', '4ª Comunità'],
+            oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
+            oggettoCompleto: '[EC-2026-000002] Richiesta disponibilità convivenza',
+            corpoEmail: this.creaCorpoEmailBase(3, ['3ª Comunità S. Maria delle Grazie alle Fornaci', '4ª Comunità'], ''),
             stato: 'RispostaRicevuta',
             dataCreazione: '2026-04-22',
             dataInvio: '2026-04-22',
@@ -57,9 +55,9 @@ export class RichiesteStruttureService {
             id: 1,
             richiestaStrutturaId: 1,
             mittente: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
-            destinatario: 'struttura@example.test',
+            destinatario: this.getStrutturaEmail(1),
             oggetto: '[EC-2026-000001] Richiesta disponibilità convivenza',
-            corpo: this.creaMessaggioBase('Convivenza Inizio Corso 2025', ['3ª Comunità']),
+            corpo: this.creaCorpoEmailBase(1, ['3ª Comunità S. Maria delle Grazie alle Fornaci'], ''),
             dataMessaggio: '2026-04-20',
             messageIdGraph: 'mock-sent-ec-2026-000001',
             tipo: 'Inviato'
@@ -68,9 +66,9 @@ export class RichiesteStruttureService {
             id: 2,
             richiestaStrutturaId: 2,
             mittente: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
-            destinatario: 'struttura@example.test',
+            destinatario: this.getStrutturaEmail(4),
             oggetto: '[EC-2026-000002] Richiesta disponibilità convivenza',
-            corpo: this.creaMessaggioBase('Convivenza di Pentecoste', ['3ª Comunità', '4ª Comunità']),
+            corpo: this.creaCorpoEmailBase(3, ['3ª Comunità S. Maria delle Grazie alle Fornaci', '4ª Comunità'], ''),
             dataMessaggio: '2026-04-22',
             messageIdGraph: 'mock-sent-ec-2026-000002',
             tipo: 'Inviato'
@@ -78,7 +76,7 @@ export class RichiesteStruttureService {
         {
             id: 3,
             richiestaStrutturaId: 2,
-            mittente: 'struttura@example.test',
+            mittente: this.getStrutturaEmail(4),
             destinatario: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
             oggetto: 'Re: [EC-2026-000002] Richiesta disponibilità convivenza',
             corpo: 'Buongiorno, abbiamo ricevuto la richiesta. Stiamo verificando la disponibilità e vi aggiorniamo a breve.',
@@ -93,20 +91,31 @@ export class RichiesteStruttureService {
     }
 
     getStruttureOptions(): RichiestaStrutturaOption[] {
-        return [...this.strutture];
+        return POSTI_CONVIVENZA_MOCK.map((posto) => ({
+            id: posto.id,
+            label: posto.nome,
+            descrizione: `${posto.indirizzo || posto.citta}, ${posto.regione}`,
+            email: posto.email,
+            indirizzo: posto.indirizzo
+        }));
+    }
+
+    generaCodiceRichiesta(): string {
+        return generaCodiceRichiesta(new Date().getFullYear(), this.prossimoIdRichiesta());
     }
 
     creaRichiesta(payload: CreaRichiestaStrutturaPayload): RichiestaStruttura {
         const id = this.prossimoIdRichiesta();
-        const codiceRichiesta = generaCodiceRichiesta(2026, id);
+        const codiceRichiesta = payload.codiceRichiesta ?? generaCodiceRichiesta(new Date().getFullYear(), id);
         const richiesta: RichiestaStruttura = {
             id,
             codiceRichiesta,
             convivenzaId: payload.convivenzaId,
             strutturaId: payload.strutturaId,
             comunitaCoinvolte: payload.comunitaCoinvolte,
-            oggetto: payload.oggetto.includes(`[${codiceRichiesta}]`) ? payload.oggetto : creaOggettoRichiesta(codiceRichiesta),
-            messaggio: payload.messaggio,
+            oggettoPersonalizzato: payload.oggettoPersonalizzato,
+            oggettoCompleto: creaOggettoCompleto(codiceRichiesta, payload.oggettoPersonalizzato),
+            corpoEmail: payload.corpoEmail,
             stato: 'Bozza',
             dataCreazione: this.oggiIso(),
             dataInvio: null,
@@ -114,7 +123,7 @@ export class RichiesteStruttureService {
         };
 
         this.richieste = [richiesta, ...this.richieste];
-        return { ...richiesta };
+        return { ...richiesta, comunitaCoinvolte: [...richiesta.comunitaCoinvolte] };
     }
 
     getRichieste(): RichiestaStruttura[] {
@@ -145,9 +154,9 @@ export class RichiesteStruttureService {
                     id: this.prossimoIdMessaggio(),
                     richiestaStrutturaId: id,
                     mittente: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
-                    destinatario: 'struttura@example.test',
-                    oggetto: richiesta.oggetto,
-                    corpo: richiesta.messaggio,
+                    destinatario: this.getStrutturaEmail(richiesta.strutturaId),
+                    oggetto: richiesta.oggettoCompleto,
+                    corpo: richiesta.corpoEmail,
                     dataMessaggio: dataInvio,
                     messageIdGraph: `mock-sent-${richiesta.codiceRichiesta.toLowerCase()}`,
                     tipo: 'Inviato'
@@ -159,39 +168,56 @@ export class RichiesteStruttureService {
     }
 
     getMessaggi(id: number): MessaggioRichiestaStruttura[] {
-        return this.messaggi
-            .filter((messaggio) => messaggio.richiestaStrutturaId === id)
-            .map((messaggio) => ({ ...messaggio }));
+        return this.messaggi.filter((messaggio) => messaggio.richiestaStrutturaId === id).map((messaggio) => ({ ...messaggio }));
+    }
+
+    getConvivenzaById(id: number): RichiestaStrutturaOption | undefined {
+        return this.convivenze.find((item) => item.id === id);
     }
 
     getConvivenzaLabel(id: number): string {
-        return this.convivenze.find((item) => item.id === id)?.label ?? 'Convivenza da verificare';
+        return this.getConvivenzaById(id)?.label ?? 'Convivenza da verificare';
     }
 
     getConvivenzaDescrizione(id: number): string {
-        return this.convivenze.find((item) => item.id === id)?.descrizione ?? '';
+        return this.getConvivenzaById(id)?.descrizione ?? '';
+    }
+
+    getStrutturaById(id: number): RichiestaStrutturaOption | undefined {
+        return this.getStruttureOptions().find((item) => item.id === id);
     }
 
     getStrutturaLabel(id: number): string {
-        return this.strutture.find((item) => item.id === id)?.label ?? 'Struttura da verificare';
+        return this.getStrutturaById(id)?.label ?? 'Struttura da verificare';
     }
 
-    creaMessaggioBase(convivenza: string, comunitaCoinvolte: string[]): string {
-        return `Pace,
+    getStrutturaEmail(id: number): string {
+        return this.getStrutturaById(id)?.email || 'email-struttura-da-completare@example.test';
+    }
 
-con la presente chiediamo la disponibilità della struttura per una convivenza comunitaria.
+    creaCorpoEmailBase(convivenzaId: number, comunitaCoinvolte: string[], note: string): string {
+        const convivenza = this.getConvivenzaById(convivenzaId);
 
-Dati richiesta:
-- Convivenza: ${convivenza}
-- Comunità coinvolte: ${comunitaCoinvolte.join(', ')}
-- Periodo: da completare
-- Numero indicativo partecipanti: da completare
+        return `Gentili,
 
-Restiamo in attesa di un vostro gentile riscontro.
+con la presente chiediamo disponibilità per una convivenza.
 
-Grazie.
+Date:
+dal ${formatDateIt(convivenza?.dataInizio) || 'da completare'} al ${formatDateIt(convivenza?.dataFine) || 'da completare'}
 
-Gestionale Eventi di Comunità`;
+Comunità coinvolte:
+${comunitaCoinvolte.join(', ')}
+
+Numero indicativo partecipanti:
+${convivenza?.partecipanti ?? 'da completare'}
+
+Note:
+${note || 'Da completare'}
+
+Restiamo in attesa di un vostro riscontro.
+
+Cordiali saluti
+Eventi di Comunità`;
     }
 
     private prossimoIdRichiesta(): number {

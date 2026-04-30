@@ -16,8 +16,9 @@ export interface RichiestaStruttura {
     convivenzaId: number;
     strutturaId: number;
     comunitaCoinvolte: string[];
-    oggetto: string;
-    messaggio: string;
+    oggettoPersonalizzato: string;
+    oggettoCompleto: string;
+    corpoEmail: string;
     stato: StatoRichiestaStruttura;
     dataCreazione: string;
     dataInvio: string | null;
@@ -40,14 +41,20 @@ export interface CreaRichiestaStrutturaPayload {
     convivenzaId: number;
     strutturaId: number;
     comunitaCoinvolte: string[];
-    oggetto: string;
-    messaggio: string;
+    codiceRichiesta?: string;
+    oggettoPersonalizzato: string;
+    corpoEmail: string;
 }
 
 export interface RichiestaStrutturaOption {
     id: number;
     label: string;
     descrizione: string;
+    email?: string;
+    indirizzo?: string;
+    dataInizio?: string;
+    dataFine?: string;
+    partecipanti?: number;
 }
 
 export const CODICE_RICHIESTA_REGEX = /\[(EC-\d{4}-\d{6})\]/;
@@ -56,6 +63,19 @@ export function generaCodiceRichiesta(anno: number, progressivo: number): string
     return `EC-${anno}-${String(progressivo).padStart(6, '0')}`;
 }
 
+export function creaOggettoCompleto(codiceRichiesta: string, oggettoPersonalizzato: string): string {
+    return `[${codiceRichiesta}] ${oggettoPersonalizzato.trim() || 'Richiesta disponibilità convivenza'}`;
+}
+
 export function creaOggettoRichiesta(codiceRichiesta: string): string {
-    return `[${codiceRichiesta}] Richiesta disponibilità convivenza`;
+    return creaOggettoCompleto(codiceRichiesta, 'Richiesta disponibilità convivenza');
+}
+
+export function formatDateIt(date: string | null | undefined): string {
+    if (!date) {
+        return '';
+    }
+
+    const [year, month, day] = date.slice(0, 10).split('-');
+    return year && month && day ? `${day}-${month}-${year}` : date;
 }

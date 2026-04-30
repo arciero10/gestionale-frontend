@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -8,7 +9,14 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { GRAPH_SENDER_MAILBOX_PLACEHOLDER, RICHIESTE_STRUTTURE_API_CONTRACTS, codiceRichiestaRegexDocumentata } from './graph-email.placeholder';
 import { RichiesteStruttureService } from './richieste-strutture.service';
-import { CreaRichiestaStrutturaPayload, MessaggioRichiestaStruttura, RichiestaStruttura, StatoRichiestaStruttura, creaOggettoRichiesta, generaCodiceRichiesta } from './richieste-strutture.models';
+import {
+    CreaRichiestaStrutturaPayload,
+    MessaggioRichiestaStruttura,
+    RichiestaStruttura,
+    StatoRichiestaStruttura,
+    creaOggettoCompleto,
+    formatDateIt
+} from './richieste-strutture.models';
 
 @Component({
     selector: 'app-richieste-strutture',
@@ -21,7 +29,9 @@ import { CreaRichiestaStrutturaPayload, MessaggioRichiestaStruttura, RichiestaSt
                     <h1>Richieste strutture</h1>
                     <p>Prepara, invia e monitora le richieste di disponibilità alle strutture di accoglienza.</p>
                 </div>
-                <button pButton type="button" icon="pi pi-plus" [label]="formVisibile ? 'Chiudi form' : 'Nuova richiesta'" (click)="toggleForm()"></button>
+                @if (!isNuovaRoute) {
+                    <button pButton type="button" icon="pi pi-plus" label="Nuova richiesta" (click)="apriNuovaRichiesta()"></button>
+                }
             </header>
 
             @if (messaggioUtente) {
@@ -36,126 +46,170 @@ import { CreaRichiestaStrutturaPayload, MessaggioRichiestaStruttura, RichiestaSt
                 <span>Le richieste alle strutture devono contenere solo le informazioni necessarie all'organizzazione della convivenza. Prima di condividere dati personali o particolari verificare i consensi privacy.</span>
             </section>
 
-            @if (formVisibile) {
+            @if (isNuovaRoute || formVisibile) {
                 <section class="request-form-card">
                     <div class="form-head">
                         <div>
-                            <span>Bozza richiesta</span>
-                            <h2>{{ form.oggetto }}</h2>
+                            <span>Nuova richiesta</span>
+                            <h2>{{ oggettoCompleto }}</h2>
                         </div>
                         <p-tag value="Mock front-end" severity="warn" />
                     </div>
 
-                    <form class="request-form" #richiestaForm="ngForm" (ngSubmit)="creaRichiesta()">
+                    <form class="request-form" #richiestaForm="ngForm">
+                        <div class="form-full structure-summary">
+                            <span>Struttura</span>
+                            @if (strutturaBloccata) {
+                                <strong>{{ strutturaSelezionataLabel }}</strong>
+                                <small>{{ strutturaSelezionata?.indirizzo || 'Indirizzo da completare' }} · {{ strutturaSelezionata?.email || 'Email struttura mancante' }}</small>
+                                @if (!strutturaSelezionata?.email) {
+                                    <em>Email struttura mancante: la bozza può essere preparata, ma il contatto va completato prima dell'invio reale.</em>
+                                }
+                            } @else {
+                                <p-select
+                                    inputId="struttura"
+                                    name="struttura"
+                                    appendTo="body"
+                                    panelStyleClass="modal-dropdown-panel"
+                                    [options]="struttureOptions"
+                                    optionLabel="label"
+                                    optionValue="id"
+                                    [(ngModel)]="form.strutturaId"
+                                    required
+                                ></p-select>
+                            }
+                        </div>
+
                         <div>
                             <label for="convivenza">Convivenza</label>
-                            <p-select inputId="convivenza" name="convivenza" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="convivenzeOptions" optionLabel="label" optionValue="id" [(ngModel)]="form.convivenzaId" (onChange)="aggiornaBozza()" required></p-select>
+                            <p-select
+                                inputId="convivenza"
+                                name="convivenza"
+                                appendTo="body"
+                                panelStyleClass="modal-dropdown-panel"
+                                [options]="convivenzeOptions"
+                                optionLabel="label"
+                                optionValue="id"
+                                [(ngModel)]="form.convivenzaId"
+                                (onChange)="aggiornaCorpoDaSelezioni()"
+                                required
+                            ></p-select>
+                            <small>{{ getConvivenzaDescrizione(form.convivenzaId) }}</small>
                         </div>
-                        <div>
-                            <label for="struttura">Struttura</label>
-                            <p-select inputId="struttura" name="struttura" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="struttureOptions" optionLabel="label" optionValue="id" [(ngModel)]="form.strutturaId" required></p-select>
-                        </div>
+
                         <div>
                             <label for="comunitaCoinvolte">Comunità coinvolte</label>
-                            <input id="comunitaCoinvolte" name="comunitaCoinvolte" pInputText [(ngModel)]="comunitaCoinvolteTesto" (ngModelChange)="aggiornaBozza()" required />
+                            <input id="comunitaCoinvolte" name="comunitaCoinvolte" pInputText [(ngModel)]="comunitaCoinvolteTesto" (ngModelChange)="aggiornaCorpoDaSelezioni()" required />
                         </div>
+
+                        <div>
+                            <label>Codice richiesta</label>
+                            <span class="locked-code">[{{ form.codiceRichiesta }}]</span>
+                        </div>
+
+                        <div class="form-full subject-row">
+                            <label for="oggettoPersonalizzato">Oggetto email</label>
+                            <div>
+                                <span class="locked-code">[{{ form.codiceRichiesta }}]</span>
+                                <input id="oggettoPersonalizzato" name="oggettoPersonalizzato" pInputText [(ngModel)]="form.oggettoPersonalizzato" required />
+                            </div>
+                            <small>Anteprima oggetto completo: {{ oggettoCompleto }}</small>
+                        </div>
+
                         <div class="form-full">
-                            <label for="oggetto">Oggetto</label>
-                            <input id="oggetto" name="oggetto" pInputText [(ngModel)]="form.oggetto" required />
-                            <small>Il codice richiesta deve restare tra parentesi quadre, ad esempio [EC-2026-000001].</small>
+                            <label for="corpoEmail">Corpo email</label>
+                            <textarea id="corpoEmail" name="corpoEmail" pTextarea rows="13" [(ngModel)]="form.corpoEmail" (ngModelChange)="corpoModificato = true" required></textarea>
                         </div>
-                        <div class="form-full">
-                            <label for="messaggio">Messaggio</label>
-                            <textarea id="messaggio" name="messaggio" pTextarea rows="9" [(ngModel)]="form.messaggio" required></textarea>
-                        </div>
+
                         <footer>
-                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="toggleForm()"></button>
-                            <button pButton type="submit" label="Crea bozza" icon="pi pi-check" [disabled]="richiestaForm.invalid"></button>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="annullaNuovaRichiesta()"></button>
+                            <button pButton type="button" label="Salva bozza" icon="pi pi-save" [disabled]="richiestaForm.invalid" (click)="salvaBozza()"></button>
+                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="richiestaForm.invalid" (click)="inviaNuovaRichiesta()"></button>
                         </footer>
                     </form>
                 </section>
-            }
-
-            <div class="workspace">
-                <aside class="list-panel">
-                    <div class="panel-title">
-                        <strong>{{ richieste.length }} richieste</strong>
-                        <span>{{ senderMailbox }}</span>
-                    </div>
-
-                    @for (richiesta of richieste; track richiesta.id) {
-                        <button type="button" class="request-row" [class.active]="selected.id === richiesta.id" (click)="select(richiesta)">
-                            <span class="code">{{ richiesta.codiceRichiesta }}</span>
-                            <strong>{{ getStrutturaLabel(richiesta.strutturaId) }}</strong>
-                            <span>{{ getConvivenzaLabel(richiesta.convivenzaId) }}</span>
-                            <span>{{ richiesta.comunitaCoinvolte.join(', ') }}</span>
-                            <span class="row-bottom">
-                                <span class="status-badge" [ngClass]="getStatoClass(richiesta.stato)">{{ richiesta.stato }}</span>
-                                <small>Ultima risposta: {{ richiesta.dataUltimaRisposta || 'Nessuna' }}</small>
-                            </span>
-                        </button>
-                    }
-                </aside>
-
-                <main class="detail-panel">
-                    <section class="detail-card">
-                        <div class="detail-head">
-                            <div>
-                                <span class="code">{{ selected.codiceRichiesta }}</span>
-                                <h2>{{ getStrutturaLabel(selected.strutturaId) }}</h2>
-                            </div>
-                            <span class="status-badge" [ngClass]="getStatoClass(selected.stato)">{{ selected.stato }}</span>
+            } @else {
+                <div class="workspace">
+                    <aside class="list-panel">
+                        <div class="panel-title">
+                            <strong>{{ richieste.length }} richieste</strong>
+                            <span>{{ senderMailbox }}</span>
                         </div>
 
-                        <dl class="detail-grid">
-                            <div><dt>Convivenza</dt><dd>{{ getConvivenzaLabel(selected.convivenzaId) }}</dd></div>
-                            <div><dt>Comunità coinvolte</dt><dd>{{ selected.comunitaCoinvolte.join(', ') }}</dd></div>
-                            <div><dt>Creazione</dt><dd>{{ selected.dataCreazione }}</dd></div>
-                            <div><dt>Invio</dt><dd>{{ selected.dataInvio || 'Non inviata' }}</dd></div>
-                            <div><dt>Ultima risposta</dt><dd>{{ selected.dataUltimaRisposta || 'Nessuna' }}</dd></div>
-                            <div><dt>Mailbox mittente futura</dt><dd>{{ senderMailbox }}</dd></div>
-                        </dl>
+                        @for (richiesta of richieste; track richiesta.id) {
+                            <button type="button" class="request-row" [class.active]="selected.id === richiesta.id" (click)="select(richiesta)">
+                                <span class="code">{{ richiesta.codiceRichiesta }}</span>
+                                <strong>{{ getStrutturaLabel(richiesta.strutturaId) }}</strong>
+                                <span>{{ getConvivenzaLabel(richiesta.convivenzaId) }}</span>
+                                <span>{{ richiesta.comunitaCoinvolte.join(', ') }}</span>
+                                <span class="row-bottom">
+                                    <span class="status-badge" [ngClass]="getStatoClass(richiesta.stato)">{{ richiesta.stato }}</span>
+                                    <small>Ultima risposta: {{ formatDateIt(selectedDate(richiesta.dataUltimaRisposta)) || 'Nessuna' }}</small>
+                                </span>
+                            </button>
+                        }
+                    </aside>
 
-                        <section class="mail-preview">
-                            <h3>Oggetto</h3>
-                            <p>{{ selected.oggetto }}</p>
-                            <h3>Messaggio</h3>
-                            <pre>{{ selected.messaggio }}</pre>
+                    <main class="detail-panel">
+                        <section class="detail-card">
+                            <div class="detail-head">
+                                <div>
+                                    <span class="code">{{ selected.codiceRichiesta }}</span>
+                                    <h2>{{ getStrutturaLabel(selected.strutturaId) }}</h2>
+                                </div>
+                                <span class="status-badge" [ngClass]="getStatoClass(selected.stato)">{{ selected.stato }}</span>
+                            </div>
+
+                            <dl class="detail-grid">
+                                <div><dt>Convivenza</dt><dd>{{ getConvivenzaLabel(selected.convivenzaId) }}</dd></div>
+                                <div><dt>Comunità coinvolte</dt><dd>{{ selected.comunitaCoinvolte.join(', ') }}</dd></div>
+                                <div><dt>Creazione</dt><dd>{{ formatDateIt(selected.dataCreazione) }}</dd></div>
+                                <div><dt>Invio</dt><dd>{{ formatDateIt(selected.dataInvio) || 'Non inviata' }}</dd></div>
+                                <div><dt>Ultima risposta</dt><dd>{{ formatDateIt(selected.dataUltimaRisposta) || 'Nessuna' }}</dd></div>
+                                <div><dt>Mailbox mittente futura</dt><dd>{{ senderMailbox }}</dd></div>
+                            </dl>
+
+                            <section class="mail-preview">
+                                <h3>Oggetto completo</h3>
+                                <p>{{ selected.oggettoCompleto }}</p>
+                                <h3>Corpo email</h3>
+                                <pre>{{ selected.corpoEmail }}</pre>
+                            </section>
+
+                            <div class="actions">
+                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="selected.stato !== 'Bozza'" (click)="inviaRichiesta()"></button>
+                            </div>
                         </section>
 
-                        <div class="actions">
-                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="selected.stato !== 'Bozza'" (click)="inviaRichiesta()"></button>
-                        </div>
-                    </section>
+                        <section class="conversation-card">
+                            <div class="panel-title">
+                                <strong>Conversazione</strong>
+                                <span>{{ messaggi.length }} messaggi</span>
+                            </div>
 
-                    <section class="conversation-card">
-                        <div class="panel-title">
-                            <strong>Conversazione</strong>
-                            <span>{{ messaggi.length }} messaggi</span>
-                        </div>
-
-                        <div class="messages">
-                            @for (messaggio of messaggi; track messaggio.id) {
-                                <article class="message" [class.sent]="messaggio.tipo === 'Inviato'" [class.received]="messaggio.tipo === 'Ricevuto'">
-                                    <div class="message-meta">
-                                        <strong>{{ messaggio.tipo }}</strong>
-                                        <span>{{ messaggio.dataMessaggio }}</span>
-                                    </div>
-                                    <dl>
-                                        <div><dt>Da</dt><dd>{{ messaggio.mittente }}</dd></div>
-                                        <div><dt>A</dt><dd>{{ messaggio.destinatario }}</dd></div>
-                                    </dl>
-                                    <h3>{{ messaggio.oggetto }}</h3>
-                                    <p>{{ messaggio.corpo }}</p>
-                                    <small>Graph messageId: {{ messaggio.messageIdGraph }}</small>
-                                </article>
-                            } @empty {
-                                <div class="empty-state">Nessun messaggio collegato alla richiesta.</div>
-                            }
-                        </div>
-                    </section>
-                </main>
-            </div>
+                            <div class="messages">
+                                @for (messaggio of messaggi; track messaggio.id) {
+                                    <article class="message" [class.sent]="messaggio.tipo === 'Inviato'" [class.received]="messaggio.tipo === 'Ricevuto'">
+                                        <div class="message-meta">
+                                            <strong>{{ messaggio.tipo }}</strong>
+                                            <span>{{ formatDateIt(messaggio.dataMessaggio) }}</span>
+                                        </div>
+                                        <dl>
+                                            <div><dt>Da</dt><dd>{{ messaggio.mittente }}</dd></div>
+                                            <div><dt>A</dt><dd>{{ messaggio.destinatario }}</dd></div>
+                                        </dl>
+                                        <h3>{{ messaggio.oggetto }}</h3>
+                                        <p>{{ messaggio.corpo }}</p>
+                                        <small>Graph messageId: {{ messaggio.messageIdGraph }}</small>
+                                    </article>
+                                } @empty {
+                                    <div class="empty-state">Nessun messaggio collegato alla richiesta.</div>
+                                }
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            }
 
             <section class="tech-note">
                 <h2>Contratti backend futuri</h2>
@@ -231,6 +285,35 @@ import { CreaRichiestaStrutturaPayload, MessaggioRichiestaStruttura, RichiestaSt
             .request-form small { display: block; margin-top: .3rem; color: #64748b; }
             .form-full,
             .request-form footer { grid-column: 1 / -1; }
+            .structure-summary {
+                display: grid;
+                gap: .35rem;
+                padding: .85rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                background: #fbfbf8;
+            }
+            .structure-summary span { color: #64748b; font-weight: 800; font-size: .85rem; }
+            .structure-summary strong { color: #111827; font-size: 1.05rem; }
+            .structure-summary em { color: #9a3412; font-style: normal; font-weight: 800; }
+            .locked-code {
+                display: inline-flex;
+                align-items: center;
+                min-height: 42px;
+                width: fit-content;
+                padding: .45rem .7rem;
+                border-radius: 10px;
+                background: #e0e7ff;
+                color: #3730a3;
+                font-weight: 900;
+                white-space: nowrap;
+            }
+            .subject-row > div {
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr);
+                gap: .75rem;
+                align-items: center;
+            }
             .request-form footer,
             .actions { display: flex; justify-content: flex-end; gap: .75rem; flex-wrap: wrap; }
             .workspace { display: grid; grid-template-columns: 24rem minmax(0, 1fr); gap: 1.25rem; align-items: start; }
@@ -338,34 +421,69 @@ import { CreaRichiestaStrutturaPayload, MessaggioRichiestaStruttura, RichiestaSt
                 .request-form footer button,
                 .actions button { width: 100%; min-height: 44px; }
                 .message { max-width: 100%; }
+                .subject-row > div { grid-template-columns: 1fr; }
             }
         `
     ]
 })
-export class RichiesteStrutture {
+export class RichiesteStrutture implements OnInit {
     private readonly service = inject(RichiesteStruttureService);
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
 
     readonly senderMailbox = GRAPH_SENDER_MAILBOX_PLACEHOLDER;
     readonly apiContracts = RICHIESTE_STRUTTURE_API_CONTRACTS;
     readonly regexDocumentata = codiceRichiestaRegexDocumentata;
     readonly convivenzeOptions = this.service.getConvivenzeOptions();
     readonly struttureOptions = this.service.getStruttureOptions();
+    readonly formatDateIt = formatDateIt;
 
     richieste = this.service.getRichieste();
     selected: RichiestaStruttura = this.richieste[0];
     messaggi: MessaggioRichiestaStruttura[] = this.service.getMessaggi(this.selected.id);
     formVisibile = false;
     messaggioUtente = '';
-    comunitaCoinvolteTesto = '3ª Comunità';
+    comunitaCoinvolteTesto = '3ª Comunità S. Maria delle Grazie alle Fornaci';
+    strutturaBloccata = false;
+    corpoModificato = false;
     form = this.creaFormVuoto();
 
-    toggleForm() {
-        this.formVisibile = !this.formVisibile;
-        if (this.formVisibile) {
+    get isNuovaRoute() {
+        return this.router.url.split('?')[0].endsWith('/richieste-strutture/nuova');
+    }
+
+    get oggettoCompleto() {
+        return creaOggettoCompleto(this.form.codiceRichiesta, this.form.oggettoPersonalizzato);
+    }
+
+    get strutturaSelezionata() {
+        return this.service.getStrutturaById(this.form.strutturaId ?? 0);
+    }
+
+    get strutturaSelezionataLabel() {
+        return this.strutturaSelezionata?.label ?? 'Struttura da verificare';
+    }
+
+    ngOnInit() {
+        const strutturaId = Number(this.route.snapshot.queryParamMap.get('strutturaId'));
+        if (this.isNuovaRoute || strutturaId) {
+            this.formVisibile = true;
             this.form = this.creaFormVuoto();
-            this.comunitaCoinvolteTesto = '3ª Comunità';
-            this.aggiornaBozza();
+            if (strutturaId && this.service.getStrutturaById(strutturaId)) {
+                this.form.strutturaId = strutturaId;
+                this.strutturaBloccata = true;
+            }
+            this.corpoModificato = false;
+            this.aggiornaCorpoDaSelezioni(true);
         }
+    }
+
+    apriNuovaRichiesta() {
+        this.router.navigate(['/gestionale-cn/richieste-strutture/nuova']);
+    }
+
+    annullaNuovaRichiesta() {
+        this.router.navigate(['/gestionale-cn/richieste-strutture']);
     }
 
     select(richiesta: RichiestaStruttura) {
@@ -373,23 +491,19 @@ export class RichiesteStrutture {
         this.messaggi = this.service.getMessaggi(richiesta.id);
     }
 
-    creaRichiesta() {
-        if (!this.form.convivenzaId || !this.form.strutturaId) {
-            return;
-        }
-
-        const payload: CreaRichiestaStrutturaPayload = {
-            convivenzaId: this.form.convivenzaId,
-            strutturaId: this.form.strutturaId,
-            comunitaCoinvolte: this.parseComunitaCoinvolte(),
-            oggetto: this.form.oggetto,
-            messaggio: this.form.messaggio
-        };
-
-        const richiesta = this.service.creaRichiesta(payload);
+    salvaBozza() {
+        const richiesta = this.creaRichiestaDaForm();
         this.refresh(richiesta.id);
-        this.formVisibile = false;
         this.messaggioUtente = 'Bozza richiesta struttura creata.';
+        this.router.navigate(['/gestionale-cn/richieste-strutture']);
+    }
+
+    inviaNuovaRichiesta() {
+        const richiesta = this.creaRichiestaDaForm();
+        const aggiornata = this.service.inviaRichiesta(richiesta.id);
+        this.refresh(aggiornata?.id ?? richiesta.id);
+        this.messaggioUtente = 'Richiesta segnata come inviata. L’invio reale tramite Microsoft Graph sarà collegato al backend.';
+        this.router.navigate(['/gestionale-cn/richieste-strutture']);
     }
 
     inviaRichiesta() {
@@ -402,19 +516,28 @@ export class RichiesteStrutture {
         this.messaggioUtente = 'Richiesta segnata come inviata. L’invio reale tramite Microsoft Graph sarà collegato al backend.';
     }
 
-    aggiornaBozza() {
-        const codice = generaCodiceRichiesta(2026, this.richieste.length + 1);
-        const convivenza = this.form.convivenzaId ? this.getConvivenzaLabel(this.form.convivenzaId) : '';
-        this.form.oggetto = creaOggettoRichiesta(codice);
-        this.form.messaggio = this.service.creaMessaggioBase(convivenza, this.parseComunitaCoinvolte());
+    aggiornaCorpoDaSelezioni(force = false) {
+        if (this.corpoModificato && !force) {
+            return;
+        }
+
+        this.form.corpoEmail = this.service.creaCorpoEmailBase(this.form.convivenzaId ?? 0, this.parseComunitaCoinvolte(), '');
     }
 
     getConvivenzaLabel(id: number): string {
         return this.service.getConvivenzaLabel(id);
     }
 
+    getConvivenzaDescrizione(id: number | null): string {
+        return id ? this.service.getConvivenzaDescrizione(id) : '';
+    }
+
     getStrutturaLabel(id: number): string {
         return this.service.getStrutturaLabel(id);
+    }
+
+    selectedDate(date: string | null) {
+        return date;
     }
 
     getStatoClass(stato: StatoRichiestaStruttura): string {
@@ -438,22 +561,38 @@ export class RichiesteStrutture {
         }
     }
 
+    private creaRichiestaDaForm(): RichiestaStruttura {
+        const payload: CreaRichiestaStrutturaPayload = {
+            convivenzaId: this.form.convivenzaId ?? this.convivenzeOptions[0].id,
+            strutturaId: this.form.strutturaId ?? this.struttureOptions[0].id,
+            comunitaCoinvolte: this.parseComunitaCoinvolte(),
+            codiceRichiesta: this.form.codiceRichiesta,
+            oggettoPersonalizzato: this.form.oggettoPersonalizzato,
+            corpoEmail: this.form.corpoEmail
+        };
+
+        return this.service.creaRichiesta(payload);
+    }
+
     private refresh(selectedId: number) {
         this.richieste = this.service.getRichieste();
         this.selected = this.service.getRichiestaById(selectedId) ?? this.richieste[0];
         this.messaggi = this.service.getMessaggi(this.selected.id);
+        this.formVisibile = false;
+        this.strutturaBloccata = false;
     }
 
     private creaFormVuoto() {
         const convivenzaId = this.convivenzeOptions[0]?.id ?? null;
         const strutturaId = this.struttureOptions[0]?.id ?? null;
-        const codice = generaCodiceRichiesta(2026, this.richieste.length + 1);
+        const codiceRichiesta = this.service.generaCodiceRichiesta();
 
         return {
+            codiceRichiesta,
             convivenzaId,
             strutturaId,
-            oggetto: creaOggettoRichiesta(codice),
-            messaggio: this.service.creaMessaggioBase(this.service.getConvivenzaLabel(convivenzaId ?? 0), this.parseComunitaCoinvolte())
+            oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
+            corpoEmail: this.service.creaCorpoEmailBase(convivenzaId ?? 0, this.parseComunitaCoinvolte(), '')
         };
     }
 

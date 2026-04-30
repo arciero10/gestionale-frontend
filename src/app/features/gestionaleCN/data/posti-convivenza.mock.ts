@@ -1,5 +1,7 @@
 export type TipologiaPosto = 'Casa di convivenza' | 'Parrocchia' | 'Istituto religioso' | 'Casa per ritiri' | 'Albergo / pensione' | 'Altro';
+export type TipoStrutturaMappa = 'Hotel' | 'Casa di convivenza' | 'Istituto' | 'Parrocchia';
 export type StatoRelazione = 'Da verificare' | 'Censito internamente' | 'Interessato al progetto' | 'Partner attivo' | 'Non disponibile';
+export type StatoDisponibilitaPosto = 'Disponibile' | 'Da verificare' | 'Non disponibile';
 export type ValutazioneInterna = 'non valutato' | 'positivo' | 'da verificare' | 'problematico';
 
 export interface ServiziPosto {
@@ -14,7 +16,9 @@ export interface ServiziPosto {
 export interface PostoConvivenza {
     id: number;
     nome: string;
+    tipo: TipoStrutturaMappa;
     tipologia: TipologiaPosto;
+    zona: string;
     citta: string;
     regione: string;
     indirizzo: string;
@@ -25,9 +29,12 @@ export interface PostoConvivenza {
     email: string;
     sitoWeb: string;
     statoRelazione: StatoRelazione;
+    statoDisponibilita: StatoDisponibilitaPosto;
     note: string;
     latitudine: number | null;
     longitudine: number | null;
+    lat: number;
+    lng: number;
     placeId: string | null;
     googleMapsUrl: string;
     ultimoContatto: string | null;
@@ -37,6 +44,49 @@ export interface PostoConvivenza {
 }
 
 const mapsSearchUrl = (query: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+const tipoMappaFromTipologia = (tipologia: TipologiaPosto): TipoStrutturaMappa => {
+    if (tipologia === 'Albergo / pensione') {
+        return 'Hotel';
+    }
+
+    if (tipologia === 'Istituto religioso' || tipologia === 'Casa per ritiri') {
+        return 'Istituto';
+    }
+
+    return tipologia === 'Parrocchia' ? 'Parrocchia' : 'Casa di convivenza';
+};
+
+const statoDisponibilitaFromRelazione = (stato: StatoRelazione): StatoDisponibilitaPosto => {
+    if (stato === 'Partner attivo' || stato === 'Interessato al progetto') {
+        return 'Disponibile';
+    }
+
+    if (stato === 'Non disponibile') {
+        return 'Non disponibile';
+    }
+
+    return 'Da verificare';
+};
+
+const coordinateFallback = (id: number, citta: string): [number, number] => {
+    const basi: Record<string, [number, number]> = {
+        Roma: [41.9028, 12.4964],
+        Assisi: [43.0707, 12.6196],
+        Frascati: [41.8091, 12.6795],
+        Fiuggi: [41.7978, 13.2217],
+        Tarquinia: [42.2542, 11.7566],
+        'Santa Severa': [42.0186, 11.9541],
+        Norma: [41.5861, 12.9705],
+        Ciampino: [41.8006, 12.6026],
+        'Santa Marinella': [42.0349, 11.8542],
+        Civitavecchia: [42.0924, 11.7954]
+    };
+    const base = basi[citta] ?? basi['Roma'];
+    const offset = (id % 9) * 0.006;
+    const spread = Math.floor(id / 9) * 0.004;
+    return [Number((base[0] + offset - spread).toFixed(6)), Number((base[1] - offset + spread).toFixed(6))];
+};
 
 const serviziDefault = (tipologia: TipologiaPosto): ServiziPosto => ({
     camere: tipologia === 'Casa di convivenza' || tipologia === 'Casa per ritiri' || tipologia === 'Albergo / pensione' || tipologia === 'Istituto religioso',
@@ -57,6 +107,20 @@ const posto = (
     email: string,
     note: string
 ): PostoConvivenza => ({
+    ...(() => {
+        const [lat, lng] = coordinateFallback(id, citta);
+        const statoRelazione: StatoRelazione = 'Da verificare';
+        return {
+            tipo: tipoMappaFromTipologia(tipologia),
+            zona: citta === 'Roma' ? 'Roma' : `${citta} / ${regione}`,
+            statoRelazione,
+            statoDisponibilita: statoDisponibilitaFromRelazione(statoRelazione),
+            latitudine: lat,
+            longitudine: lng,
+            lat,
+            lng
+        };
+    })(),
     id,
     nome,
     tipologia,
@@ -69,10 +133,7 @@ const posto = (
     telefono: '',
     email,
     sitoWeb: '',
-    statoRelazione: 'Da verificare',
     note,
-    latitudine: null,
-    longitudine: null,
     placeId: null,
     googleMapsUrl: mapsSearchUrl(`${nome}, ${indirizzo}, ${citta}, ${regione}`),
     ultimoContatto: null,

@@ -57,6 +57,11 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'Convivenze' }
     },
         {
+        path: 'richieste-strutture/nuova',
+        loadComponent: () => import('./richieste-strutture/richieste-strutture').then((c) => c.RichiesteStrutture),
+        data: { breadcrumb: 'Nuova richiesta struttura' }
+    },
+        {
         path: 'richieste-strutture',
         loadComponent: () => import('./richieste-strutture/richieste-strutture').then((c) => c.RichiesteStrutture),
         data: { breadcrumb: 'Richieste strutture' }
