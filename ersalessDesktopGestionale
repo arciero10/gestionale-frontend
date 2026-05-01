@@ -1,0 +1,97 @@
+warning: in the working copy of 'src/app.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/app.ts b/src/app.ts[m
+[1mindex 2621d824..29287cb6 100644[m
+[1m--- a/src/app.ts[m
+[1m+++ b/src/app.ts[m
+[36m@@ -14,7 +14,20 @@[m [mconst ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';[m
+   selector: 'app-root',[m
+   imports: [RouterOutlet, RouterLink],[m
+   template: `[m
+[31m-    @if (showLogin()) {[m
+[32m+[m[32m    @if (showLoading()) {[m
+[32m+[m[32m      <main class="login-page">[m
+[32m+[m[32m        <section class="login-shell">[m
+[32m+[m[32m          <div class="login-card">[m
+[32m+[m[32m            <div class="login-card-head">[m
+[32m+[m[32m              <h2>Accesso in corso...</h2>[m
+[32m+[m[32m              <p>Sto controllando il tuo account Microsoft. Attendi un istante.</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        </section>[m
+[32m+[m[32m      </main>[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @if (!showLoading() && showLogin()) {[m
+       <main class="login-page">[m
+         <section class="login-shell">[m
+           <div class="login-copy">[m
+[36m@@ -55,7 +68,7 @@[m [mconst ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';[m
+       </main>[m
+     }[m
+ [m
+[31m-    @if (!showLogin()) {[m
+[32m+[m[32m    @if (!showLoading() && !showLogin()) {[m
+       <router-outlet></router-outlet>[m
+     }[m
+   `,[m
+[36m@@ -339,7 +352,14 @@[m [mexport class App {[m
+         }[m
+ [m
+         const activeAccount = this.msalService.instance.getActiveAccount();[m
+[31m-        this.authenticated.set(Boolean(activeAccount || this.hasValidLocalToken()));[m
+[32m+[m
+[32m+[m[32m        if (activeAccount) {[m
+[32m+[m[32m          this.authenticated.set(true);[m
+[32m+[m[32m          this.navigatePostLogin();[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          this.clearAuthState();[m
+[32m+[m[32m          this.authenticated.set(false);[m
+[32m+[m[32m        }[m
+       },[m
+       error: (error) => {[m
+         console.error('[MSAL] redirect observable error', error);[m
+[36m@@ -351,7 +371,7 @@[m [mexport class App {[m
+ [m
+   isLoggedIn(): boolean {[m
+     if (!this.msalReady()) {[m
+[31m-      return this.hasValidLocalToken();[m
+[32m+[m[32m      return false;[m
+     }[m
+ [m
+     const account = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];[m
+[36m@@ -360,7 +380,7 @@[m [mexport class App {[m
+       return true;[m
+     }[m
+ [m
+[31m-    return this.hasValidLocalToken();[m
+[32m+[m[32m    return false;[m
+   }[m
+ [m
+   private hasValidLocalToken(): boolean {[m
+[36m@@ -386,7 +406,15 @@[m [mexport class App {[m
+     return path === '/gestionale-cn' || path.startsWith('/gestionale-cn/') || path === '/profile' || path.startsWith('/profile/');[m
+   }[m
+ [m
+[32m+[m[32m  showLoading(): boolean {[m
+[32m+[m[32m    return !this.msalReady() && (this.currentPath() === '/' || this.isInternalRoute());[m
+[32m+[m[32m  }[m
+[32m+[m
+   showLogin(): boolean {[m
+[32m+[m[32m    if (!this.msalReady()) {[m
+[32m+[m[32m      return false;[m
+[32m+[m[32m    }[m
+[32m+[m
+     if (this.currentPath() === '/') {[m
+       return true;[m
+     }[m
+[36m@@ -449,6 +477,10 @@[m [mexport class App {[m
+     this.authenticated.set(false);[m
+   }[m
+ [m
+[32m+[m[32m  private navigatePostLogin(): void {[m
+[32m+[m[32m    this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });[m
+[32m+[m[32m  }[m
+[32m+[m
+   private ensureMsalInitialized(): Promise<void> {[m
+     if (!this.msalInitPromise) {[m
+       this.msalInitPromise = firstValueFrom(this.msalService.initialize()).then(() => undefined);[m

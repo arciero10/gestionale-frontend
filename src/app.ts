@@ -14,7 +14,20 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink],
   template: `
-    @if (showLogin()) {
+    @if (showLoading()) {
+      <main class="login-page">
+        <section class="login-shell">
+          <div class="login-card">
+            <div class="login-card-head">
+              <h2>Accesso in corso...</h2>
+              <p>Sto controllando il tuo account Microsoft. Attendi un istante.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    }
+
+    @if (!showLoading() && showLogin()) {
       <main class="login-page">
         <section class="login-shell">
           <div class="login-copy">
@@ -55,7 +68,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       </main>
     }
 
-    @if (!showLogin()) {
+    @if (!showLoading() && !showLogin()) {
       <router-outlet></router-outlet>
     }
   `,
@@ -339,7 +352,14 @@ export class App {
         }
 
         const activeAccount = this.msalService.instance.getActiveAccount();
-        this.authenticated.set(Boolean(activeAccount || this.hasValidLocalToken()));
+
+        if (activeAccount) {
+          this.authenticated.set(true);
+          this.navigatePostLogin();
+        } else {
+          this.clearAuthState();
+          this.authenticated.set(false);
+        }
       },
       error: (error) => {
         console.error('[MSAL] redirect observable error', error);
@@ -351,7 +371,7 @@ export class App {
 
   isLoggedIn(): boolean {
     if (!this.msalReady()) {
-      return this.hasValidLocalToken();
+      return false;
     }
 
     const account = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
@@ -360,7 +380,7 @@ export class App {
       return true;
     }
 
-    return this.hasValidLocalToken();
+    return false;
   }
 
   private hasValidLocalToken(): boolean {
@@ -386,7 +406,15 @@ export class App {
     return path === '/gestionale-cn' || path.startsWith('/gestionale-cn/') || path === '/profile' || path.startsWith('/profile/');
   }
 
+  showLoading(): boolean {
+    return !this.msalReady() && (this.currentPath() === '/' || this.isInternalRoute());
+  }
+
   showLogin(): boolean {
+    if (!this.msalReady()) {
+      return false;
+    }
+
     if (this.currentPath() === '/') {
       return true;
     }
@@ -447,6 +475,10 @@ export class App {
     sessionStorage.clear();
     this.authService.refreshState();
     this.authenticated.set(false);
+  }
+
+  private navigatePostLogin(): void {
+    this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
   }
 
   private ensureMsalInitialized(): Promise<void> {
