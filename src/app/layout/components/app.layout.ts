@@ -2,17 +2,14 @@ import { Component, computed, HostListener, OnDestroy, Renderer2, signal, ViewCh
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
-import { AppTopbar } from './app.topbar';
 import { AppSidebar } from './app.sidebar';
 import { LayoutService } from '@/layout/service/layout.service';
-import { AppBreadcrumb } from './app.breadcrumb';
 
 @Component({
     selector: 'app-layout',
     standalone: true,
-    imports: [CommonModule, AppTopbar, AppSidebar, RouterModule, AppBreadcrumb],
+    imports: [CommonModule, AppSidebar, RouterModule],
     template: `<div class="layout-container layout-immersive" [ngClass]="containerClass()" [style.--page-background-image]="pageBackgroundStyle()">
-        <div app-topbar></div>
         <div app-sidebar></div>
 
         <div
@@ -20,7 +17,6 @@ import { AppBreadcrumb } from './app.breadcrumb';
             [class.layout-dashboard-full]="isDashboardRoute()"
             [class.layout-page-background]="!isDashboardRoute()"
         >
-            <nav app-breadcrumb *ngIf="!isDashboardRoute()"></nav>
             <div class="layout-content">
                 <router-outlet></router-outlet>
             </div>
@@ -85,8 +81,6 @@ export class AppLayout implements OnDestroy {
 
     @ViewChild(AppSidebar) appSidebar!: AppSidebar;
 
-    @ViewChild(AppTopbar) appTopbar!: AppTopbar;
-
     constructor(
         public layoutService: LayoutService,
         public renderer: Renderer2,
@@ -100,8 +94,6 @@ export class AppLayout implements OnDestroy {
                     const isOutsideClicked = !(
                         this.appSidebar.appMenu.el.nativeElement.isSameNode(event.target) ||
                         this.appSidebar.appMenu.el.nativeElement.contains(event.target) ||
-                        this.appTopbar.menuButton.nativeElement.isSameNode(event.target) ||
-                        this.appTopbar.menuButton.nativeElement.contains(event.target) ||
                         this.appSidebar.el.nativeElement.isSameNode(event.target) ||
                         this.appSidebar.el.nativeElement.contains(event.target)
                     );

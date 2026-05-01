@@ -7,7 +7,7 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
-import { clearSelectedCommunity, getCurrentCommunity, hasSelectedCommunity } from '../gestionaleCN/data/community-selection.storage';
+import { getCurrentCommunity, hasSelectedCommunity, updateSelectedCommunityTappa } from '../gestionaleCN/data/community-selection.storage';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 
 interface DashboardModule {
@@ -96,9 +96,6 @@ interface DashboardModule {
                         <span>{{ messaggio }}</span>
                     </div>
                 }
-                @if (!isDemo) {
-                    <button class="change-community-link" type="button" (click)="cambiaComunitaSelezionata()">Cambia comunità selezionata</button>
-                }
             </div>
         </section>
     `,
@@ -112,7 +109,7 @@ interface DashboardModule {
             .dashboard-stage {
                 position: relative;
                 width: 100%;
-                min-height: calc(100vh - 4rem);
+                min-height: 100vh;
                 padding: clamp(1rem, 2.5vw, 2rem);
                 display: flex;
                 align-items: center;
@@ -294,18 +291,6 @@ interface DashboardModule {
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
             }
 
-            .change-community-link {
-                justify-self: end;
-                border: 0;
-                background: rgba(255, 255, 255, 0.62);
-                color: #17335f;
-                border-radius: 999px;
-                padding: 0.45rem 0.8rem;
-                font-weight: 800;
-                cursor: pointer;
-                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
-            }
-
             .dashboard-grid {
                 display: grid;
                 grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -420,10 +405,6 @@ interface DashboardModule {
                     justify-self: start;
                 }
 
-                .change-community-link {
-                    justify-self: start;
-                }
-
                 .dashboard-grid {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
@@ -431,7 +412,7 @@ interface DashboardModule {
 
             @media (max-width: 767px) {
                 .dashboard-stage {
-                    min-height: calc(100vh - 4rem);
+                    min-height: 100vh;
                     padding: 0.85rem;
                     align-items: flex-start;
                     background-position: center top;
@@ -483,7 +464,7 @@ export class Dashboard {
     private readonly currentCommunity = getCurrentCommunity();
     private readonly tappaStorageKey = 'eventiComunita.tappaCammino';
 
-    readonly currentUserRole = 'Responsabile';
+    readonly currentUserRole: 'Responsabile' | 'Corresponsabile' | 'Fratello' = 'Responsabile';
     readonly currentUserCanEditCommunity = this.currentUserRole === 'Responsabile';
     tappeOptions = [...TAPPE_CAMMINO];
     tappaCammino: TappaCammino = 'Precatecumenato';
@@ -586,7 +567,7 @@ export class Dashboard {
 
     salvaTappa() {
         this.tappaCammino = this.tappaInBozza;
-        localStorage.setItem(this.tappaStorageKey, this.tappaCammino);
+        updateSelectedCommunityTappa(this.tappaCammino);
         this.tappaInModifica = false;
         this.messaggio = 'Tappa del Cammino aggiornata';
     }
@@ -596,13 +577,8 @@ export class Dashboard {
         this.tappaInModifica = false;
     }
 
-    cambiaComunitaSelezionata() {
-        clearSelectedCommunity();
-        this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
-    }
-
     private leggiTappaSalvata(): TappaCammino {
-        const saved = localStorage.getItem(this.tappaStorageKey) ?? localStorage.getItem('eventiComunità.tappaCammino') ?? '';
+        const saved = this.currentCommunity.tappaCammino ?? localStorage.getItem(this.tappaStorageKey) ?? localStorage.getItem('eventiComunità.tappaCammino') ?? '';
         return saved ? normalizeTappaCammino(saved) : normalizeTappaCammino(this.comunitaAttiva.tappaCammino);
     }
 }

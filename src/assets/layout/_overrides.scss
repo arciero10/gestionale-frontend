@@ -30,7 +30,7 @@ p-treetable {
     background-image:
         linear-gradient(135deg, rgba(7, 18, 34, 0.2), rgba(255, 255, 255, 0.18) 42%, rgba(8, 22, 39, 0.16)),
         var(--page-background-image, url('/images/backgrounds/comunita-bg.jpg'));
-    background-position: center;
+    background-position: center center;
     background-repeat: no-repeat;
     background-size: cover;
     background-attachment: fixed;
@@ -38,6 +38,7 @@ p-treetable {
 
 .layout-container.layout-immersive:not(.layout-demo) .layout-content-wrapper {
     background: transparent;
+    padding-top: 0;
 }
 
 .layout-container.layout-immersive:not(.layout-demo) .layout-content {
@@ -172,7 +173,17 @@ p-treetable {
 }
 
 .layout-container.layout-immersive:not(.layout-demo) .internal-footer {
-    color: rgba(15, 35, 64, 0.72);
+    width: fit-content;
+    max-width: calc(100% - 2rem);
+    margin: 0 auto 1rem;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 
 .p-dialog,

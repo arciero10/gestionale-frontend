@@ -104,37 +104,6 @@ import { UnitaCensimentoComunita, creaLinkInvito, generaTokenCensimento, leggiNo
                 </footer>
             </section>
 
-            <section class="list-card">
-                <div class="section-title">
-                    <div>
-                        <span>Unità censite</span>
-                        <h2>{{ unita.length }} unità</h2>
-                    </div>
-                    <small>Invio email reale non attivo: il flusso è mock/front-end.</small>
-                </div>
-
-                <div class="unit-list">
-                    @for (item of unita; track item.id) {
-                        <article class="unit-row">
-                            <div>
-                                <strong>{{ item.nomeVisualizzato }}</strong>
-                                <small>{{ item.tipoUnita }}</small>
-                            </div>
-                            <div><span>Email riferimento</span><strong>{{ item.emailRiferimento || 'Da inserire' }}</strong></div>
-                            <div><span>Invito</span><p-tag [value]="item.statoInvito" [severity]="getInvitoSeverity(item.statoInvito)" /></div>
-                            <div><span>Anagrafica</span><p-tag [value]="item.statoAnagrafica" [severity]="item.statoAnagrafica === 'Completa' ? 'success' : 'warn'" /></div>
-                            <div><span>Consensi</span><p-tag [value]="item.statoConsensi" [severity]="getConsensiSeverity(item.statoConsensi)" /></div>
-                            <div class="row-actions">
-                                <button pButton type="button" label="Modifica" icon="pi pi-pencil" text (click)="modificaUnita(item)"></button>
-                                <button pButton type="button" label="Elimina" icon="pi pi-trash" severity="danger" text (click)="eliminaUnita(item.id)"></button>
-                                <button pButton type="button" label="Invia invito" icon="pi pi-send" severity="success" text (click)="inviaInvito(item)"></button>
-                                <button pButton type="button" label="Anteprima mail" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaMail(item)"></button>
-                            </div>
-                        </article>
-                    }
-                </div>
-            </section>
-
             @if (mailPreview) {
                 <div class="modal-backdrop" role="presentation" (click)="mailPreview = null">
                     <section class="mail-modal" role="dialog" aria-modal="true" aria-label="Anteprima mail invito" (click)="$event.stopPropagation()">
@@ -223,7 +192,7 @@ export class CensimentoComunita {
             this.unita = [...this.unita, { ...item, id: this.prossimoId() }];
         }
         salvaUnitaCensimento(this.unita);
-        this.messaggio = 'Bozza censimento salvata';
+        this.messaggio = 'Bozza censimento salvata. L’unità compare nella pagina La tua Comunità.';
         this.annullaModifica();
         return item;
     }

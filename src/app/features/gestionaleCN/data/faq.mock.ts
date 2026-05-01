@@ -95,6 +95,24 @@ export const FAQ_MOCK: FaqItem[] = [
         tag: ['strutture', 'richieste']
     },
     {
+        id: 12,
+        categoria: 'Comunità',
+        domanda: 'Chi può modificare la tappa del Cammino?',
+        risposta: 'Solo il responsabile autorizzato può modificare la tappa della comunità. Gli altri ruoli possono visualizzarla se autorizzati.',
+        visibilita: 'pubblica',
+        ordine: 9.1,
+        tag: ['tappa', 'responsabile', 'ruoli']
+    },
+    {
+        id: 13,
+        categoria: 'Convivenze',
+        domanda: 'Chi può creare una convivenza?',
+        risposta: 'Le convivenze della comunità possono essere create dai ruoli autorizzati della comunità. Le convivenze con comunità figlie sono create dall’equipe dei catechisti.',
+        visibilita: 'pubblica',
+        ordine: 9.2,
+        tag: ['convivenze', 'ruoli', 'catechisti']
+    },
+    {
         id: 10,
         categoria: 'Privacy e Consensi',
         domanda: 'Dove posso leggere l’informativa privacy?',

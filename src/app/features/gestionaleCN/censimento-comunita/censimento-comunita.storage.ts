@@ -1,4 +1,4 @@
-import { TipoUnitaMembroComunita, UNITA_MEMBRI_COMUNITA_PILOTA } from '../data/comunita-pilota.mock';
+import { TipoUnitaMembroComunita } from '../data/comunita-pilota.mock';
 
 export type StatoInvitoCensimento = 'Da inviare' | 'Inviato' | 'Compilato' | 'Scaduto';
 export type StatoAnagraficaCensimento = 'Da completare' | 'Completa';
@@ -88,20 +88,7 @@ export function creaUnitaCensimentoVuota(id: number, tipoUnita: TipoUnitaMembroC
 }
 
 function unitaIniziali(): UnitaCensimentoComunita[] {
-    return UNITA_MEMBRI_COMUNITA_PILOTA.slice(0, 8).map((unita, index) => ({
-        id: index + 1,
-        tipoUnita: unita.tipoUnita,
-        nomeVisualizzato: unita.nomeVisualizzato,
-        emailRiferimento: unita.emailRiferimento,
-        telefonoRiferimento: '',
-        statoInvito: 'Da inviare',
-        statoAnagrafica: 'Da completare',
-        statoConsensi: 'Da compilare',
-        token: '',
-        linkInvito: '',
-        persone: unita.membri.map((membro, personaIndex) => creaPersona(personaIndex + 1, membro.nome, membro.cognome, membro.email)),
-        note: unita.note
-    }));
+    return [];
 }
 
 export function leggiUnitaCensimento(): UnitaCensimentoComunita[] {

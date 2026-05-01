@@ -8,6 +8,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DIOCESI_MOCK, NUMERI_COMUNITA, PARROCCHIE_MOCK, SETTORI_MOCK, Parrocchia, creaNomeComunitaVisualizzato, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
 import { saveSelectedCommunity } from '../data/community-selection.storage';
+import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
@@ -122,9 +123,15 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                         <p-select inputId="numero" name="numero" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
                     </div>
 
+                    <div class="field">
+                        <label for="tappaCammino">Tappa del Cammino</label>
+                        <p-select inputId="tappaCammino" name="tappaCammino" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="tappeCammino" [(ngModel)]="tappaCammino"></p-select>
+                    </div>
+
                     <div class="preview-box">
                         <span>Preview comunità</span>
                         <strong>{{ previewComunita }}</strong>
+                        <small>Tappa: {{ tappaCammino }}</small>
                     </div>
 
                     <p class="note">Questa scelta potrà essere verificata dal responsabile della comunità.</p>
@@ -267,6 +274,7 @@ export class OnboardingComunita {
     readonly isPreview = this.route.snapshot.data['preview'] === true;
     readonly diocesiOptions = DIOCESI_MOCK;
     readonly numeriComunita = NUMERI_COMUNITA;
+    readonly tappeCammino = [...TAPPE_CAMMINO];
     readonly settoriManuali = ['Nord', 'Sud', 'Est', 'Ovest', 'Centro', 'Da verificare', 'Non applicabile'];
     readonly parrocchiaManualeOption: Parrocchia = {
         id: PARROCCHIA_MANUALE_ID,
@@ -291,6 +299,7 @@ export class OnboardingComunita {
     parrocchiaSelezionata: Parrocchia = PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === 24) ?? PARROCCHIE_MOCK[0];
     parrocchieSuggerite: Parrocchia[] = [...PARROCCHIE_MOCK, this.parrocchiaManualeOption];
     numeroComunita = 3;
+    tappaCammino: TappaCammino = 'Precatecumenato';
     parrocchiaManuale = '';
     diocesiManualeId = 1;
     settoreManuale = 'Da verificare';
@@ -403,7 +412,8 @@ export class OnboardingComunita {
             statoVerifica: this.parrocchiaManualeAttiva ? 'Inserita manualmente' : this.parrocchia.statoVerifica,
             dataSelezione: new Date().toISOString(),
             comune: this.parrocchiaManualeAttiva ? this.comuneManuale.trim() : this.parrocchia.comune,
-            indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo
+            indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo,
+            tappaCammino: this.tappaCammino
         });
 
         this.router.navigateByUrl('/gestionale-cn/dashboard', { replaceUrl: true });

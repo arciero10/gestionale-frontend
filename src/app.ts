@@ -240,9 +240,18 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       }
 
       .login-footer {
+        width: fit-content;
+        max-width: calc(100% - 2rem);
+        margin-left: auto;
+        margin-right: auto;
+        padding: .55rem 1rem;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, .45);
         margin-top: auto;
-        color: rgba(255, 255, 255, .72);
+        color: #fff;
         text-shadow: 0 1px 8px rgba(0, 0, 0, .24);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
       }
 
       @media (max-width: 900px) {

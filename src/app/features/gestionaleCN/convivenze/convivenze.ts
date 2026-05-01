@@ -73,19 +73,33 @@ interface PostoSintesi {
                     <h1>Convivenze</h1>
                     <p>Convivenze ricevute dai catechisti, annuali della comunità e richieste alle strutture.</p>
                 </div>
-                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="formNuovaConvivenzaVisibile = !formNuovaConvivenzaVisibile"></button>
+                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="apriNuovaConvivenza()"></button>
             </header>
 
             @if (formNuovaConvivenzaVisibile) {
                 <section class="new-convivenza-box">
                     <div class="form-intro">
                         <h2>Nuova convivenza</h2>
-                        <p>Bozza front-end: per le convivenze catechistiche l'organizzatore è sempre l'equipe dei catechisti.</p>
+                        <p>Prima scegli se vuoi creare una convivenza della tua comunità o una convivenza con comunità figlie.</p>
                     </div>
 
+                    @if (!tipoFlussoNuova) {
+                        <div class="choice-card" [class.disabled]="!currentUserCanCreateCommunityConvivenza">
+                            <h3>Convivenza della tua comunità</h3>
+                            <p>Riporto, Pentecoste, Domenica di convivenza, Inizio Corso e altre convivenze comunitarie.</p>
+                            <button pButton type="button" label="Scegli" [disabled]="!currentUserCanCreateCommunityConvivenza" (click)="scegliTipoNuova('comunita')"></button>
+                        </div>
+                        <div class="choice-card" [class.disabled]="!currentUserCanCreateChildCommunityConvivenza">
+                            <h3>Convivenza con comunità figlie</h3>
+                            <p>Passaggi e tappe del Cammino organizzati dall’equipe dei catechisti.</p>
+                            <button pButton type="button" label="Scegli" [disabled]="!currentUserCanCreateChildCommunityConvivenza" (click)="scegliTipoNuova('figlie')"></button>
+                        </div>
+                    }
+
+                    @if (tipoFlussoNuova) {
                     <div>
                         <label for="categoriaNuovaConvivenza">Categoria convivenza</label>
-                        <p-select inputId="categoriaNuovaConvivenza" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="categorieForm" [(ngModel)]="nuovaCategoria" (ngModelChange)="aggiornaDefaultTipo()"></p-select>
+                        <div class="readonly-field">{{ nuovaCategoria }}</div>
                     </div>
 
                     @if (nuovaCategoria === 'Catechistica') {
@@ -124,9 +138,15 @@ interface PostoSintesi {
                         <label>Struttura</label>
                         <div class="readonly-field">Da assegnare</div>
                     </div>
+                    <div class="form-full">
+                        <label for="noteNuovaConvivenza">Note</label>
+                        <textarea id="noteNuovaConvivenza" rows="3" [(ngModel)]="nuoveNote"></textarea>
+                    </div>
                     <footer>
+                        <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="tipoFlussoNuova = null"></button>
                         <button pButton type="button" label="Salva bozza mock" icon="pi pi-save" (click)="salvaNuovaConvivenza()"></button>
                     </footer>
+                    }
                 </section>
             }
 
@@ -270,9 +290,12 @@ interface PostoSintesi {
             .page-head p { margin: 0; color: #64748b; }
             .new-convivenza-box, .filters-card, .section-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); padding: 1rem; }
             .new-convivenza-box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: end; }
-            .new-convivenza-box .form-intro, .new-convivenza-box footer { grid-column: 1 / -1; }
+            .new-convivenza-box .form-intro, .new-convivenza-box footer, .new-convivenza-box .form-full { grid-column: 1 / -1; }
             .new-convivenza-box h2 { margin: 0 0 .25rem; font-size: 1.1rem; }
             .new-convivenza-box p { margin: 0; color: #64748b; }
+            .choice-card { display: grid; gap: .65rem; align-content: start; min-height: 13rem; padding: 1rem; border: 1px solid #dbe3ec; border-radius: 14px; background: rgba(248, 250, 252, .86); }
+            .choice-card h3 { margin: 0; color: #0f2440; }
+            .choice-card.disabled { opacity: .58; }
             .new-convivenza-box label, .filters-card label { display: block; margin-bottom: .4rem; color: #475569; font-weight: 800; }
             .new-convivenza-box input, .new-convivenza-box p-select, .filters-card p-select { width: 100%; }
             .readonly-field { min-height: 42px; display: flex; align-items: center; padding: .55rem .75rem; border-radius: 10px; border: 1px solid #e5e7eb; background: #f8fafc; color: #334155; font-weight: 800; }
@@ -331,13 +354,20 @@ export class Convivenze {
     readonly tipiCatechistici = [...TIPI_CONVIVENZA_CATECHISTICA];
     readonly tipiAnnuali = [...TIPI_CONVIVENZA_ANNUALE];
     readonly tipiConvivenza = [...TIPI_CONVIVENZA_CATECHISTICA, ...TIPI_CONVIVENZA_ANNUALE];
-    readonly currentUserIsEquipe = true;
+    readonly currentUserRoles: Array<'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Capo equipe'> = ['Responsabile'];
+    readonly currentUserHasCatechistEquipe = this.currentUserRoles.includes('Catechista') || this.currentUserRoles.includes('Capo equipe');
+    readonly currentUserHasChildCommunities = false;
+    readonly currentUserCanCreateCommunityConvivenza = this.currentUserRoles.includes('Responsabile') || this.currentUserRoles.includes('Corresponsabile');
+    readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserHasCatechistEquipe && this.currentUserHasChildCommunities;
+    readonly currentUserIsEquipe = this.currentUserHasCatechistEquipe;
     tipoFiltro: TipoConvivenza | null = null;
     nuovaCategoria: CategoriaConvivenza = 'Catechistica';
+    tipoFlussoNuova: 'comunita' | 'figlie' | null = null;
     nuovoTipoCatechistico = this.tipiCatechistici[0];
     nuovoTipoAnnuale = this.tipiAnnuali[0];
     nuovaDataInizio = '2027-03-12';
     nuovaDataFine = '2027-03-14';
+    nuoveNote = '';
     formNuovaConvivenzaVisibile = false;
 
     get isDemo() {
@@ -381,7 +411,29 @@ export class Convivenze {
         }
     }
 
+    apriNuovaConvivenza() {
+        this.formNuovaConvivenzaVisibile = !this.formNuovaConvivenzaVisibile;
+        this.tipoFlussoNuova = null;
+    }
+
+    scegliTipoNuova(tipo: 'comunita' | 'figlie') {
+        if (tipo === 'comunita' && !this.currentUserCanCreateCommunityConvivenza) {
+            return;
+        }
+
+        if (tipo === 'figlie' && !this.currentUserCanCreateChildCommunityConvivenza) {
+            return;
+        }
+
+        this.tipoFlussoNuova = tipo;
+        this.nuovaCategoria = tipo === 'figlie' ? 'Catechistica' : 'Annuale';
+        this.aggiornaDefaultTipo();
+    }
+
     salvaNuovaConvivenza() {
+        if (!this.tipoFlussoNuova) {
+            return;
+        }
         const isCatechistica = this.nuovaCategoria === 'Catechistica';
         const tipo = isCatechistica ? this.nuovoTipoCatechistico : this.nuovoTipoAnnuale;
         const nuova: Convivenza = {
@@ -402,13 +454,15 @@ export class Convivenze {
             partecipantiConfermati: 0,
             luogoTestuale: 'Luogo non ancora assegnato',
             citta: 'Roma',
-            note: isCatechistica ? 'Convivenza catechistica organizzata dall’equipe dei catechisti.' : 'Convivenza della comunità.',
+            note: this.nuoveNote.trim() || (isCatechistica ? 'Convivenza catechistica organizzata dall’equipe dei catechisti.' : 'Convivenza della comunità.'),
             statoRichiestaStruttura: 'In preparazione',
             aggregati: this.aggregatiVuoti()
         };
         this.convivenze = [nuova, ...this.convivenze];
         this.selected = nuova;
         this.formNuovaConvivenzaVisibile = false;
+        this.tipoFlussoNuova = null;
+        this.nuoveNote = '';
     }
 
     select(convivenza: Convivenza) {

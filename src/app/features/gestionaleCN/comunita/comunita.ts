@@ -21,8 +21,10 @@ import {
 } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 import { getCurrentCommunity } from '../data/community-selection.storage';
+import { NUMERI_COMUNITA, PARROCCHIE_MOCK } from '../data/anagrafica-ecclesiale.mock';
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
+import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-comunita/censimento-comunita.storage';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
@@ -42,24 +44,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 <div class="heading-actions">
                     @if (!isDemo) {
                         <a pButton routerLink="/gestionale-cn/censimento-comunita" icon="pi pi-list-check" label="Censisci comunità" severity="secondary" outlined></a>
+                        <a class="preview-link" routerLink="/gestionale-cn/onboarding-comunita-preview">Anteprima primo accesso utente</a>
                     }
                     <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
                 </div>
             </header>
-
-            <section class="identity-card">
-                <div>
-                    <span>ComunitÃ  associata</span>
-                    <h2>{{ nomeComunita }}</h2>
-                    <p>{{ parrocchiaComunita }}</p>
-                </div>
-                <div class="identity-meta">
-                    <small>{{ isDemo ? 'I dati mostrati sono dimostrativi.' : 'Questi dati sono visibili solo nellâ€™ambiente autenticato.' }}</small>
-                    @if (!isDemo) {
-                        <a class="preview-link" routerLink="/gestionale-cn/onboarding-comunita-preview">Anteprima primo accesso utente</a>
-                    }
-                </div>
-            </section>
 
             @if (!isDemo) {
                 <section class="catechisti-card">
@@ -96,7 +85,10 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             }
                         </div>
                     } @else {
-                        <div class="empty-community-state">Equipe dei catechisti da associare.</div>
+                        <div class="empty-community-state">
+                            <span>Equipe dei catechisti da associare.</span>
+                            <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
+                        </div>
                     }
                 </section>
             }
@@ -382,6 +374,48 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 </div>
             }
 
+            @if (associaEquipeAperta) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
+                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" aria-label="Associa equipe catechisti" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Equipe dei catechisti</span>
+                            <h2>Associa equipe catechisti</h2>
+                        </header>
+                        <div class="modal-grid">
+                            <div>
+                                <label for="parrocchiaCatechista">Parrocchia di riferimento</label>
+                                <p-select inputId="parrocchiaCatechista" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="parrocchieOptions" optionLabel="nome" optionValue="id" [(ngModel)]="parrocchiaEquipeId"></p-select>
+                            </div>
+                            <div>
+                                <label for="numeroComunitaCatechista">Numero comunità</label>
+                                <p-select inputId="numeroComunitaCatechista" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="numeriComunitaOptions" [(ngModel)]="numeroComunitaEquipe"></p-select>
+                            </div>
+                            <div>
+                                <label for="nomeCatechista">Nome</label>
+                                <input id="nomeCatechista" pInputText [(ngModel)]="nomeCatechistaEquipe" />
+                            </div>
+                            <div>
+                                <label for="cognomeCatechista">Cognome</label>
+                                <input id="cognomeCatechista" pInputText [(ngModel)]="cognomeCatechistaEquipe" />
+                            </div>
+                            <div>
+                                <label for="emailCatechista">Email</label>
+                                <input id="emailCatechista" pInputText type="email" [(ngModel)]="emailCatechistaEquipe" />
+                            </div>
+                            <div>
+                                <label for="telefonoCatechista">Numero di telefono</label>
+                                <input id="telefonoCatechista" pInputText [(ngModel)]="telefonoCatechistaEquipe" />
+                            </div>
+                        </div>
+                        <p class="privacy-warning">I catechisti restano nello specchietto “Equipe dei catechisti” e non entrano nella tabella membri della comunità.</p>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
+                            <button pButton type="button" label="Salva equipe" icon="pi pi-check" (click)="salvaAssociazioneEquipe()"></button>
+                        </footer>
+                    </section>
+                </div>
+            }
+
             @if (privacyModalMembro) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
                     <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica privacy" (click)="$event.stopPropagation()">
@@ -606,6 +640,9 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             }
 
             .empty-community-state {
+                display: grid;
+                gap: 0.75rem;
+                justify-items: center;
                 margin-top: 1rem;
                 padding: 1rem;
                 border: 1px dashed #cbd5e1;
@@ -813,7 +850,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             .role-cantore { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
             .role-ostiario { background: #fef3c7; color: #92400e; border-color: #fde68a; }
             .role-fratello { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
-            .role-presbitero { background: #fce7f3; color: #831843; border-color: #fbcfe8; }
+            .role-presbitero,
+            .role-prete { background: #111827; color: #ffffff; border-color: #111827; }
             .role-catechista { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
             .privacy-da-inviare { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
             .privacy-inviato { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
@@ -896,6 +934,17 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
 
             .app-modal-wide {
                 width: min(100%, 560px);
+            }
+
+            .modal-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.85rem;
+            }
+
+            .modal-grid div {
+                display: grid;
+                gap: 0.35rem;
             }
 
             .app-modal h2,
@@ -1020,6 +1069,10 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                     grid-template-columns: 1fr;
                 }
 
+                .modal-grid {
+                    grid-template-columns: 1fr;
+                }
+
                 .member-table {
                     display: none;
                 }
@@ -1058,6 +1111,8 @@ export class Comunita {
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
     tipiUnitaEquipe: TipoUnitaEquipeCatechisti[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
     tipiInserimentoMembro: TipoUnitaMembroComunita[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
+    parrocchieOptions = PARROCCHIE_MOCK;
+    numeriComunitaOptions = NUMERI_COMUNITA;
 
     ricerca = '';
     ruoloFiltro: Exclude<RuoloComunitaPilota, 'Catechista'> | null = null;
@@ -1079,6 +1134,7 @@ export class Comunita {
     contattiModalMembro: MembroComunitaPilota | null = null;
     contattiModalCatechista: EquipeCatechistiUnita | null = null;
     unitaEquipeModal: EquipeCatechistiUnita | null = null;
+    associaEquipeAperta = false;
     tipoUnitaEquipe: TipoUnitaEquipeCatechisti = 'Coppia';
     nomeVisualizzatoEquipe = '';
     telefonoEquipe = '';
@@ -1087,14 +1143,20 @@ export class Comunita {
     noteEquipe = '';
     telefonoContatto = '';
     emailContatto = '';
+    parrocchiaEquipeId = PARROCCHIE_MOCK[0]?.id ?? 1;
+    numeroComunitaEquipe = 1;
+    nomeCatechistaEquipe = '';
+    cognomeCatechistaEquipe = '';
+    emailCatechistaEquipe = '';
+    telefonoCatechistaEquipe = '';
     policyTitle = PRIVACY_POLICY_DRAFT_TITLE;
     policyParagraphs = PRIVACY_POLICY_DRAFT_PARAGRAPHS;
     policyDataItems = PRIVACY_POLICY_DRAFT_DATA_ITEMS;
     policyConsents = PRIVACY_CONSENTS_DRAFT;
     privacyConfig = PRIVACY_CONFIG;
 
-    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo || !this.currentCommunity.isPilot ? [] : EQUIPE_CATECHISTI_UNITA_PILOTA.map((unita) => ({ ...unita, membri: unita.membri.map((membro) => ({ ...membro })) }));
-    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : this.currentCommunity.isPilot ? MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro })) : [];
+    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo ? [] : this.leggiEquipeCatechisti();
+    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : this.creaMembriGestionali();
     private prossimoId = this.membri.length + 1;
     form: MembroForm = this.creaFormVuoto();
 
@@ -1169,6 +1231,47 @@ export class Comunita {
 
     get haCapoEquipe() {
         return this.equipeCatechisti.some((unita) => unita.capoEquipe);
+    }
+
+    apriAssociaEquipe() {
+        this.associaEquipeAperta = true;
+    }
+
+    salvaAssociazioneEquipe() {
+        const nome = this.nomeCatechistaEquipe.trim();
+        const cognome = this.cognomeCatechistaEquipe.trim();
+
+        if (!nome || !cognome) {
+            this.messaggio = 'Inserisci nome e cognome del catechista';
+            return;
+        }
+
+        const parrocchia = PARROCCHIE_MOCK.find((item) => item.id === this.parrocchiaEquipeId);
+        const nuovaUnita: EquipeCatechistiUnita = {
+            id: this.equipeCatechisti.length ? Math.max(...this.equipeCatechisti.map((unita) => unita.id)) + 1 : 1,
+            tipoUnita: 'Fratello singolo',
+            nomeVisualizzato: `${nome} ${cognome}`,
+            membri: [
+                {
+                    id: 1,
+                    nome,
+                    cognome,
+                    genere: 'Fratello',
+                    telefono: this.telefonoCatechistaEquipe.trim(),
+                    email: this.emailCatechistaEquipe.trim(),
+                    capoEquipe: false
+                }
+            ],
+            capoEquipe: false,
+            telefono: this.telefonoCatechistaEquipe.trim(),
+            email: this.emailCatechistaEquipe.trim(),
+            note: `${this.numeroComunitaEquipe}ª Comunità - ${parrocchia?.nome ?? 'Parrocchia da verificare'}`
+        };
+
+        this.equipeCatechisti = [...this.equipeCatechisti, nuovaUnita];
+        this.salvaEquipeCatechisti();
+        this.messaggio = 'Equipe catechisti associata';
+        this.chiudiModali();
     }
 
     toggleForm() {
@@ -1266,6 +1369,7 @@ export class Comunita {
 
         if (this.contattiModalCatechista) {
             this.equipeCatechisti = this.equipeCatechisti.map((unita) => (unita.id === this.contattiModalCatechista?.id ? { ...unita, telefono, email } : unita));
+            this.salvaEquipeCatechisti();
         }
 
         this.messaggio = 'Contatti aggiornati';
@@ -1292,6 +1396,7 @@ export class Comunita {
                   ? { ...unita, capoEquipe: false }
                   : unita
         );
+        this.salvaEquipeCatechisti();
         this.messaggio = 'Unità equipe aggiornata';
         this.chiudiModali();
     }
@@ -1386,6 +1491,11 @@ export class Comunita {
         this.emailEquipe = '';
         this.capoEquipeUnita = false;
         this.noteEquipe = '';
+        this.associaEquipeAperta = false;
+        this.nomeCatechistaEquipe = '';
+        this.cognomeCatechistaEquipe = '';
+        this.emailCatechistaEquipe = '';
+        this.telefonoCatechistaEquipe = '';
     }
 
     annullaForm() {
@@ -1487,6 +1597,63 @@ export class Comunita {
             email,
             note
         };
+    }
+
+    private creaMembriGestionali(): MembroComunitaPilota[] {
+        const base = this.currentCommunity.isPilot ? MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro })) : [];
+        const censiti = leggiUnitaCensimento().flatMap((unita) => this.creaMembriDaUnitaCensimento(unita));
+        const chiaviEsistenti = new Set(base.map((membro) => `${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`));
+        const nuovi = censiti.filter((membro) => !chiaviEsistenti.has(`${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`));
+        return [...base, ...nuovi.map((membro, index) => ({ ...membro, id: base.length + index + 1 }))];
+    }
+
+    private creaMembriDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota[] {
+        return unita.persone.map((persona, index) => ({
+            id: index + 1,
+            nome: persona.nome,
+            cognome: persona.cognome,
+            nomeCompleto: `${persona.nome} ${persona.cognome}`.trim(),
+            ruolo: 'Fratello',
+            accessoApp: unita.statoInvito === 'Inviato' ? 'Invitato' : 'Nessuno',
+            statoMembro: 'Attivo',
+            consensoPrivacyStato: unita.statoConsensi === 'Completo' ? 'Raccolto' : 'Da inviare',
+            moduloPrivacyInviato: unita.statoInvito === 'Inviato',
+            moduloPrivacyRicevuto: unita.statoConsensi === 'Completo',
+            dataInvioModuloPrivacy: '',
+            telefono: persona.telefono || unita.telefonoRiferimento,
+            email: persona.email || unita.emailRiferimento,
+            note: `Unità censimento: ${unita.nomeVisualizzato}`
+        }));
+    }
+
+    private leggiEquipeCatechisti(): EquipeCatechistiUnita[] {
+        const salvata = this.leggiEquipeCatechistiSalvata();
+        if (salvata.length) {
+            return salvata;
+        }
+
+        return this.currentCommunity.isPilot ? EQUIPE_CATECHISTI_UNITA_PILOTA.map((unita) => ({ ...unita, membri: unita.membri.map((membro) => ({ ...membro })) })) : [];
+    }
+
+    private leggiEquipeCatechistiSalvata(): EquipeCatechistiUnita[] {
+        const raw = localStorage.getItem(this.equipeStorageKey());
+        if (!raw) {
+            return [];
+        }
+
+        try {
+            return JSON.parse(raw) as EquipeCatechistiUnita[];
+        } catch {
+            return [];
+        }
+    }
+
+    private salvaEquipeCatechisti() {
+        localStorage.setItem(this.equipeStorageKey(), JSON.stringify(this.equipeCatechisti));
+    }
+
+    private equipeStorageKey() {
+        return `eventiComunita.equipeCatechisti.${this.currentCommunity.numeroComunita}.${this.currentCommunity.parrocchiaId ?? 'manuale'}`;
     }
 
     private creaMembriDemo(): MembroComunitaPilota[] {

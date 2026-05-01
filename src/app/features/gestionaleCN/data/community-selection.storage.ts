@@ -1,4 +1,5 @@
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, StatoVerificaParrocchia, generaNomeComunita } from './anagrafica-ecclesiale.mock';
+import { TappaCammino, normalizeTappaCammino } from './tappe-cammino.mock';
 
 export const COMMUNITY_SELECTED_KEY = 'eventiComunit\u00e0.communitySelected';
 export const SELECTED_COMMUNITY_KEY = 'eventiComunit\u00e0.selectedCommunity';
@@ -20,6 +21,7 @@ export interface SelectedCommunity {
     diocesiId?: number;
     comune?: string;
     indirizzo?: string;
+    tappaCammino?: TappaCammino;
 }
 
 export interface CurrentCommunity extends SelectedCommunity {
@@ -35,6 +37,19 @@ export function saveSelectedCommunity(community: SelectedCommunity): void {
     localStorage.removeItem(LEGACY_COMMUNITY_SELECTED_KEY);
     localStorage.removeItem(LEGACY_SELECTED_COMMUNITY_KEY);
     localStorage.setItem(SELECTED_COMMUNITY_KEY, JSON.stringify(community));
+}
+
+export function updateSelectedCommunityTappa(tappaCammino: TappaCammino): void {
+    const selected = getSelectedCommunity();
+    if (!selected?.communitySelected) {
+        localStorage.setItem('eventiComunita.tappaCammino', tappaCammino);
+        return;
+    }
+
+    saveSelectedCommunity({
+        ...selected,
+        tappaCammino
+    });
 }
 
 export function getSelectedCommunity(): SelectedCommunity | null {
@@ -75,6 +90,7 @@ export function getCurrentCommunity(): CurrentCommunity {
         parrocchiaManuale: false,
         statoVerifica: 'Verificata',
         dataSelezione: '',
+        tappaCammino: normalizeTappaCammino(COMUNITA_ATTIVA_MOCK.tappaCammino),
         isPilot: true
     };
 }
@@ -92,7 +108,10 @@ function normalizeSelectedCommunity(raw: any): SelectedCommunity | null {
     }
 
     if (raw.communitySelected === true && typeof raw.numeroComunita === 'number') {
-        return raw as SelectedCommunity;
+        return {
+            ...raw,
+            tappaCammino: normalizeTappaCammino(raw.tappaCammino ?? raw.tappa ?? 'Precatecumenato')
+        } as SelectedCommunity;
     }
 
     if (typeof raw.numero === 'number' && raw.parrocchiaNome) {
@@ -108,7 +127,8 @@ function normalizeSelectedCommunity(raw: any): SelectedCommunity | null {
             diocesiNome: raw.diocesiNome,
             parrocchiaManuale: raw.parrocchiaId === -1,
             statoVerifica: raw.parrocchiaId === -1 ? 'Inserita manualmente' : 'Verificata',
-            dataSelezione: new Date().toISOString()
+            dataSelezione: new Date().toISOString(),
+            tappaCammino: normalizeTappaCammino(raw.tappaCammino ?? raw.tappa ?? 'Precatecumenato')
         };
     }
 
