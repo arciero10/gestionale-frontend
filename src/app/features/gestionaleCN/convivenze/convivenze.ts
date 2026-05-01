@@ -72,81 +72,184 @@ interface PostoSintesi {
             <header class="page-head">
                 <div>
                     <h1>Convivenze</h1>
-                    <p>Convivenze ricevute dai catechisti, annuali della comunità e richieste alle strutture.</p>
+                    <p>Gestisci le convivenze annuali, comunitarie e le richieste alle strutture.</p>
                 </div>
                 <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="apriNuovaConvivenza()"></button>
             </header>
 
             @if (formNuovaConvivenzaVisibile) {
-                <section class="new-convivenza-box">
+                <section class="new-convivenza-box wizard-box">
                     <div class="form-intro">
+                        <span class="wizard-step-label">Step {{ wizardStep }} di 4</span>
                         <h2>Nuova convivenza</h2>
-                        <p>Prima scegli se vuoi creare una convivenza della tua comunità o una convivenza con comunità figlie.</p>
+                        <p>{{ getWizardIntro() }}</p>
                     </div>
 
-                    @if (!tipoFlussoNuova) {
-                        <div class="choice-card" [class.disabled]="!currentUserCanCreateCommunityConvivenza">
+                    @if (wizardStep === 1) {
+                        <div class="choice-card">
                             <h3>Convivenza della tua comunità</h3>
-                            <p>Riporto, Pentecoste, Convivenza domenicale, Inizio Corso e altre convivenze comunitarie.</p>
-                            <button pButton type="button" label="Scegli" [disabled]="!currentUserCanCreateCommunityConvivenza" (click)="scegliTipoNuova('comunita')"></button>
+                            <p>Convivenze annuali o comunitarie organizzate dalla comunità corrente.</p>
+
+                            @if (currentUserCanCreateCommunityConvivenza) {
+                                <button pButton type="button" label="Scegli" (click)="scegliTipoNuova('comunita')"></button>
+                            } @else {
+                                <div class="availability-note">
+                                    Disponibile solo per responsabili o corresponsabili della comunità.
+                                </div>
+                            }
                         </div>
-                        <div class="choice-card" [class.disabled]="!currentUserCanCreateChildCommunityConvivenza">
+
+                        <div class="choice-card child-community-choice">
                             <h3>Convivenza con comunità figlie</h3>
                             <p>Passaggi e tappe del Cammino organizzati dall’equipe dei catechisti.</p>
-                            <button pButton type="button" label="Scegli" [disabled]="!currentUserCanCreateChildCommunityConvivenza" (click)="scegliTipoNuova('figlie')"></button>
+
+                            @if (currentUserCanCreateChildCommunityConvivenza) {
+                                <button pButton type="button" label="Scegli" (click)="scegliTipoNuova('figlie')"></button>
+                            } @else {
+                                <div class="availability-note">
+                                    Disponibile solo per catechisti/equipe con comunità figlie associate.
+                                </div>
+                            }
                         </div>
+
+                        <footer>
+                            <button pButton type="button" label="Chiudi" severity="secondary" outlined (click)="chiudiWizardNuovaConvivenza()"></button>
+                        </footer>
                     }
 
-                    @if (tipoFlussoNuova) {
-                    <div>
-                        <label for="categoriaNuovaConvivenza">Categoria convivenza</label>
-                        <div class="readonly-field">{{ nuovaCategoria }}</div>
-                    </div>
+                    @if (wizardStep === 2 && tipoFlussoNuova === 'comunita') {
+                        <div>
+                            <label for="tipoAnnuale">Tipo convivenza</label>
+                            <p-select inputId="tipoAnnuale" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiComunitaNuova" [(ngModel)]="nuovoTipoAnnuale"></p-select>
+                        </div>
 
-                    @if (nuovaCategoria === 'Catechistica') {
+                        <div>
+                            <label>Comunità corrente</label>
+                            <div class="readonly-field">{{ comunitaDestinatariaNome }}</div>
+                        </div>
+
+                        <div>
+                            <label for="dataInizio">Data inizio</label>
+                            <input id="dataInizio" type="date" [(ngModel)]="nuovaDataInizio" />
+                        </div>
+
+                        <div>
+                            <label for="dataFine">Data fine</label>
+                            <input id="dataFine" type="date" [(ngModel)]="nuovaDataFine" />
+                        </div>
+
+                        <div>
+                            <label for="partecipantiNuovaConvivenza">Numero partecipanti</label>
+                            <input id="partecipantiNuovaConvivenza" type="number" min="0" [(ngModel)]="nuoviPartecipanti" />
+                        </div>
+
+                        <div class="form-full">
+                            <label for="noteNuovaConvivenza">Note</label>
+                            <textarea id="noteNuovaConvivenza" rows="3" [(ngModel)]="nuoveNote"></textarea>
+                        </div>
+
+                        <footer>
+                            <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 1"></button>
+                            <button pButton type="button" label="Avanti: scegli posto" icon="pi pi-arrow-right" (click)="creaBozzaConvivenzaEAvanza()"></button>
+                        </footer>
+                    }
+
+                    @if (wizardStep === 2 && tipoFlussoNuova === 'figlie') {
                         <div>
                             <label for="tipoCatechistico">Passaggio del Cammino</label>
-                            <p-select inputId="tipoCatechistico" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiCatechistici" [(ngModel)]="nuovoTipoCatechistico"></p-select>
+                            <p-select inputId="tipoCatechistico" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiCatechisticiWizard" [(ngModel)]="nuovoTipoCatechistico"></p-select>
                         </div>
+
                         <div>
                             <label>Equipe organizzatrice</label>
                             <div class="readonly-field">{{ equipeOrganizzatriceNome }}</div>
                         </div>
+
                         <div>
-                            <label>Comunità destinataria</label>
-                            <div class="readonly-field">{{ comunitaDestinatariaNome }}</div>
+                            <label for="comunitaFigliaDestinataria">Comunità destinataria</label>
+                            <p-select inputId="comunitaFigliaDestinataria" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="comunitaFiglieOptions" [(ngModel)]="nuovaComunitaFigliaDestinataria"></p-select>
                         </div>
-                    } @else {
+
                         <div>
-                            <label for="tipoAnnuale">Tipo annuale/comunitario</label>
-                            <p-select inputId="tipoAnnuale" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiAnnuali" [(ngModel)]="nuovoTipoAnnuale"></p-select>
+                            <label for="dataInizioFiglie">Data inizio</label>
+                            <input id="dataInizioFiglie" type="date" [(ngModel)]="nuovaDataInizio" />
                         </div>
+
                         <div>
-                            <label>Comunità</label>
-                            <div class="readonly-field">{{ comunitaDestinatariaNome }}</div>
+                            <label for="dataFineFiglie">Data fine</label>
+                            <input id="dataFineFiglie" type="date" [(ngModel)]="nuovaDataFine" />
                         </div>
+
+                        <div>
+                            <label for="partecipantiFiglie">Numero partecipanti</label>
+                            <input id="partecipantiFiglie" type="number" min="0" [(ngModel)]="nuoviPartecipanti" />
+                        </div>
+
+                        <div class="form-full">
+                            <label for="noteFiglie">Note</label>
+                            <textarea id="noteFiglie" rows="3" [(ngModel)]="nuoveNote"></textarea>
+                        </div>
+
+                        <section class="form-full wizard-summary">
+                            <h3>{{ nuovoTipoCatechistico }}</h3>
+                            <p>Organizzata dai catechisti</p>
+                            <div><span>Equipe organizzatrice:</span> <strong>{{ equipeOrganizzatriceNome }}</strong></div>
+                            <div><span>Comunità destinataria:</span> <strong>{{ nuovaComunitaFigliaDestinataria }}</strong></div>
+                        </section>
+
+                        <footer>
+                            <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 1"></button>
+                            <button pButton type="button" label="Avanti: scegli posto" icon="pi pi-arrow-right" (click)="creaBozzaConvivenzaEAvanza()"></button>
+                        </footer>
                     }
 
-                    <div>
-                        <label for="dataInizio">Data inizio</label>
-                        <input id="dataInizio" type="date" [(ngModel)]="nuovaDataInizio" />
-                    </div>
-                    <div>
-                        <label for="dataFine">Data fine</label>
-                        <input id="dataFine" type="date" [(ngModel)]="nuovaDataFine" />
-                    </div>
-                    <div>
-                        <label>Struttura</label>
-                        <div class="readonly-field">Da assegnare</div>
-                    </div>
-                    <div class="form-full">
-                        <label for="noteNuovaConvivenza">Note</label>
-                        <textarea id="noteNuovaConvivenza" rows="3" [(ngModel)]="nuoveNote"></textarea>
-                    </div>
-                    <footer>
-                        <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="tipoFlussoNuova = null"></button>
-                        <button pButton type="button" label="Salva bozza mock" icon="pi pi-save" (click)="salvaNuovaConvivenza()"></button>
-                    </footer>
+                    @if (wizardStep === 3) {
+                        <div class="form-full">
+                            <label for="postoFiltro">Filtra posti di convivenza</label>
+                            <input id="postoFiltro" type="text" placeholder="Cerca per nome, città o regione" [(ngModel)]="filtroPosti" />
+                        </div>
+
+                        <div class="form-full places-grid">
+                            @for (posto of postiFiltrati; track posto.id) {
+                                <button type="button" class="place-card" [class.active]="posto.id === strutturaSelezionataId" (click)="selezionaPosto(posto.id)">
+                                    <strong>{{ posto.nome }}</strong>
+                                    <span>{{ posto.citta }} · {{ posto.regione }}</span>
+                                </button>
+                            }
+                        </div>
+
+                        <footer>
+                            <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 2"></button>
+                            <button pButton type="button" label="Prepara richiesta alla struttura" icon="pi pi-send" [disabled]="!strutturaSelezionataId" (click)="preparaRichiestaStruttura()"></button>
+                        </footer>
+                    }
+
+                    @if (wizardStep === 4) {
+                        <div>
+                            <label>Struttura scelta</label>
+                            <div class="readonly-field">{{ strutturaSelezionataNome }}</div>
+                        </div>
+
+                        <div>
+                            <label>Codice richiesta</label>
+                            <div class="readonly-field">{{ codiceRichiestaMock }}</div>
+                        </div>
+
+                        <div class="form-full">
+                            <label for="oggettoEmailRichiesta">Oggetto email</label>
+                            <input id="oggettoEmailRichiesta" type="text" [(ngModel)]="oggettoEmailRichiesta" />
+                        </div>
+
+                        <div class="form-full">
+                            <label for="corpoEmailRichiesta">Corpo email</label>
+                            <textarea id="corpoEmailRichiesta" rows="10" [(ngModel)]="corpoEmailRichiesta"></textarea>
+                        </div>
+
+                        <footer>
+                            <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 3"></button>
+                            <button pButton type="button" label="Salva bozza richiesta" icon="pi pi-save" (click)="salvaBozzaRichiesta()"></button>
+                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="true"></button>
+                        </footer>
                     }
                 </section>
             }
@@ -171,7 +274,7 @@ interface PostoSintesi {
                                 <span class="item-title">{{ convivenza.titolo }}</span>
                                 <span class="tipo-badge" [ngClass]="getTipoClass(convivenza)">{{ convivenza.tipoConvivenza }}</span>
                                 <span class="item-meta">{{ convivenza.categoriaConvivenza }} · {{ getOrganizzazioneLabel(convivenza) }}</span>
-                                <span class="item-meta">{{ convivenza.dataInizio }} - {{ convivenza.dataFine }}</span>
+                                <span class="item-meta">{{ formatDateIt(convivenza.dataInizio) }} - {{ formatDateIt(convivenza.dataFine) }}</span>
                                 <span class="item-meta">{{ getPostoNome(convivenza) }}</span>
                                 <span class="item-row">
                                     <p-tag [value]="convivenza.stato" [severity]="getStatoSeverity(convivenza.stato)" />
@@ -194,11 +297,16 @@ interface PostoSintesi {
                             </div>
 
                             <div class="detail-grid">
-                                <div><span>Categoria</span><strong>{{ selected.categoriaConvivenza }}</strong></div>
-                                <div><span>Organizzazione</span><strong>{{ getOrganizzazioneLabel(selected) }}</strong></div>
-                                <div><span>Equipe organizzatrice</span><strong>{{ selected.equipeOrganizzatriceNome || 'Non prevista' }}</strong></div>
-                                <div><span>Comunità destinataria</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
-                                <div><span>Periodo</span><strong>{{ selected.dataInizio }} - {{ selected.dataFine }}</strong></div>
+                                @if (selected.categoriaConvivenza === 'Catechistica') {
+                                    <div><span>Organizzazione</span><strong>Organizzata dai catechisti</strong></div>
+                                    <div><span>Equipe organizzatrice</span><strong>{{ selected.equipeOrganizzatriceNome }}</strong></div>
+                                    <div><span>Comunità destinataria</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
+                                } @else {
+                                    <div><span>Categoria</span><strong>{{ selected.categoriaConvivenza }}</strong></div>
+                                    <div><span>Organizzazione</span><strong>{{ getOrganizzazioneLabel(selected) }}</strong></div>
+                                    <div><span>Comunità</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
+                                }
+                                <div><span>Periodo</span><strong>{{ formatDateIt(selected.dataInizio) }} - {{ formatDateIt(selected.dataFine) }}</strong></div>
                                 <div><span>Posto assegnato</span><strong>{{ getPostoNome(selected) }}</strong></div>
                                 <div><span>Partecipanti</span><strong>{{ selected.partecipantiConfermati }}/{{ selected.partecipantiPrevisti }}</strong></div>
                                 <div><span>Richiesta struttura</span><strong>{{ selected.statoRichiestaStruttura }}</strong></div>
@@ -230,7 +338,7 @@ interface PostoSintesi {
                             <div class="actions">
                                 <button pButton type="button" label="Modifica" icon="pi pi-pencil" outlined></button>
                                 <button pButton type="button" label="Assegna posto" icon="pi pi-building" outlined></button>
-                                <button pButton type="button" label="Prepara richiesta struttura" icon="pi pi-send"></button>
+                                <button pButton type="button" label="Prepara richiesta struttura" icon="pi pi-send" (click)="apriPreparazioneRichiestaDaConvivenza()"></button>
                             </div>
                         </div>
 
@@ -273,7 +381,7 @@ interface PostoSintesi {
                                     <div><dt>Equipe organizzatrice</dt><dd>{{ convivenza.equipeOrganizzatriceNome }}</dd></div>
                                     <div><dt>Comunità destinataria</dt><dd>{{ convivenza.comunitaDestinatariaNome }}</dd></div>
                                     <div><dt>Stato richiesta struttura</dt><dd>{{ convivenza.statoRichiestaStruttura }}</dd></div>
-                                    <div><dt>Date</dt><dd>{{ convivenza.dataInizio }} - {{ convivenza.dataFine }}</dd></div>
+                                    <div><dt>Date</dt><dd>{{ formatDateIt(convivenza.dataInizio) }} - {{ formatDateIt(convivenza.dataFine) }}</dd></div>
                                     <div><dt>Struttura</dt><dd>{{ getPostoNome(convivenza) }}</dd></div>
                                 </dl>
                             </article>
@@ -289,7 +397,7 @@ interface PostoSintesi {
             .page-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
             .page-head h1 { margin: 0 0 .35rem; font-size: 2rem; }
             .page-head p { margin: 0; color: #64748b; }
-            .new-convivenza-box, .filters-card, .section-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); padding: 1rem; }
+            .new-convivenza-box, .filters-card, .section-block { background: rgba(255, 255, 255, .82); border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); padding: 1rem; backdrop-filter: blur(10px); }
             .new-convivenza-box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: end; }
             .new-convivenza-box .form-intro, .new-convivenza-box footer, .new-convivenza-box .form-full { grid-column: 1 / -1; }
             .new-convivenza-box h2 { margin: 0 0 .25rem; font-size: 1.1rem; }
@@ -306,7 +414,7 @@ interface PostoSintesi {
             .section-title h2 { margin: .15rem 0 0; }
             .section-title strong { font-size: 1.35rem; color: #0f3558; }
             .workspace { display: grid; grid-template-columns: 22rem minmax(0, 1fr); gap: 1.25rem; }
-            .list-panel, .detail-card, .map-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); }
+            .list-panel, .detail-card, .map-card { background: rgba(255, 255, 255, .88); border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); }
             .list-panel { padding: .75rem; display: grid; gap: .75rem; align-content: start; }
             .convivenza-item { width: 100%; min-height: 44px; text-align: left; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafa; padding: 1rem; cursor: pointer; display: grid; gap: .45rem; }
             .convivenza-item.active { border-color: #2f867c; background: #eefaf7; }
@@ -342,7 +450,36 @@ interface PostoSintesi {
             .team-grid dl { display: grid; gap: .55rem; margin: 0; }
             .team-grid dt { color: #64748b; font-size: .8rem; }
             .team-grid dd { margin: .15rem 0 0; color: #111827; font-weight: 800; }
-            @media (max-width: 1024px) { .workspace, .detail-panel, .new-convivenza-box, .team-grid { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+            .wizard-box { align-items: start; }
+            .wizard-step-label { display: inline-flex; width: fit-content; margin-bottom: .35rem; padding: .18rem .55rem; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: .78rem; font-weight: 900; }
+            .child-community-choice { background: rgba(248, 250, 252, .7); }
+            .availability-note { padding: .75rem; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; color: #64748b; font-weight: 700; line-height: 1.35; }
+            .wizard-summary { padding: 1rem; border: 1px solid #dbe3ec; border-radius: 14px; background: #f8fafc; }
+            .wizard-summary h3 { margin: 0 0 .35rem; color: #0f2440; }
+            .wizard-summary p { margin: 0 0 .75rem; color: #475569; font-weight: 800; }
+            .wizard-summary div { margin-top: .35rem; color: #334155; }
+            .wizard-summary span { color: #64748b; }
+            .places-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; }
+            .place-card { text-align: left; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 1rem; display: grid; gap: .35rem; cursor: pointer; }
+            .place-card:hover { border-color: #2f867c; }
+            .place-card.active { border-color: #2f867c; background: #eefaf7; }
+            .place-card strong { color: #111827; }
+            .place-card span { color: #64748b; }
+            .new-convivenza-box input,
+            .new-convivenza-box textarea {
+                width: 100%;
+                border: 1px solid #e5e7eb;
+                border-radius: 10px;
+                padding: .65rem .75rem;
+                color: #334155;
+                font: inherit;
+            }
+            .new-convivenza-box textarea {
+                resize: vertical;
+            }
+
+            @media (max-width: 1024px) { .workspace, .detail-panel, .new-convivenza-box, .team-grid, .places-grid { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
             @media (max-width: 767px) { .page-head, .section-title { flex-direction: column; align-items: stretch; } .page-head button, .actions button, .new-convivenza-box footer button { min-height: 44px; width: 100%; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
         `
     ]
@@ -351,25 +488,71 @@ export class Convivenze {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
+
     readonly categorieForm: CategoriaConvivenza[] = ['Catechistica', 'Annuale', 'Comunitaria', 'Organizzativa'];
     readonly tipiCatechistici = [...TIPI_CONVIVENZA_CATECHISTICA];
     readonly tipiAnnuali = [...TIPI_CONVIVENZA_ANNUALE];
     readonly tipiConvivenza = [...TIPI_CONVIVENZA_CATECHISTICA, ...TIPI_CONVIVENZA_ANNUALE];
+
+    readonly tipiCatechisticiWizard: TipoConvivenza[] = [
+        '1° Scrutinio',
+        'Shemà',
+        '2° Scrutinio',
+        'Iniziazione alla Preghiera',
+        'Traditio',
+        'Redditio',
+        '1ª Chiamata del Padre Nostro',
+        'Tappa di Loreto',
+        'Chiusura del Padre Nostro',
+        '1ª Chiamata all’Elezione',
+        '2ª Chiamata all’Elezione',
+        '3ª Chiamata all’Elezione'
+    ] as TipoConvivenza[];
+
+    readonly tipiComunitaNuova: TipoConvivenza[] = [
+        'Convivenza domenicale',
+        'Inizio Corso',
+        'Riporto',
+        'Pentecoste',
+        'Altro'
+    ] as TipoConvivenza[];
+
+    readonly comunitaFiglieOptions = [
+        '3ª Comunità – S. Maria delle Grazie alle Fornaci'
+    ];
+
     readonly currentUserRoles: Array<'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Capo equipe'> = ['Responsabile'];
+
     readonly currentUserHasCatechistEquipe = this.currentUserRoles.includes('Catechista') || this.currentUserRoles.includes('Capo equipe');
+
     readonly currentUserHasChildCommunities = false;
+
     readonly currentUserCanCreateCommunityConvivenza = this.currentUserRoles.includes('Responsabile') || this.currentUserRoles.includes('Corresponsabile');
+
     readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserHasCatechistEquipe && this.currentUserHasChildCommunities;
+
     readonly currentUserIsEquipe = this.currentUserHasCatechistEquipe;
+
     tipoFiltro: TipoConvivenza | null = null;
-    nuovaCategoria: CategoriaConvivenza = 'Catechistica';
+
+    nuovaCategoria: CategoriaConvivenza = 'Annuale';
     tipoFlussoNuova: 'comunita' | 'figlie' | null = null;
-    nuovoTipoCatechistico = this.tipiCatechistici[0];
-    nuovoTipoAnnuale = this.tipiAnnuali[0];
+    nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
+    nuovoTipoAnnuale = this.tipiComunitaNuova[0];
     nuovaDataInizio = '2027-03-12';
     nuovaDataFine = '2027-03-14';
     nuoveNote = '';
+    nuoviPartecipanti = 40;
     formNuovaConvivenzaVisibile = false;
+
+    wizardStep: 1 | 2 | 3 | 4 = 1;
+    filtroPosti = '';
+    strutturaSelezionataId: number | null = null;
+    codiceRichiestaMock = '';
+    oggettoEmailRichiesta = '';
+    corpoEmailRichiesta = '';
+    nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0];
+    private convivenzaWizardId: number | null = null;
 
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];
@@ -404,21 +587,55 @@ export class Convivenze {
         return this.convivenzeFiltrate.filter((convivenza) => convivenza.soggettoOrganizzatore === 'Equipe dei catechisti');
     }
 
+    get postiFiltrati() {
+        const filtro = this.filtroPosti.trim().toLowerCase();
+
+        if (!filtro) {
+            return this.posti;
+        }
+
+        return this.posti.filter((posto) =>
+            posto.nome.toLowerCase().includes(filtro) ||
+            posto.citta.toLowerCase().includes(filtro) ||
+            posto.regione.toLowerCase().includes(filtro)
+        );
+    }
+
+    get strutturaSelezionataNome() {
+        const posto = this.posti.find((item) => item.id === this.strutturaSelezionataId);
+        return posto ? `${posto.nome} – ${posto.citta}` : 'Nessuna struttura selezionata';
+    }
+
     aggiornaDefaultTipo() {
         if (this.nuovaCategoria === 'Catechistica') {
-            this.nuovoTipoCatechistico = this.tipiCatechistici[0];
+            this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
         } else {
-            this.nuovoTipoAnnuale = this.nuovaCategoria === 'Organizzativa' ? 'Altro' : this.tipiAnnuali[0];
+            this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
         }
     }
 
     apriNuovaConvivenza() {
-        this.formNuovaConvivenzaVisibile = !this.formNuovaConvivenzaVisibile;
-        if (!this.currentUserHasChildCommunities) {
-            this.scegliTipoNuova('comunita');
-        } else {
-            this.tipoFlussoNuova = null;
-        }
+        this.formNuovaConvivenzaVisibile = true;
+        this.wizardStep = 1;
+        this.tipoFlussoNuova = null;
+        this.nuovaCategoria = 'Annuale';
+        this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
+        this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
+        this.nuoviPartecipanti = 40;
+        this.nuoveNote = '';
+        this.filtroPosti = '';
+        this.strutturaSelezionataId = null;
+        this.codiceRichiestaMock = '';
+        this.oggettoEmailRichiesta = '';
+        this.corpoEmailRichiesta = '';
+        this.convivenzaWizardId = null;
+    }
+
+    chiudiWizardNuovaConvivenza() {
+        this.formNuovaConvivenzaVisibile = false;
+        this.wizardStep = 1;
+        this.tipoFlussoNuova = null;
+        this.convivenzaWizardId = null;
     }
 
     scegliTipoNuova(tipo: 'comunita' | 'figlie') {
@@ -432,42 +649,163 @@ export class Convivenze {
 
         this.tipoFlussoNuova = tipo;
         this.nuovaCategoria = tipo === 'figlie' ? 'Catechistica' : 'Annuale';
-        this.aggiornaDefaultTipo();
+        this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
+        this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
+        this.wizardStep = 2;
     }
 
     salvaNuovaConvivenza() {
+        this.creaBozzaConvivenzaEAvanza();
+    }
+
+    getWizardIntro() {
+        switch (this.wizardStep) {
+            case 1:
+                return 'Scegli il tipo di convivenza da creare.';
+            case 2:
+                return this.tipoFlussoNuova === 'figlie'
+                    ? 'Inserisci i dati della convivenza catechistica con comunità figlie.'
+                    : 'Inserisci i dati della convivenza della tua comunità.';
+            case 3:
+                return 'Scegli il posto di convivenza a cui preparare la richiesta.';
+            case 4:
+                return 'Controlla e modifica la bozza email prima del salvataggio.';
+        }
+    }
+
+    creaBozzaConvivenzaEAvanza() {
         if (!this.tipoFlussoNuova) {
             return;
         }
-        const isCatechistica = this.nuovaCategoria === 'Catechistica';
+
+        const isCatechistica = this.tipoFlussoNuova === 'figlie';
         const tipo = isCatechistica ? this.nuovoTipoCatechistico : this.nuovoTipoAnnuale;
+        const titolo = isCatechistica ? `${tipo}` : `Convivenza ${tipo}`;
+
         const nuova: Convivenza = {
-            id: Math.max(0, ...this.convivenze.map((convivenza) => convivenza.id)) + 1,
-            titolo: isCatechistica ? `Passaggio ${tipo}` : `Convivenza ${tipo}`,
-            categoriaConvivenza: this.nuovaCategoria,
+            id: this.convivenzaWizardId ?? Math.max(0, ...this.convivenze.map((convivenza) => convivenza.id)) + 1,
+            titolo,
+            categoriaConvivenza: isCatechistica ? 'Catechistica' : 'Annuale',
             tipoConvivenza: tipo,
             soggettoOrganizzatore: isCatechistica ? 'Equipe dei catechisti' : 'Comunità',
             equipeOrganizzatriceId: isCatechistica ? 1 : null,
             equipeOrganizzatriceNome: isCatechistica ? this.equipeOrganizzatriceNome : '',
             comunitaDestinatariaId: 1,
-            comunitaDestinatariaNome: this.comunitaDestinatariaNome,
-            strutturaId: null,
+            comunitaDestinatariaNome: isCatechistica ? this.nuovaComunitaFigliaDestinataria : this.comunitaDestinatariaNome,
+            strutturaId: this.selected?.id === this.convivenzaWizardId ? this.selected.strutturaId : null,
             dataInizio: this.nuovaDataInizio,
             dataFine: this.nuovaDataFine,
-            stato: isCatechistica ? 'In preparazione' : 'Bozza',
-            partecipantiPrevisti: 40,
+            stato: 'Bozza',
+            partecipantiPrevisti: Number(this.nuoviPartecipanti) || 0,
             partecipantiConfermati: 0,
             luogoTestuale: 'Luogo non ancora assegnato',
-            citta: 'Roma',
-            note: this.nuoveNote.trim() || (isCatechistica ? 'Convivenza catechistica organizzata dall’equipe dei catechisti.' : 'Convivenza della comunità.'),
-            statoRichiestaStruttura: 'In preparazione',
+            citta: 'Da assegnare',
+            note: this.nuoveNote.trim(),
+            statoRichiestaStruttura: 'Non inviata',
             aggregati: this.aggregatiVuoti()
         };
-        this.convivenze = [nuova, ...this.convivenze];
+
+        if (this.convivenzaWizardId) {
+            this.convivenze = this.convivenze.map((convivenza) =>
+                convivenza.id === this.convivenzaWizardId ? nuova : convivenza
+            );
+        } else {
+            this.convivenze = [nuova, ...this.convivenze];
+            this.convivenzaWizardId = nuova.id;
+        }
+
         this.selected = nuova;
+        this.wizardStep = 3;
+    }
+
+    selezionaPosto(postoId: number) {
+        this.strutturaSelezionataId = postoId;
+
+        if (this.selected) {
+            const posto = this.posti.find((item) => item.id === postoId);
+
+            this.selected = {
+                ...this.selected,
+                strutturaId: postoId,
+                luogoTestuale: this.strutturaSelezionataNome,
+                citta: posto?.citta ?? ''
+            };
+
+            this.convivenze = this.convivenze.map((convivenza) =>
+                convivenza.id === this.selected?.id ? this.selected : convivenza
+            );
+        }
+    }
+
+    preparaRichiestaStruttura() {
+        if (!this.selected || !this.strutturaSelezionataId) {
+            return;
+        }
+
+        this.codiceRichiestaMock = `EC-${new Date().getFullYear()}-${String(this.selected.id).padStart(6, '0')}`;
+        this.oggettoEmailRichiesta = `[${this.codiceRichiestaMock}] Richiesta disponibilità per ${this.selected.titolo}`;
+
+        this.corpoEmailRichiesta =
+`Gentili responsabili della struttura ${this.strutturaSelezionataNome},
+
+con la presente chiediamo disponibilità per la seguente convivenza:
+
+Convivenza: ${this.selected.titolo}
+Comunità: ${this.selected.comunitaDestinatariaNome}
+Periodo: ${this.formatDateIt(this.selected.dataInizio)} - ${this.formatDateIt(this.selected.dataFine)}
+Partecipanti previsti: ${this.selected.partecipantiPrevisti}
+
+Note:
+${this.selected.note || 'Nessuna nota aggiuntiva.'}
+
+Restiamo in attesa di un vostro gentile riscontro.
+
+Pace.`;
+
+        this.wizardStep = 4;
+    }
+
+    salvaBozzaRichiesta() {
+        if (!this.selected) {
+            return;
+        }
+
+        const bozza = {
+            convivenzaId: this.selected.id,
+            codiceRichiesta: this.codiceRichiestaMock,
+            strutturaId: this.strutturaSelezionataId,
+            strutturaNome: this.strutturaSelezionataNome,
+            oggetto: this.oggettoEmailRichiesta,
+            corpo: this.corpoEmailRichiesta,
+            salvataIl: new Date().toISOString()
+        };
+
+        localStorage.setItem(`bozza-richiesta-struttura-${this.selected.id}`, JSON.stringify(bozza));
+
+        this.selected = {
+            ...this.selected,
+            statoRichiestaStruttura: 'In preparazione'
+        };
+
+        this.convivenze = this.convivenze.map((convivenza) =>
+            convivenza.id === this.selected?.id ? this.selected : convivenza
+        );
+
         this.formNuovaConvivenzaVisibile = false;
-        this.tipoFlussoNuova = null;
-        this.nuoveNote = '';
+        this.wizardStep = 1;
+        this.convivenzaWizardId = null;
+    }
+
+    apriPreparazioneRichiestaDaConvivenza() {
+        if (!this.selected) {
+            return;
+        }
+
+        this.formNuovaConvivenzaVisibile = true;
+        this.wizardStep = 3;
+        this.tipoFlussoNuova = this.selected.categoriaConvivenza === 'Catechistica' ? 'figlie' : 'comunita';
+        this.convivenzaWizardId = this.selected.id;
+        this.strutturaSelezionataId = this.selected.strutturaId;
     }
 
     select(convivenza: Convivenza) {
@@ -499,6 +837,16 @@ export class Convivenze {
 
     getOrganizzazioneLabel(convivenza: Convivenza) {
         return convivenza.soggettoOrganizzatore === 'Equipe dei catechisti' ? 'Organizzata dai catechisti' : `Organizzata da: ${convivenza.soggettoOrganizzatore}`;
+    }
+
+    formatDateIt(value: string) {
+        const [year, month, day] = value.split('-');
+
+        if (!year || !month || !day) {
+            return value;
+        }
+
+        return `${day}-${month}-${year}`;
     }
 
     private creaConvivenzePilota(): Convivenza[] {
