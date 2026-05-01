@@ -128,6 +128,44 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                         <p-select inputId="tappaCammino" name="tappaCammino" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="tappeCammino" [(ngModel)]="tappaCammino"></p-select>
                     </div>
 
+                    <section class="catechist-box">
+                        <div class="catechist-head">
+                            <div>
+                                <strong>Sei catechista di qualche comunità?</strong>
+                                <span>Serve per abilitare le convivenze con comunità figlie.</span>
+                            </div>
+                            <div class="yes-no">
+                                <button type="button" [class.active]="isCatechista === true" (click)="setCatechista(true)">Sì</button>
+                                <button type="button" [class.active]="isCatechista === false" (click)="setCatechista(false)">No</button>
+                            </div>
+                        </div>
+
+                        @if (isCatechista === true) {
+                            <aside class="child-community-panel">
+                                <h3>Comunità figlia associata</h3>
+                                <p>Indica una comunità che segui come catechista. Potrai usarla nelle convivenze catechistiche.</p>
+
+                                <div class="guided-grid">
+                                    <div class="field form-full">
+                                        <label for="parrocchiaFiglia">Parrocchia comunità figlia</label>
+                                        <p-select inputId="parrocchiaFiglia" name="parrocchiaFiglia" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="parrocchieFiglieOptions" optionLabel="nome" optionValue="id" [(ngModel)]="parrocchiaFigliaId" (ngModelChange)="onParrocchiaFigliaChange()"></p-select>
+                                    </div>
+
+                                    <div class="field">
+                                        <label for="numeroComunitaFiglia">Numero comunità figlia</label>
+                                        <p-select inputId="numeroComunitaFiglia" name="numeroComunitaFiglia" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="numeriComunita" [(ngModel)]="numeroComunitaFiglia"></p-select>
+                                    </div>
+                                </div>
+
+                                <div class="preview-box child-preview">
+                                    <span>Preview comunità figlia</span>
+                                    <strong>{{ previewComunitaFiglia }}</strong>
+                                    <small>Questa comunità abiliterà le convivenze con comunità figlie.</small>
+                                </div>
+                            </aside>
+                        }
+                    </section>
+
                     <div class="preview-box">
                         <span>Preview comunità</span>
                         <strong>{{ previewComunita }}</strong>
@@ -157,9 +195,10 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 gap: 1.25rem;
                 padding: clamp(1.25rem, 3vw, 2rem);
                 border-radius: 20px;
-                background: #fff;
+                background: rgba(255, 255, 255, .78);
                 border: 1px solid #e5e7eb;
                 box-shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
+                backdrop-filter: blur(10px);
             }
             .page-intro { display: grid; gap: 0.45rem; text-align: center; }
             .page-intro h1,
@@ -257,12 +296,90 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 border-color: #bbf7d0;
                 font-weight: 800;
             }
+
+            .catechist-box {
+                display: grid;
+                gap: .85rem;
+                padding: 1rem;
+                border-radius: 16px;
+                background: rgba(248, 250, 252, .92);
+                border: 1px solid #e5e7eb;
+            }
+            .catechist-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+            }
+            .catechist-head div:first-child {
+                display: grid;
+                gap: .2rem;
+            }
+            .catechist-head strong {
+                color: #0f2440;
+            }
+            .catechist-head span {
+                color: #64748b;
+                font-size: .9rem;
+            }
+            .yes-no {
+                display: inline-grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: .35rem;
+                padding: .25rem;
+                border-radius: 999px;
+                background: #e2e8f0;
+            }
+            .yes-no button {
+                min-width: 72px;
+                min-height: 36px;
+                border: 0;
+                border-radius: 999px;
+                background: transparent;
+                color: #475569;
+                font-weight: 900;
+                cursor: pointer;
+            }
+            .yes-no button.active {
+                background: #17335f;
+                color: #fff;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, .16);
+            }
+            .child-community-panel {
+                display: grid;
+                gap: .85rem;
+                padding: 1rem;
+                border-radius: 16px;
+                background: #fff;
+                border: 1px solid #dbeafe;
+                box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+            }
+            .child-community-panel h3 {
+                margin: 0;
+                color: #0f2440;
+            }
+            .child-community-panel p {
+                margin: 0;
+                color: #64748b;
+            }
+            .child-preview {
+                background: #f0fdf4;
+                border-color: #bbf7d0;
+            }
+
             :host ::ng-deep .onboarding-dropdown-panel { z-index: 12000 !important; }
             @media (max-width: 767px) {
                 .onboarding-page { place-items: start stretch; }
                 .guided-grid,
                 .readonly-grid,
                 .mode-switch { grid-template-columns: 1fr; border-radius: 18px; }
+                .catechist-head {
+                    align-items: stretch;
+                    flex-direction: column;
+                }
+                .yes-no {
+                    width: 100%;
+                }
             }
         `
     ]
@@ -307,6 +424,10 @@ export class OnboardingComunita {
     indirizzoManuale = '';
     messaggio = '';
 
+    isCatechista: boolean | null = null;
+    parrocchiaFigliaId = 24;
+    numeroComunitaFiglia = 3;
+
     get settoriFiltrati() {
         return SETTORI_MOCK.filter((settore) => settore.diocesiId === this.diocesiId);
     }
@@ -346,6 +467,44 @@ export class OnboardingComunita {
     get previewComunita() {
         const nome = this.parrocchiaNome || 'Parrocchia da inserire';
         return this.settoreNome ? creaNomeComunitaVisualizzato(this.numeroComunita, nome, this.settoreNome) : `${generaNomeComunita(this.numeroComunita)} – ${nome}`;
+    }
+
+    get parrocchieFiglieOptions() {
+        return PARROCCHIE_MOCK.filter((parrocchia) => parrocchia.id !== PARROCCHIA_MANUALE_ID);
+    }
+
+    get parrocchiaFiglia() {
+        return PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.parrocchiaFigliaId) ?? this.parrocchieFiglieOptions[0];
+    }
+
+    get settoreFigliaNome() {
+        return SETTORI_MOCK.find((settore) => settore.id === this.parrocchiaFiglia?.settoreId)?.nome ?? '';
+    }
+
+    get diocesiFigliaNome() {
+        return DIOCESI_MOCK.find((diocesi) => diocesi.id === this.parrocchiaFiglia?.diocesiId)?.nome ?? '';
+    }
+
+    get previewComunitaFiglia() {
+        const parrocchia = this.parrocchiaFiglia;
+        const nome = parrocchia?.nome ?? 'Parrocchia da selezionare';
+        return this.settoreFigliaNome ? creaNomeComunitaVisualizzato(this.numeroComunitaFiglia, nome, this.settoreFigliaNome) : `${generaNomeComunita(this.numeroComunitaFiglia)} – ${nome}`;
+    }
+
+    setCatechista(value: boolean) {
+        this.isCatechista = value;
+
+        if (!value) {
+            this.parrocchiaFigliaId = 24;
+            this.numeroComunitaFiglia = 3;
+        }
+    }
+
+    onParrocchiaFigliaChange() {
+        const parrocchia = this.parrocchiaFiglia;
+        if (!parrocchia) {
+            this.parrocchiaFigliaId = this.parrocchieFiglieOptions[0]?.id ?? 24;
+        }
     }
 
     onDiocesiChange() {
@@ -393,6 +552,11 @@ export class OnboardingComunita {
             return;
         }
 
+        if (this.isCatechista === null) {
+            this.messaggio = 'Indica se sei catechista di qualche comunità';
+            return;
+        }
+
         if (this.isPreview) {
             this.messaggio = 'Simulazione completata';
             return;
@@ -413,7 +577,21 @@ export class OnboardingComunita {
             dataSelezione: new Date().toISOString(),
             comune: this.parrocchiaManualeAttiva ? this.comuneManuale.trim() : this.parrocchia.comune,
             indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo,
-            tappaCammino: this.tappaCammino
+            tappaCammino: this.tappaCammino,
+            isCatechista: this.isCatechista === true,
+            comunitaFiglieAssociate: this.isCatechista === true && this.parrocchiaFiglia ? [
+                {
+                    numeroComunita: this.numeroComunitaFiglia,
+                    nomeComunita: generaNomeComunita(this.numeroComunitaFiglia),
+                    parrocchiaId: this.parrocchiaFiglia.id,
+                    parrocchiaNome: this.parrocchiaFiglia.nome,
+                    settoreId: this.parrocchiaFiglia.settoreId,
+                    settoreNome: this.settoreFigliaNome,
+                    diocesiId: this.parrocchiaFiglia.diocesiId,
+                    diocesiNome: this.diocesiFigliaNome,
+                    parrocchiaManuale: false
+                }
+            ] : []
         });
 
         this.router.navigateByUrl('/gestionale-cn/dashboard', { replaceUrl: true });

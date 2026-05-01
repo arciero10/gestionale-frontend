@@ -3,8 +3,20 @@ import { TappaCammino, normalizeTappaCammino } from './tappe-cammino.mock';
 
 export const COMMUNITY_SELECTED_KEY = 'eventiComunit\u00e0.communitySelected';
 export const SELECTED_COMMUNITY_KEY = 'eventiComunit\u00e0.selectedCommunity';
-const LEGACY_COMMUNITY_SELECTED_KEY = 'eventiComunitÃ .communitySelected';
-const LEGACY_SELECTED_COMMUNITY_KEY = 'eventiComunitÃ .selectedCommunity';
+const LEGACY_COMMUNITY_SELECTED_KEY = 'eventiComunitÃ .communitySelected';
+const LEGACY_SELECTED_COMMUNITY_KEY = 'eventiComunitÃ .selectedCommunity';
+
+export interface ComunitaFigliaAssociata {
+    numeroComunita: number;
+    nomeComunita: string;
+    parrocchiaId?: number;
+    parrocchiaNome: string;
+    settoreId?: number;
+    settoreNome: string;
+    diocesiId?: number;
+    diocesiNome: string;
+    parrocchiaManuale?: boolean;
+}
 
 export interface SelectedCommunity {
     communitySelected: true;
@@ -22,6 +34,9 @@ export interface SelectedCommunity {
     comune?: string;
     indirizzo?: string;
     tappaCammino?: TappaCammino;
+
+    isCatechista?: boolean;
+    comunitaFiglieAssociate?: ComunitaFigliaAssociata[];
 }
 
 export interface CurrentCommunity extends SelectedCommunity {
@@ -36,7 +51,11 @@ export function saveSelectedCommunity(community: SelectedCommunity): void {
     localStorage.setItem(COMMUNITY_SELECTED_KEY, 'true');
     localStorage.removeItem(LEGACY_COMMUNITY_SELECTED_KEY);
     localStorage.removeItem(LEGACY_SELECTED_COMMUNITY_KEY);
-    localStorage.setItem(SELECTED_COMMUNITY_KEY, JSON.stringify(community));
+    localStorage.setItem(SELECTED_COMMUNITY_KEY, JSON.stringify({
+        ...community,
+        isCatechista: community.isCatechista === true,
+        comunitaFiglieAssociate: community.comunitaFiglieAssociate ?? []
+    }));
 }
 
 export function updateSelectedCommunityTappa(tappaCammino: TappaCammino): void {
@@ -91,6 +110,8 @@ export function getCurrentCommunity(): CurrentCommunity {
         statoVerifica: 'Verificata',
         dataSelezione: '',
         tappaCammino: normalizeTappaCammino(COMUNITA_ATTIVA_MOCK.tappaCammino),
+        isCatechista: false,
+        comunitaFiglieAssociate: [],
         isPilot: true
     };
 }
@@ -110,7 +131,9 @@ function normalizeSelectedCommunity(raw: any): SelectedCommunity | null {
     if (raw.communitySelected === true && typeof raw.numeroComunita === 'number') {
         return {
             ...raw,
-            tappaCammino: normalizeTappaCammino(raw.tappaCammino ?? raw.tappa ?? 'Precatecumenato')
+            tappaCammino: normalizeTappaCammino(raw.tappaCammino ?? raw.tappa ?? 'Precatecumenato'),
+            isCatechista: raw.isCatechista === true,
+            comunitaFiglieAssociate: Array.isArray(raw.comunitaFiglieAssociate) ? raw.comunitaFiglieAssociate : []
         } as SelectedCommunity;
     }
 
@@ -128,7 +151,9 @@ function normalizeSelectedCommunity(raw: any): SelectedCommunity | null {
             parrocchiaManuale: raw.parrocchiaId === -1,
             statoVerifica: raw.parrocchiaId === -1 ? 'Inserita manualmente' : 'Verificata',
             dataSelezione: new Date().toISOString(),
-            tappaCammino: normalizeTappaCammino(raw.tappaCammino ?? raw.tappa ?? 'Precatecumenato')
+            tappaCammino: normalizeTappaCammino(raw.tappaCammino ?? raw.tappa ?? 'Precatecumenato'),
+            isCatechista: false,
+            comunitaFiglieAssociate: []
         };
     }
 
