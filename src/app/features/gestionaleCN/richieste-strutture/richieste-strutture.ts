@@ -9,6 +9,7 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { GRAPH_SENDER_MAILBOX_PLACEHOLDER, RICHIESTE_STRUTTURE_API_CONTRACTS, codiceRichiestaRegexDocumentata } from './graph-email.placeholder';
 import { RichiesteStruttureService } from './richieste-strutture.service';
+import { getCurrentCommunity } from '../data/community-selection.storage';
 import {
     CreaRichiestaStrutturaPayload,
     MessaggioRichiestaStruttura,
@@ -444,6 +445,7 @@ export class RichiesteStrutture implements OnInit {
     private readonly service = inject(RichiesteStruttureService);
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly currentCommunity = getCurrentCommunity();
 
     readonly senderMailbox = GRAPH_SENDER_MAILBOX_PLACEHOLDER;
     readonly apiContracts = RICHIESTE_STRUTTURE_API_CONTRACTS;
@@ -457,7 +459,7 @@ export class RichiesteStrutture implements OnInit {
     messaggi: MessaggioRichiestaStruttura[] = this.service.getMessaggi(this.selected.id);
     formVisibile = false;
     messaggioUtente = '';
-    comunitaCoinvolteTesto = '3ª Comunità S. Maria delle Grazie alle Fornaci';
+    comunitaCoinvolteTesto = `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`;
     strutturaBloccata = false;
     corpoModificato = false;
     form = this.creaFormVuoto();

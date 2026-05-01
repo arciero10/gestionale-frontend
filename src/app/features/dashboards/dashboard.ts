@@ -6,8 +6,8 @@ import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
-import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, generaNomeComunita } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
-import { hasSelectedCommunity } from '../gestionaleCN/data/community-selection.storage';
+import { COMUNITA_ATTIVA_MOCK } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
+import { clearSelectedCommunity, getCurrentCommunity, hasSelectedCommunity } from '../gestionaleCN/data/community-selection.storage';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 
 interface DashboardModule {
@@ -95,6 +95,9 @@ interface DashboardModule {
                         <i class="pi pi-check-circle"></i>
                         <span>{{ messaggio }}</span>
                     </div>
+                }
+                @if (!isDemo) {
+                    <button class="change-community-link" type="button" (click)="cambiaComunitaSelezionata()">Cambia comunità selezionata</button>
                 }
             </div>
         </section>
@@ -291,6 +294,18 @@ interface DashboardModule {
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
             }
 
+            .change-community-link {
+                justify-self: end;
+                border: 0;
+                background: rgba(255, 255, 255, 0.62);
+                color: #17335f;
+                border-radius: 999px;
+                padding: 0.45rem 0.8rem;
+                font-weight: 800;
+                cursor: pointer;
+                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+            }
+
             .dashboard-grid {
                 display: grid;
                 grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -405,6 +420,10 @@ interface DashboardModule {
                     justify-self: start;
                 }
 
+                .change-community-link {
+                    justify-self: start;
+                }
+
                 .dashboard-grid {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
@@ -461,6 +480,7 @@ export class Dashboard {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
+    private readonly currentCommunity = getCurrentCommunity();
     private readonly tappaStorageKey = 'eventiComunita.tappaCammino';
 
     readonly currentUserRole = 'Responsabile';
@@ -492,27 +512,27 @@ export class Dashboard {
     }
 
     get nomeComunita() {
-        return this.isDemo ? DEMO_COMUNITA.nome : generaNomeComunita(this.comunitaAttiva.numero);
+        return this.isDemo ? DEMO_COMUNITA.nome : this.currentCommunity.nomeComunita;
     }
 
     get parrocchia() {
-        return this.isDemo ? DEMO_COMUNITA.parrocchia : (PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId)?.nome ?? '-');
+        return this.isDemo ? DEMO_COMUNITA.parrocchia : this.currentCommunity.parrocchiaNome;
     }
 
     get settore() {
-        return this.isDemo ? DEMO_COMUNITA.settore.replace(/^Settore\s+/i, '') : (SETTORI_MOCK.find((settore) => settore.id === this.comunitaAttiva.settoreId)?.nome ?? '-');
+        return this.isDemo ? DEMO_COMUNITA.settore.replace(/^Settore\s+/i, '') : this.currentCommunity.settoreNome.replace(/^Settore\s+/i, '');
     }
 
     get diocesi() {
-        return this.isDemo ? DEMO_COMUNITA.diocesi : (DIOCESI_MOCK.find((diocesi) => diocesi.id === this.comunitaAttiva.diocesiId)?.nome ?? '-');
+        return this.isDemo ? DEMO_COMUNITA.diocesi : this.currentCommunity.diocesiNome;
     }
 
     get membriCount() {
-        return this.isDemo ? DEMO_MEMBRI.length : 42;
+        return this.isDemo ? DEMO_MEMBRI.length : this.currentCommunity.isPilot ? 42 : 0;
     }
 
     get convivenzeCount() {
-        return this.isDemo ? DEMO_CONVIVENZE.length : 2;
+        return this.isDemo ? DEMO_CONVIVENZE.length : this.currentCommunity.isPilot ? 2 : 0;
     }
 
     get postiCount() {
@@ -574,6 +594,11 @@ export class Dashboard {
     annullaTappa() {
         this.tappaInBozza = this.tappaCammino;
         this.tappaInModifica = false;
+    }
+
+    cambiaComunitaSelezionata() {
+        clearSelectedCommunity();
+        this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
     }
 
     private leggiTappaSalvata(): TappaCammino {

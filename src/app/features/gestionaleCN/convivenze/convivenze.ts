@@ -6,7 +6,8 @@ import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
-import { COMUNITA_PILOTA, EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
+import { EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
+import { getCurrentCommunity } from '../data/community-selection.storage';
 import {
     CategoriaConvivenza,
     SoggettoOrganizzatoreConvivenza,
@@ -145,7 +146,7 @@ interface PostoSintesi {
                 <div class="workspace">
                     <aside class="list-panel">
                         @for (convivenza of convivenzeDellaComunita; track convivenza.id) {
-                            <button type="button" class="convivenza-item" [class.active]="convivenza.id === selected.id" (click)="select(convivenza)">
+                            <button type="button" class="convivenza-item" [class.active]="selected && convivenza.id === selected.id" (click)="select(convivenza)">
                                 <span class="item-title">{{ convivenza.titolo }}</span>
                                 <span class="tipo-badge" [ngClass]="getTipoClass(convivenza)">{{ convivenza.tipoConvivenza }}</span>
                                 <span class="item-meta">{{ convivenza.categoriaConvivenza }} · Organizzata da: {{ convivenza.soggettoOrganizzatore }}</span>
@@ -159,6 +160,7 @@ interface PostoSintesi {
                         }
                     </aside>
 
+                    @if (selected) {
                     <main class="detail-panel">
                         <div class="detail-card">
                             <div class="detail-head">
@@ -221,6 +223,14 @@ interface PostoSintesi {
                             </div>
                         </aside>
                     </main>
+                    } @else {
+                        <main class="detail-panel">
+                            <div class="detail-card empty-state">
+                                <h2>Nessuna convivenza ancora programmata</h2>
+                                <p>Questa comunità non ha ancora convivenze associate. Puoi crearne una dal form “Nuova convivenza”.</p>
+                            </div>
+                        </main>
+                    }
                 </div>
             </section>
 
@@ -316,6 +326,7 @@ interface PostoSintesi {
 export class Convivenze {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly currentCommunity = getCurrentCommunity();
     readonly categorieForm: CategoriaConvivenza[] = ['Catechistica', 'Annuale', 'Comunitaria', 'Organizzativa'];
     readonly tipiCatechistici = [...TIPI_CONVIVENZA_CATECHISTICA];
     readonly tipiAnnuali = [...TIPI_CONVIVENZA_ANNUALE];
@@ -339,7 +350,7 @@ export class Convivenze {
     }
 
     get comunitaDestinatariaNome() {
-        return this.isDemo ? DEMO_COMUNITA.nome : `${COMUNITA_PILOTA.nomeVisualizzato} – ${COMUNITA_PILOTA.parrocchia}`;
+        return this.isDemo ? DEMO_COMUNITA.nome : `${this.currentCommunity.nomeComunita} – ${this.currentCommunity.parrocchiaNome}`;
     }
 
     posti: PostoSintesi[] = this.isDemo ? DEMO_POSTI.map((posto, index) => ({ id: index + 1, nome: posto.nome, citta: posto.citta, regione: posto.regione })) : [
@@ -347,8 +358,8 @@ export class Convivenze {
         { id: 2, nome: 'Istituto Santa Marta', citta: 'Frascati', regione: 'Lazio' }
     ];
 
-    convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : this.creaConvivenzePilota();
-    selected = this.convivenze[0];
+    convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : this.currentCommunity.isPilot ? this.creaConvivenzePilota() : [];
+    selected: Convivenza | null = this.convivenze[0] ?? null;
 
     get convivenzeFiltrate() {
         return this.tipoFiltro ? this.convivenze.filter((convivenza) => convivenza.tipoConvivenza === this.tipoFiltro) : this.convivenze;

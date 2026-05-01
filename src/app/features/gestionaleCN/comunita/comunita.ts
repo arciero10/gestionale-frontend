@@ -9,7 +9,6 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
-    COMUNITA_PILOTA,
     EQUIPE_CATECHISTI_UNITA_PILOTA,
     MEMBRI_COMUNITA_PILOTA,
     ConsensoPrivacyPilota,
@@ -21,6 +20,7 @@ import {
     TipoUnitaMembroComunita
 } from '../data/comunita-pilota.mock';
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
+import { getCurrentCommunity } from '../data/community-selection.storage';
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 
@@ -74,8 +74,9 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         </div>
                         <strong>{{ equipeCatechisti.length }}</strong>
                     </div>
-                    <div class="catechisti-grid">
-                        @for (unita of equipeCatechisti; track unita.id) {
+                    @if (equipeCatechisti.length) {
+                        <div class="catechisti-grid">
+                            @for (unita of equipeCatechisti; track unita.id) {
                             <article>
                                 <strong>{{ unita.nomeVisualizzato }}</strong>
                                 @if (unita.capoEquipe) {
@@ -92,8 +93,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                                     <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
                                 </div>
                             </article>
-                        }
-                    </div>
+                            }
+                        </div>
+                    } @else {
+                        <div class="empty-community-state">Equipe dei catechisti da associare.</div>
+                    }
                 </section>
             }
 
@@ -601,6 +605,17 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 color: #64748b;
             }
 
+            .empty-community-state {
+                margin-top: 1rem;
+                padding: 1rem;
+                border: 1px dashed #cbd5e1;
+                border-radius: 12px;
+                color: #64748b;
+                background: rgba(248, 250, 252, 0.72);
+                font-weight: 800;
+                text-align: center;
+            }
+
             .unit-badges,
             .unit-actions {
                 display: flex;
@@ -1033,6 +1048,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
 export class Comunita {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly currentCommunity = getCurrentCommunity();
 
     ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Ostiario', 'Fratello'];
     ruoliForm = this.ruoliOperativi;
@@ -1077,8 +1093,8 @@ export class Comunita {
     policyConsents = PRIVACY_CONSENTS_DRAFT;
     privacyConfig = PRIVACY_CONFIG;
 
-    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo ? [] : EQUIPE_CATECHISTI_UNITA_PILOTA.map((unita) => ({ ...unita, membri: unita.membri.map((membro) => ({ ...membro })) }));
-    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro }));
+    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo || !this.currentCommunity.isPilot ? [] : EQUIPE_CATECHISTI_UNITA_PILOTA.map((unita) => ({ ...unita, membri: unita.membri.map((membro) => ({ ...membro })) }));
+    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : this.currentCommunity.isPilot ? MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro })) : [];
     private prossimoId = this.membri.length + 1;
     form: MembroForm = this.creaFormVuoto();
 
@@ -1088,19 +1104,19 @@ export class Comunita {
     }
 
     get nomeComunita() {
-        return this.isDemo ? DEMO_COMUNITA.nome : COMUNITA_PILOTA.nomeVisualizzato;
+        return this.isDemo ? DEMO_COMUNITA.nome : this.currentCommunity.nomeComunita;
     }
 
     get parrocchiaComunita() {
-        return this.isDemo ? DEMO_COMUNITA.parrocchia : COMUNITA_PILOTA.parrocchia;
+        return this.isDemo ? DEMO_COMUNITA.parrocchia : this.currentCommunity.parrocchiaNome;
     }
 
     get settoreComunita() {
-        return this.isDemo ? DEMO_COMUNITA.settore.replace(/^Settore\s+/i, '') : COMUNITA_PILOTA.settore;
+        return this.isDemo ? DEMO_COMUNITA.settore.replace(/^Settore\s+/i, '') : this.currentCommunity.settoreNome.replace(/^Settore\s+/i, '');
     }
 
     get diocesiComunita() {
-        return this.isDemo ? DEMO_COMUNITA.diocesi : COMUNITA_PILOTA.diocesi;
+        return this.isDemo ? DEMO_COMUNITA.diocesi : this.currentCommunity.diocesiNome;
     }
 
     get membriFiltrati() {

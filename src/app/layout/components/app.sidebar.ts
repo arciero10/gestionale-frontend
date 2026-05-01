@@ -4,7 +4,7 @@ import { LayoutService } from '@/layout/service/layout.service';
 import { RouterModule } from '@angular/router';
 import { AppMenuProfile } from './app.menuprofile';
 import { CommonModule } from '@angular/common';
-import { COMUNITA_ATTIVA_MOCK, PARROCCHIE_MOCK, generaNomeComunita } from '../../features/gestionaleCN/data/anagrafica-ecclesiale.mock';
+import { getCurrentCommunity } from '../../features/gestionaleCN/data/community-selection.storage';
 
 @Component({
     selector: '[app-sidebar]',
@@ -32,9 +32,14 @@ import { COMUNITA_ATTIVA_MOCK, PARROCCHIE_MOCK, generaNomeComunita } from '../..
 })
 export class AppSidebar {
     timeout: any = null;
-    private readonly comunitaAttiva = COMUNITA_ATTIVA_MOCK;
-    nomeComunita = generaNomeComunita(this.comunitaAttiva.numero);
-    parrocchia = PARROCCHIE_MOCK.find((parrocchia) => parrocchia.id === this.comunitaAttiva.parrocchiaId)?.nome ?? '';
+
+    get nomeComunita() {
+        return getCurrentCommunity().nomeComunita;
+    }
+
+    get parrocchia() {
+        return getCurrentCommunity().parrocchiaNome;
+    }
 
     @ViewChild(AppMenu) appMenu!: AppMenu;
 

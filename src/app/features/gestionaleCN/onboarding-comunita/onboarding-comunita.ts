@@ -390,14 +390,20 @@ export class OnboardingComunita {
         }
 
         saveSelectedCommunity({
-            numero: this.numeroComunita,
-            nomeVisualizzato: generaNomeComunita(this.numeroComunita),
+            communitySelected: true,
+            numeroComunita: this.numeroComunita,
+            nomeComunita: generaNomeComunita(this.numeroComunita),
             parrocchiaId: this.parrocchiaManualeAttiva ? PARROCCHIA_MANUALE_ID : this.parrocchia.id,
             parrocchiaNome: this.parrocchiaNome,
             settoreId: this.parrocchiaManualeAttiva ? 7 : this.parrocchia.settoreId,
             settoreNome: this.settoreNome,
             diocesiId: this.parrocchiaManualeAttiva ? this.diocesiManualeId : this.parrocchia.diocesiId,
-            diocesiNome: this.diocesiNome
+            diocesiNome: this.diocesiNome,
+            parrocchiaManuale: this.parrocchiaManualeAttiva,
+            statoVerifica: this.parrocchiaManualeAttiva ? 'Inserita manualmente' : this.parrocchia.statoVerifica,
+            dataSelezione: new Date().toISOString(),
+            comune: this.parrocchiaManualeAttiva ? this.comuneManuale.trim() : this.parrocchia.comune,
+            indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo
         });
 
         this.router.navigateByUrl('/gestionale-cn/dashboard', { replaceUrl: true });
