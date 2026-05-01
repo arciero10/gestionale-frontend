@@ -9,25 +9,55 @@ import { LayoutService } from '@/layout/service/layout.service';
     selector: 'app-layout',
     standalone: true,
     imports: [CommonModule, AppSidebar, RouterModule],
-    template: `<div class="layout-container layout-immersive" [ngClass]="containerClass()" [style.--page-background-image]="pageBackgroundStyle()">
-        <div app-sidebar></div>
-
-        <div
-            class="layout-content-wrapper"
-            [class.layout-dashboard-full]="isDashboardRoute()"
-            [class.layout-page-background]="!isDashboardRoute()"
-        >
-            <div class="layout-content">
-                <router-outlet></router-outlet>
+    template: `
+        @if (isOnboardingRoute()) {
+            <div class="onboarding-layout" [style.--page-background-image]="pageBackgroundStyle()">
+                <div class="onboarding-layout-content">
+                    <router-outlet></router-outlet>
+                </div>
             </div>
-            <footer class="internal-footer">
-                <span>© All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
-                <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
-            </footer>
-        </div>
-    </div> `,
+        } @else {
+            <div class="layout-container layout-immersive" [ngClass]="containerClass()" [style.--page-background-image]="pageBackgroundStyle()">
+                <div app-sidebar></div>
+
+                <div
+                    class="layout-content-wrapper"
+                    [class.layout-dashboard-full]="isDashboardRoute()"
+                    [class.layout-page-background]="!isDashboardRoute()"
+                >
+                    <div class="layout-content">
+                        <router-outlet></router-outlet>
+                    </div>
+                    <footer class="internal-footer">
+                        <span>© All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
+                        <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
+                    </footer>
+                </div>
+            </div>
+        }
+    `,
     styles: [
         `
+            .onboarding-layout {
+                position: relative;
+                min-height: 100vh;
+                isolation: isolate;
+                overflow: auto;
+                background-image:
+                    linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .24)),
+                    var(--page-background-image);
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+            }
+
+            .onboarding-layout-content {
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                padding: clamp(1rem, 3vw, 2rem);
+            }
+
             .internal-footer {
                 display: flex;
                 flex-wrap: wrap;
@@ -62,6 +92,7 @@ import { LayoutService } from '@/layout/service/layout.service';
 })
 export class AppLayout implements OnDestroy {
     isDashboardRoute = signal(false);
+    isOnboardingRoute = signal(false);
     currentContentBackground = signal('/assets/images/dashboard-bg.jpg');
     pageBackgroundStyle = computed(() => `url("${this.currentContentBackground()}")`);
 
@@ -96,8 +127,21 @@ export class AppLayout implements OnDestroy {
         this.updateRouteState(this.router.url);
 
         this.overlayMenuOpenSubscription = this.layoutService.overlayOpen$.subscribe(() => {
+            if (this.isOnboardingRoute()) {
+                this.hideMenu();
+                return;
+            }
+
+            if (!this.appSidebar?.appMenu?.el?.nativeElement || !this.appSidebar?.el?.nativeElement) {
+                return;
+            }
+
             if (!this.menuOutsideClickListener) {
                 this.menuOutsideClickListener = this.renderer.listen('document', 'click', (event) => {
+                    if (!this.appSidebar?.appMenu?.el?.nativeElement || !this.appSidebar?.el?.nativeElement) {
+                        return;
+                    }
+
                     const isOutsideClicked = !(
                         this.appSidebar.appMenu.el.nativeElement.isSameNode(event.target) ||
                         this.appSidebar.appMenu.el.nativeElement.contains(event.target) ||
@@ -111,7 +155,7 @@ export class AppLayout implements OnDestroy {
                 });
             }
 
-            if ((this.layoutService.isSlim() || this.layoutService.isSlimPlus()) && !this.menuScrollListener) {
+            if ((this.layoutService.isSlim() || this.layoutService.isSlimPlus()) && !this.menuScrollListener && this.appSidebar?.appMenu?.menuContainer?.nativeElement) {
                 this.menuScrollListener = this.renderer.listen(this.appSidebar.appMenu.menuContainer.nativeElement, 'scroll', () => {
                     if (this.layoutService.isDesktop()) {
                         this.hideMenu();
@@ -132,7 +176,14 @@ export class AppLayout implements OnDestroy {
 
     private updateRouteState(url: string) {
         const normalizedUrl = url.split('?')[0].split('#')[0];
+
         this.isDashboardRoute.set(normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard');
+
+        this.isOnboardingRoute.set(
+            normalizedUrl === '/gestionale-cn/onboarding-comunita' ||
+            normalizedUrl === '/gestionale-cn/onboarding-comunita-preview'
+        );
+
         this.currentContentBackground.set(this.resolveContentBackground(normalizedUrl));
     }
 
@@ -209,6 +260,10 @@ export class AppLayout implements OnDestroy {
 
         if (this.menuOutsideClickListener) {
             this.menuOutsideClickListener();
+        }
+
+        if (this.menuScrollListener) {
+            this.menuScrollListener();
         }
     }
 }
