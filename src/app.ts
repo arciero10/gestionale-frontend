@@ -35,27 +35,8 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
           </div>
 
           <div class="login-card">
-            <div class="login-card-head">
-              <h2>Entra nel gestionale</h2>
-              <p>Usa la tua email. L’accesso e la registrazione sono gestiti tramite Microsoft Entra External ID.</p>
-            </div>
-
-            <section class="auth-choice">
-              <div>
-                <span>Hai già un account?</span>
-                <p>Premi Accedi e inserisci la tua email nella schermata Microsoft per ricevere il codice di accesso.</p>
-              </div>
-              <button type="button" class="login-button primary" (click)="login()">Accedi</button>
-            </section>
-
-            <section class="auth-choice">
-              <div>
-                <span>Nuovo utente?</span>
-                <p>Premi Registrati. Nella schermata Microsoft inserisci la tua email anche se non hai ancora un account: riceverai un codice temporaneo per creare il tuo accesso.</p>
-              </div>
-              <button type="button" class="login-button secondary" (click)="register()">Registrati</button>
-            </section>
-
+            <button type="button" class="login-button primary" (click)="login()">Accedi</button>
+            <button type="button" class="login-button secondary" (click)="register()">Registrati</button>
             <a routerLink="/demo" class="demo-link">Guarda la demo</a>
             <a routerLink="/faq" class="demo-link secondary-link">FAQ</a>
           </div>
@@ -106,7 +87,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         width: 100%;
         max-width: 760px;
         display: grid;
-        gap: 1.85rem;
+        gap: 1rem;
         justify-items: center;
         margin: 0 auto;
         pointer-events: auto;
@@ -129,13 +110,13 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       .login-card {
         position: relative;
         z-index: 3;
-        width: 430px;
+        width: 300px;
         max-width: 100%;
         background: rgba(255, 255, 255, .1);
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
         border-radius: 24px;
-        padding: 28px;
+        padding: 20px;
         box-shadow: 0 18px 42px rgba(0, 0, 0, .16);
         border: 1px solid rgba(255, 255, 255, .42);
         display: flex;
@@ -278,7 +259,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         }
 
         .login-shell {
-          gap: 1.5rem;
+          gap: 1rem;
         }
 
         .login-copy h1 {
@@ -288,7 +269,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         .login-card {
           width: 320px;
           max-width: 100%;
-          padding: 24px;
+          padding: 16px;
           border-radius: 20px;
         }
 
