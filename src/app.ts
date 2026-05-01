@@ -15,14 +15,10 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
   imports: [RouterOutlet, RouterLink],
   template: `
     @if (showLoading()) {
-      <main class="login-page">
-        <section class="login-shell">
-          <div class="login-card">
-            <div class="login-card-head">
-              <h2>Accesso in corso...</h2>
-              <p>Sto controllando il tuo account Microsoft. Attendi un istante.</p>
-            </div>
-          </div>
+      <main class="auth-loading-page">
+        <section class="auth-loading-card">
+          <h2>Accesso in corso...</h2>
+          <p>Stiamo verificando il tuo accesso. Attendi un istante.</p>
         </section>
       </main>
     }
@@ -55,6 +51,37 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
   `,
   styles: [
     `
+      .auth-loading-page {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f8fafc;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      .auth-loading-card {
+        width: min(420px, 100%);
+        border-radius: 20px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        padding: 28px;
+        text-align: center;
+        box-shadow: 0 18px 42px rgba(15, 23, 42, .12);
+      }
+
+      .auth-loading-card h2 {
+        margin: 0;
+        color: #0f2440;
+        font-size: 24px;
+      }
+
+      .auth-loading-card p {
+        margin: .75rem 0 0;
+        color: #64748b;
+        line-height: 1.45;
+      }
+
       .login-page {
         position: relative;
         isolation: isolate;
