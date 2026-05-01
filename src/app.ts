@@ -293,6 +293,7 @@ export class App {
   constructor() {
     this.clearInvalidLegacyToken();
     void this.initMsalSafe();
+
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
     });
@@ -301,53 +302,53 @@ export class App {
   private async initMsalSafe(): Promise<void> {
     try {
       await this.ensureMsalInitialized();
-      this.msalReady.set(true);
-      this.handleMicrosoftRedirect();
+      await this.handleMicrosoftRedirect();
     } catch (error) {
       console.error('[MSAL] init error', error);
+      this.clearAuthState();
       this.authenticated.set(false);
-      this.msalReady.set(false);
+    } finally {
+      this.msalReady.set(true);
     }
   }
 
-  private handleMicrosoftRedirect(): void {
-    this.msalService.handleRedirectObservable().subscribe({
-      next: (result: AuthenticationResult | null) => {
-        if (result?.account) {
-          this.msalService.instance.setActiveAccount(result.account);
+  private async handleMicrosoftRedirect(): Promise<void> {
+    try {
+      const result = await firstValueFrom(this.msalService.handleRedirectObservable());
 
-          if (result.idToken && this.isValidToken(result.idToken)) {
-            localStorage.setItem('id_token', result.idToken);
+      if (result?.account) {
+        this.msalService.instance.setActiveAccount(result.account);
+
+        if (result.idToken && this.isValidToken(result.idToken)) {
+          localStorage.setItem('id_token', result.idToken);
           this.authService.refreshState();
-          }
-
-          this.authenticated.set(true);
-          this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
-          return;
         }
 
-        const accounts = this.msalService.instance.getAllAccounts();
+        this.authenticated.set(true);
+        this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
+        return;
+      }
 
-        if (!this.msalService.instance.getActiveAccount() && accounts.length > 0) {
-          this.msalService.instance.setActiveAccount(accounts[0]);
-        }
+      const accounts = this.msalService.instance.getAllAccounts();
 
-        const activeAccount = this.msalService.instance.getActiveAccount();
+      if (!this.msalService.instance.getActiveAccount() && accounts.length > 0) {
+        this.msalService.instance.setActiveAccount(accounts[0]);
+      }
 
-        if (activeAccount) {
-          this.authenticated.set(true);
-          this.navigatePostLogin();
-        } else {
-          this.clearAuthState();
-          this.authenticated.set(false);
-        }
-      },
-      error: (error) => {
-        console.error('[MSAL] redirect observable error', error);
+      const activeAccount = this.msalService.instance.getActiveAccount();
+
+      if (activeAccount) {
+        this.authenticated.set(true);
+        this.navigatePostLogin();
+      } else {
         this.clearAuthState();
         this.authenticated.set(false);
       }
-    });
+    } catch (error) {
+      console.error('[MSAL] redirect observable error', error);
+      this.clearAuthState();
+      this.authenticated.set(false);
+    }
   }
 
   isLoggedIn(): boolean {
@@ -356,6 +357,7 @@ export class App {
     }
 
     const account = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
+
     if (account) {
       this.msalService.instance.setActiveAccount(account);
       return true;
@@ -366,6 +368,7 @@ export class App {
 
   private hasValidLocalToken(): boolean {
     const token = localStorage.getItem('id_token');
+
     if (this.isValidToken(token)) {
       return true;
     }
@@ -397,7 +400,7 @@ export class App {
     }
 
     if (this.currentPath() === '/') {
-      return true;
+      return !this.authenticated();
     }
 
     return !this.authenticated() && !this.isPublicRoute() && !this.isInternalRoute();
@@ -418,6 +421,7 @@ export class App {
 
     this.clearAuthState();
     sessionStorage.setItem('eventiComunità.authIntent', intent);
+
     this.ensureMsalInitialized()
       .then(() => {
         this.msalReady.set(true);
@@ -438,6 +442,7 @@ export class App {
 
   logout(): void {
     this.clearAuthState();
+
     this.msalService.initialize().subscribe({
       next: () => this.msalService.logoutRedirect(),
       error: (error) => console.error('[LOGOUT INIT ERROR]', error)
@@ -446,6 +451,7 @@ export class App {
 
   private clearInvalidLegacyToken(): void {
     const token = localStorage.getItem('id_token');
+
     if (token && !this.isValidToken(token)) {
       this.clearAuthState();
     }
