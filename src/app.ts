@@ -31,7 +31,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       <main class="login-page">
         <section class="login-shell">
           <div class="login-copy">
-            <h1 class="brand-neocat">Gestionale per le comunità<br />del cammino neocatecumenale</h1>
+            <h1 class="brand-neocat">Gestionale per le comunità<br />del Cammino Neocatecumenale</h1>
           </div>
 
           <div class="login-card">
@@ -42,18 +42,18 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
 
             <section class="auth-choice">
               <div>
-                <span>Nuovo utente?</span>
-                <p>Premi Registrati. Nella schermata Microsoft inserisci la tua email anche se non hai ancora un account: riceverai un codice temporaneo per creare il tuo accesso.</p>
+                <span>Hai già un account?</span>
+                <p>Premi Accedi e inserisci la tua email nella schermata Microsoft per ricevere il codice di accesso.</p>
               </div>
-              <button type="button" class="login-button primary" (click)="register()">Registrati</button>
+              <button type="button" class="login-button primary" (click)="login()">Accedi</button>
             </section>
 
             <section class="auth-choice">
               <div>
-                <span>Hai già un account?</span>
-                <p>Premi Accedi e inserisci la tua email nella schermata Microsoft per ricevere il codice di accesso.</p>
+                <span>Nuovo utente?</span>
+                <p>Premi Registrati. Nella schermata Microsoft inserisci la tua email anche se non hai ancora un account: riceverai un codice temporaneo per creare il tuo accesso.</p>
               </div>
-              <button type="button" class="login-button secondary" (click)="login()">Accedi</button>
+              <button type="button" class="login-button secondary" (click)="register()">Registrati</button>
             </section>
 
             <a routerLink="/demo" class="demo-link">Guarda la demo</a>
@@ -186,10 +186,10 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         z-index: 4;
         appearance: none;
         -webkit-appearance: none;
-        width: 240px;
+        width: 200px;
         max-width: 100%;
-        min-height: 48px;
-        padding: 15px 18px;
+        min-height: 40px;
+        padding: 12px 16px;
         background: #15365c;
         color: white;
         border: none;

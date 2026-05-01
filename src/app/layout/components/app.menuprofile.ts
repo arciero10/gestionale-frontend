@@ -16,11 +16,6 @@ import { AuthService } from '@/auth/auth.service';
             <span class="w-8 h-8 rounded-md bg-blue-50 text-blue-800 flex items-center justify-center">
                 <i class="pi pi-user"></i>
             </span>
-            <span class="text-start">
-                <strong>{{ authService.state().firstName || 'Gestionale CN' }}</strong>
-                <small>{{ authService.state().lastName || 'Area riservata' }}</small>
-            </span>
-            <i class="layout-menu-profile-toggler pi pi-fw" [ngClass]="{ 'pi-angle-down': menuProfilePosition() === 'start' || isHorizontal(), 'pi-angle-up': menuProfilePosition() === 'end' && !isHorizontal() }"></i>
         </button>
 
         <ul *ngIf="menuProfileActive()" [@menu]="isHorizontal() ? 'overlay' : 'inline'">

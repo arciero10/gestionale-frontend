@@ -38,6 +38,13 @@ import { LayoutService } from '@/layout/service/layout.service';
                 font-size: 0.75rem;
                 line-height: 1.45;
                 text-align: center;
+                background: rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                border-radius: 999px;
+                margin: 0 auto;
+                max-width: fit-content;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             }
 
             .layout-content-wrapper.layout-page-background {
