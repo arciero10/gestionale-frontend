@@ -86,7 +86,7 @@ interface PostoSintesi {
                     @if (!tipoFlussoNuova) {
                         <div class="choice-card" [class.disabled]="!currentUserCanCreateCommunityConvivenza">
                             <h3>Convivenza della tua comunità</h3>
-                            <p>Riporto, Pentecoste, Domenica di convivenza, Inizio Corso e altre convivenze comunitarie.</p>
+                            <p>Riporto, Pentecoste, Convivenza domenicale, Inizio Corso e altre convivenze comunitarie.</p>
                             <button pButton type="button" label="Scegli" [disabled]="!currentUserCanCreateCommunityConvivenza" (click)="scegliTipoNuova('comunita')"></button>
                         </div>
                         <div class="choice-card" [class.disabled]="!currentUserCanCreateChildCommunityConvivenza">
@@ -104,7 +104,7 @@ interface PostoSintesi {
 
                     @if (nuovaCategoria === 'Catechistica') {
                         <div>
-                            <label for="tipoCatechistico">Tipo catechistico</label>
+                            <label for="tipoCatechistico">Passaggio del Cammino</label>
                             <p-select inputId="tipoCatechistico" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiCatechistici" [(ngModel)]="nuovoTipoCatechistico"></p-select>
                         </div>
                         <div>
@@ -169,7 +169,7 @@ interface PostoSintesi {
                             <button type="button" class="convivenza-item" [class.active]="selected && convivenza.id === selected.id" (click)="select(convivenza)">
                                 <span class="item-title">{{ convivenza.titolo }}</span>
                                 <span class="tipo-badge" [ngClass]="getTipoClass(convivenza)">{{ convivenza.tipoConvivenza }}</span>
-                                <span class="item-meta">{{ convivenza.categoriaConvivenza }} · Organizzata da: {{ convivenza.soggettoOrganizzatore }}</span>
+                                <span class="item-meta">{{ convivenza.categoriaConvivenza }} · {{ getOrganizzazioneLabel(convivenza) }}</span>
                                 <span class="item-meta">{{ convivenza.dataInizio }} - {{ convivenza.dataFine }}</span>
                                 <span class="item-meta">{{ getPostoNome(convivenza) }}</span>
                                 <span class="item-row">
@@ -194,7 +194,7 @@ interface PostoSintesi {
 
                             <div class="detail-grid">
                                 <div><span>Categoria</span><strong>{{ selected.categoriaConvivenza }}</strong></div>
-                                <div><span>Organizzata da</span><strong>{{ selected.soggettoOrganizzatore }}</strong></div>
+                                <div><span>Organizzazione</span><strong>{{ getOrganizzazioneLabel(selected) }}</strong></div>
                                 <div><span>Equipe organizzatrice</span><strong>{{ selected.equipeOrganizzatriceNome || 'Non prevista' }}</strong></div>
                                 <div><span>Comunità destinataria</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
                                 <div><span>Periodo</span><strong>{{ selected.dataInizio }} - {{ selected.dataFine }}</strong></div>
@@ -492,6 +492,10 @@ export class Convivenze {
         return isTipoConvivenzaCatechistica(convivenza.tipoConvivenza) ? 'tipo-tappa' : 'tipo-ordinaria';
     }
 
+    getOrganizzazioneLabel(convivenza: Convivenza) {
+        return convivenza.soggettoOrganizzatore === 'Equipe dei catechisti' ? 'Organizzata dai catechisti' : `Organizzata da: ${convivenza.soggettoOrganizzatore}`;
+    }
+
     private creaConvivenzePilota(): Convivenza[] {
         return [
             {
@@ -519,7 +523,7 @@ export class Convivenze {
                 partecipantiConfermati: 22
             },
             {
-                ...this.baseConvivenza(4, 'Domenica di convivenza', 'Comunitaria', 'Domenica di convivenza', 'Comunità', 'Confermata'),
+                ...this.baseConvivenza(4, 'Convivenza domenicale', 'Comunitaria', 'Convivenza domenicale', 'Comunità', 'Confermata'),
                 strutturaId: 1,
                 dataInizio: '2027-01-17',
                 dataFine: '2027-01-17',

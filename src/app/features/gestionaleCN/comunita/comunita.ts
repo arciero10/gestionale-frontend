@@ -850,7 +850,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             .role-cantore { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
             .role-ostiario { background: #fef3c7; color: #92400e; border-color: #fde68a; }
             .role-fratello { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
-            .role-presbitero,
+            .role-presbitero { background: #fce7f3; color: #831843; border-color: #fbcfe8; }
             .role-prete { background: #111827; color: #ffffff; border-color: #111827; }
             .role-catechista { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
             .privacy-da-inviare { background: #e0f2fe; color: #475569; border-color: #bae6fd; }

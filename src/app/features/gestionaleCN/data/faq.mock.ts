@@ -86,6 +86,15 @@ export const FAQ_MOCK: FaqItem[] = [
         tag: ['riporto', 'pentecoste', 'tappe']
     },
     {
+        id: 14,
+        categoria: 'Convivenze',
+        domanda: 'Precatecumenato è una tappa?',
+        risposta: 'No. Precatecumenato indica che la comunità non ha ancora svolto alcuna tappa del Cammino.',
+        visibilita: 'pubblica',
+        ordine: 8.5,
+        tag: ['pre-catecumenato', 'tappe']
+    },
+    {
         id: 9,
         categoria: 'Richieste strutture',
         domanda: 'Come funzionano le richieste alle strutture?',
