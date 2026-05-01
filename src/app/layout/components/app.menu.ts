@@ -64,22 +64,6 @@ export class AppMenu {
             ]
         },
         {
-            label: 'Supporto',
-            icon: 'pi pi-fw pi-question-circle',
-            items: [
-                {
-                    label: 'Aiuto / FAQ',
-                    icon: 'pi pi-fw pi-question-circle',
-                    routerLink: ['/gestionale-cn/faq']
-                },
-                {
-                    label: 'Privacy e trattamento dati',
-                    icon: 'pi pi-fw pi-shield',
-                    routerLink: ['/gestionale-cn/privacy']
-                }
-            ]
-        },
-        {
             label: 'Azioni rapide',
             icon: 'pi pi-fw pi-plus-circle',
             items: [
@@ -113,6 +97,22 @@ export class AppMenu {
                     label: 'Esci',
                     icon: 'pi pi-fw pi-power-off',
                     command: () => this.authService.logout()
+                }
+            ]
+        },
+        {
+            label: 'Supporto',
+            icon: 'pi pi-fw pi-question-circle',
+            items: [
+                {
+                    label: 'Aiuto / FAQ',
+                    icon: 'pi pi-fw pi-question-circle',
+                    routerLink: ['/gestionale-cn/faq']
+                },
+                {
+                    label: 'Privacy e trattamento dati',
+                    icon: 'pi pi-fw pi-shield',
+                    routerLink: ['/gestionale-cn/privacy']
                 }
             ]
         }

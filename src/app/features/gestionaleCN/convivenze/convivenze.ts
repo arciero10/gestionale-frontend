@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
+import { DialogModule } from 'primeng/dialog';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
 import { EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
 import { getCurrentCommunity } from '../data/community-selection.storage';
@@ -65,7 +66,7 @@ interface PostoSintesi {
 @Component({
     selector: 'app-convivenze',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, TagModule],
+    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, TagModule, DialogModule],
     template: `
         <section class="convivenze-page">
             <header class="page-head">
@@ -413,7 +414,11 @@ export class Convivenze {
 
     apriNuovaConvivenza() {
         this.formNuovaConvivenzaVisibile = !this.formNuovaConvivenzaVisibile;
-        this.tipoFlussoNuova = null;
+        if (!this.currentUserHasChildCommunities) {
+            this.scegliTipoNuova('comunita');
+        } else {
+            this.tipoFlussoNuova = null;
+        }
     }
 
     scegliTipoNuova(tipo: 'comunita' | 'figlie') {

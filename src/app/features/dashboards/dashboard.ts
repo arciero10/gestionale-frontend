@@ -236,15 +236,16 @@ interface DashboardModule {
 
             .tappa-readonly span {
                 min-width: 0;
-                max-width: 25rem;
-                padding: 0.45rem 0.65rem;
+                max-width: 100%;
+                padding: 0.7rem 0.85rem;
                 border-radius: 10px;
                 color: #334155;
                 background: #eef2f7;
                 border: 1px solid #dbe3ec;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                white-space: normal;
+                word-break: break-word;
+                line-height: 1.35;
+                font-weight: 500;
             }
 
             .tappa-edit p-select {
