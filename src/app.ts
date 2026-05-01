@@ -23,12 +23,25 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
 
           <div class="login-card">
             <div class="login-card-head">
-              <h2>Accedi al gestionale</h2>
+              <h2>Entra nel gestionale</h2>
+              <p>Usa la tua email. L’accesso e la registrazione sono gestiti tramite Microsoft Entra External ID.</p>
             </div>
 
-            <button type="button" class="login-button" (click)="login()">
-              Accedi con email
-            </button>
+            <section class="auth-choice">
+              <div>
+                <span>Nuovo utente?</span>
+                <p>Premi Registrati. Nella schermata Microsoft inserisci la tua email anche se non hai ancora un account: riceverai un codice temporaneo per creare il tuo accesso.</p>
+              </div>
+              <button type="button" class="login-button primary" (click)="register()">Registrati</button>
+            </section>
+
+            <section class="auth-choice">
+              <div>
+                <span>Hai già un account?</span>
+                <p>Premi Accedi e inserisci la tua email nella schermata Microsoft per ricevere il codice di accesso.</p>
+              </div>
+              <button type="button" class="login-button secondary" (click)="login()">Accedi</button>
+            </section>
 
             <a routerLink="/demo" class="demo-link">Guarda la demo</a>
             <a routerLink="/faq" class="demo-link secondary-link">FAQ</a>
@@ -103,7 +116,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       .login-card {
         position: relative;
         z-index: 3;
-        width: 330px;
+        width: 430px;
         max-width: 100%;
         background: rgba(255, 255, 255, .1);
         backdrop-filter: blur(4px);
@@ -120,7 +133,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       }
 
       .login-card-head {
-        margin-bottom: 22px;
+        margin-bottom: 16px;
       }
 
       .login-card h2 {
@@ -128,6 +141,31 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         font-size: 24px;
         color: #ffffff;
         text-shadow: 0 1px 12px rgba(0, 0, 0, .28);
+      }
+
+      .login-card-head p,
+      .auth-choice p {
+        margin: .55rem 0 0;
+        color: rgba(255, 255, 255, .86);
+        line-height: 1.45;
+        font-size: .92rem;
+        text-shadow: 0 1px 10px rgba(0, 0, 0, .24);
+      }
+
+      .auth-choice {
+        width: 100%;
+        display: grid;
+        gap: .8rem;
+        padding: 1rem 0;
+        border-top: 1px solid rgba(255, 255, 255, .2);
+      }
+
+      .auth-choice span {
+        display: block;
+        color: #fff;
+        font-weight: 850;
+        font-size: .98rem;
+        text-shadow: 0 1px 10px rgba(0, 0, 0, .24);
       }
 
       .login-button {
@@ -156,6 +194,15 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         background: #1e4a79;
         transform: translateY(-1px);
         box-shadow: 0 14px 24px rgba(23, 55, 94, .24);
+      }
+
+      .login-button.secondary {
+        background: rgba(255, 255, 255, .88);
+        color: #15365c;
+      }
+
+      .login-button.secondary:hover {
+        background: #fff;
       }
 
       .demo-link {
@@ -322,7 +369,7 @@ export class App {
 
   isPublicRoute(): boolean {
     const path = this.currentPath();
-    return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/completa-profilo';
+    return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/privacy' || path === '/completa-profilo' || path.startsWith('/completa-anagrafica/');
   }
 
   isInternalRoute(): boolean {
@@ -339,11 +386,20 @@ export class App {
   }
 
   login(): void {
-    console.log('[LOGIN] click Accedi con email');
+    this.startMicrosoftAuth('login');
+  }
+
+  register(): void {
+    this.startMicrosoftAuth('register');
+  }
+
+  private startMicrosoftAuth(intent: 'login' | 'register'): void {
+    console.log(`[LOGIN] click ${intent === 'register' ? 'Registrati' : 'Accedi'}`);
     console.log('[LOGIN] redirectUri', window.location.origin);
     console.log('[LOGIN] authority', MSAL_AUTHORITY);
 
     this.clearAuthState();
+    sessionStorage.setItem('eventiComunità.authIntent', intent);
     this.ensureMsalInitialized()
       .then(() => {
         this.msalReady.set(true);

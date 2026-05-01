@@ -2,7 +2,7 @@ export type FaqVisibilita = 'pubblica' | 'interna';
 
 export interface FaqItem {
     id: number;
-    categoria: 'Accesso' | 'Demo' | 'Comunità' | 'Membri' | 'Convivenze' | 'Posti di Convivenza' | 'Richieste strutture' | 'Privacy e Consensi' | 'Strutture' | 'Primo accesso e scelta comunità';
+    categoria: 'Accesso' | 'Comunità' | 'Privacy e Consensi' | 'Convivenze' | 'Richieste strutture' | 'Supporto';
     domanda: string;
     risposta: string;
     visibilita: FaqVisibilita;
@@ -10,77 +10,106 @@ export interface FaqItem {
     tag: string[];
 }
 
+export const SUPPORT_EMAIL = 'supporto@eventidicomunita.it';
+
 export const FAQ_MOCK: FaqItem[] = [
-    { id: 1, categoria: 'Accesso', domanda: 'Cos’è il Gestionale Comunità?', risposta: 'È uno strumento pensato per aiutare i responsabili a organizzare comunità, convivenze, posti e viaggi in modo ordinato.', visibilita: 'pubblica', ordine: 1, tag: ['accesso', 'gestionale'] },
-    { id: 2, categoria: 'Accesso', domanda: 'Chi può accedere al gestionale?', risposta: 'L’accesso all’app vera sarà riservato agli utenti autorizzati tramite email e Microsoft Entra.', visibilita: 'pubblica', ordine: 2, tag: ['accesso', 'autorizzati'] },
-    { id: 3, categoria: 'Accesso', domanda: 'Devo registrarmi per vedere la demo?', risposta: 'No. La demo pubblica è accessibile senza registrazione e mostra solo dati dimostrativi.', visibilita: 'pubblica', ordine: 3, tag: ['demo'] },
-    { id: 4, categoria: 'Accesso', domanda: 'Come funziona l’accesso con email?', risposta: 'L’utente autorizzato entra con la propria email e conferma l’accesso secondo il flusso configurato con Microsoft Entra.', visibilita: 'pubblica', ordine: 4, tag: ['email', 'entra'] },
-    { id: 5, categoria: 'Demo', domanda: 'La demo contiene dati reali?', risposta: 'No. I dati della demo sono finti e servono solo a mostrare il funzionamento generale.', visibilita: 'pubblica', ordine: 5, tag: ['demo', 'mock'] },
-    { id: 6, categoria: 'Demo', domanda: 'Posso condividere il link della demo?', risposta: 'Sì, il link demo è pensato per una visione pubblica preliminare senza accesso all’area riservata.', visibilita: 'pubblica', ordine: 6, tag: ['demo', 'link'] },
-    { id: 7, categoria: 'Privacy e Consensi', domanda: 'Il gestionale contiene dati personali?', risposta: 'Sì, può contenere dati personali dei membri e informazioni organizzative. La gestione definitiva sarà validata prima della produzione.', visibilita: 'pubblica', ordine: 7, tag: ['privacy', 'dati'] },
-    { id: 8, categoria: 'Privacy e Consensi', domanda: 'Chi può vedere i dati della comunità?', risposta: 'La logica prevista limita l’accesso agli utenti autorizzati e associati alla comunità o a ruoli di gestione.', visibilita: 'pubblica', ordine: 8, tag: ['privacy', 'accesso'] },
-    { id: 9, categoria: 'Privacy e Consensi', domanda: 'I dati dei membri vengono condivisi con le strutture?', risposta: 'Solo i dati necessari all’organizzazione dovrebbero essere condivisi, previa verifica dei consensi e dei ruoli autorizzati.', visibilita: 'pubblica', ordine: 9, tag: ['strutture', 'consensi'] },
-    { id: 10, categoria: 'Privacy e Consensi', domanda: 'Come vengono gestiti i consensi?', risposta: 'Il gestionale prepara il tracciamento dello stato dei consensi, del metodo di raccolta e di eventuali limitazioni.', visibilita: 'pubblica', ordine: 10, tag: ['consensi'] },
-    { id: 11, categoria: 'Privacy e Consensi', domanda: 'I fratelli devono registrarsi obbligatoriamente?', risposta: 'No. Un membro può essere presente nell’anagrafica della comunità anche senza avere accesso all’app.', visibilita: 'pubblica', ordine: 11, tag: ['membri', 'accesso'] },
-    { id: 101, categoria: 'Comunità', domanda: 'Come aggiungo un membro?', risposta: 'Dalla pagina La tua Comunità puoi usare “Aggiungi membro” e compilare i dati essenziali. Email e telefono possono restare facoltativi.', visibilita: 'interna', ordine: 1, tag: ['membri'] },
-    { id: 102, categoria: 'Comunità', domanda: 'Cosa significa membro senza accesso app?', risposta: 'Significa che la persona è censita nella comunità, ma non ha ancora un account o non deve accedere al gestionale.', visibilita: 'interna', ordine: 2, tag: ['accesso app'] },
-    { id: 103, categoria: 'Comunità', domanda: 'Chi può modificare i dati della comunità?', risposta: 'In questa fase i dati sono mock. In futuro le modifiche saranno riservate ai ruoli autorizzati.', visibilita: 'interna', ordine: 3, tag: ['ruoli'] },
-    { id: 104, categoria: 'Comunità', domanda: 'Perché la comunità è già associata al profilo?', risposta: 'Il gestionale deve sapere quale comunità stai gestendo. La richiesta di associazione avviene nel completamento profilo.', visibilita: 'interna', ordine: 4, tag: ['profilo'] },
-    { id: 105, categoria: 'Membri', domanda: 'Cosa significa consenso privacy da raccogliere?', risposta: 'Indica che lo stato del consenso non è ancora completo e va verificato prima di usare o condividere dati non necessari.', visibilita: 'interna', ordine: 5, tag: ['privacy'] },
-    { id: 106, categoria: 'Membri', domanda: 'Cosa faccio se un membro nega o revoca il consenso?', risposta: 'Il gestionale segnala lo stato. Prima di condividere dati o usarli per organizzazioni esterne serve una verifica autorizzata.', visibilita: 'interna', ordine: 6, tag: ['privacy', 'revoca'] },
-    { id: 107, categoria: 'Membri', domanda: 'Posso inserire un membro senza email?', risposta: 'Sì. Il membro della comunità è distinto dall’utente che accede all’app.', visibilita: 'interna', ordine: 7, tag: ['email'] },
-    { id: 108, categoria: 'Membri', domanda: 'Posso esportare liste membri?', risposta: 'L’esportazione non è prevista in questa fase. In futuro dovrà rispettare ruoli, finalità e consensi.', visibilita: 'interna', ordine: 8, tag: ['export'] },
-    { id: 109, categoria: 'Convivenze', domanda: 'Come creo una convivenza?', risposta: 'Il modulo Convivenze contiene il flusso mock. In futuro permetterà di creare date, luogo, partecipazioni e richiesta struttura.', visibilita: 'interna', ordine: 9, tag: ['convivenze'] },
-    { id: 110, categoria: 'Convivenze', domanda: 'Come seleziono i partecipanti?', risposta: 'Il modello prevede partecipazioni collegate ai membri, non una semplice copia dei dati anagrafici.', visibilita: 'interna', ordine: 10, tag: ['partecipazioni'] },
-    { id: 111, categoria: 'Convivenze', domanda: 'Cosa significa richiesta struttura?', risposta: 'È la preparazione dei dati necessari da inviare alla struttura per verificare disponibilità e organizzazione.', visibilita: 'interna', ordine: 11, tag: ['strutture'] },
-    { id: 112, categoria: 'Convivenze', domanda: 'Cosa succede se mancano consensi?', risposta: 'La UI mostra avvisi aggregati. Prima dell’invio a strutture esterne va verificato lo stato dei consensi.', visibilita: 'interna', ordine: 12, tag: ['consensi'] },
-    { id: 113, categoria: 'Convivenze', domanda: 'Come gestisco intolleranze o esigenze alimentari?', risposta: 'In questa fase le esigenze sono mostrate solo in forma aggregata, evitando dettagli nominativi non necessari.', visibilita: 'interna', ordine: 13, tag: ['dati particolari'] },
-    { id: 114, categoria: 'Posti di Convivenza', domanda: 'Come censisco un posto?', risposta: 'Il modulo Posti raccoglie dati essenziali di contatto, capienza, servizi e stato relazione.', visibilita: 'interna', ordine: 14, tag: ['posti'] },
-    { id: 115, categoria: 'Posti di Convivenza', domanda: 'Cosa significa “Da verificare”?', risposta: 'Indica che i dati del posto o la disponibilità non sono ancora confermati.', visibilita: 'interna', ordine: 15, tag: ['stato'] },
-    { id: 116, categoria: 'Posti di Convivenza', domanda: 'Come apro un posto in Google Maps?', risposta: 'Nella scheda posto è disponibile il pulsante “Apri in Google Maps” quando è presente il link.', visibilita: 'interna', ordine: 16, tag: ['maps'] },
-    { id: 117, categoria: 'Posti di Convivenza', domanda: 'Come condivido un’esperienza su un posto?', risposta: 'Lo storico esperienze è preparato come dato mock; il flusso operativo sarà definito in seguito.', visibilita: 'interna', ordine: 17, tag: ['storico'] },
-    { id: 118, categoria: 'Privacy e Consensi', domanda: 'Posso inviare dati personali a una struttura?', risposta: 'Solo se necessario all’organizzazione e dopo aver verificato consensi, finalità e autorizzazioni.', visibilita: 'interna', ordine: 18, tag: ['strutture', 'privacy'] },
-    { id: 119, categoria: 'Privacy e Consensi', domanda: 'Posso caricare documenti personali?', risposta: 'No. In questa fase non è previsto upload di documenti personali o sensibili.', visibilita: 'interna', ordine: 19, tag: ['documenti'] },
-    { id: 120, categoria: 'Privacy e Consensi', domanda: 'Chi può vedere note riservate o dati particolari?', risposta: 'La progettazione prevede accesso limitato a responsabili autorizzati. Prima della produzione servirà validazione specifica.', visibilita: 'interna', ordine: 20, tag: ['ruoli', 'dati particolari'] },
-    { id: 121, categoria: 'Privacy e Consensi', domanda: 'Cosa fare prima di andare in produzione?', risposta: 'Validare informativa privacy, basi giuridiche, ruoli autorizzativi, consensi e modalità operative.', visibilita: 'interna', ordine: 21, tag: ['produzione'] },
-    { id: 122, categoria: 'Richieste strutture', domanda: 'A cosa serve il modulo Richieste strutture?', risposta: 'Serve a preparare, inviare e monitorare le richieste di disponibilità inviate alle strutture di accoglienza per convivenze o incontri.', visibilita: 'interna', ordine: 22, tag: ['richieste', 'strutture', 'convivenze'] },
-    { id: 123, categoria: 'Richieste strutture', domanda: 'Da quale indirizzo partono le email?', risposta: 'Le email partiranno da una mailbox dedicata, ad esempio richieste@eventidicomunita.it, configurata tramite Microsoft Graph nel backend.', visibilita: 'interna', ordine: 23, tag: ['email', 'graph', 'mailbox'] },
-    { id: 124, categoria: 'Richieste strutture', domanda: 'Come vengono riconosciute le risposte delle strutture?', risposta: 'Ogni richiesta contiene un codice univoco nell’oggetto, ad esempio [EC-2026-000001]. Il sistema userà questo codice per collegare automaticamente le risposte alla richiesta corretta.', visibilita: 'interna', ordine: 24, tag: ['codice richiesta', 'risposte', 'graph'] },
-    { id: 125, categoria: 'Richieste strutture', domanda: 'L’invio email è già reale?', risposta: 'In questa fase può essere in modalità mock/front-end se il backend non è ancora collegato. L’invio reale sarà gestito tramite Microsoft Graph e configurazione sicura.', visibilita: 'interna', ordine: 25, tag: ['mock', 'email', 'backend'] },
-    { id: 126, categoria: 'Richieste strutture', domanda: 'Dove vengono salvati client secret o credenziali Graph?', risposta: 'Non devono essere salvati nel codice. Devono essere configurati tramite environment/appsettings o segreti dell’ambiente Azure.', visibilita: 'interna', ordine: 26, tag: ['secret', 'graph', 'azure'] },
-    { id: 127, categoria: 'Richieste strutture', domanda: 'La demo usa richieste reali?', risposta: 'No. La demo deve usare solo dati finti e non deve contenere richieste reali, strutture reali o dati personali reali.', visibilita: 'interna', ordine: 27, tag: ['demo', 'dati finti'] },
-    { id: 137, categoria: 'Richieste strutture', domanda: 'Da dove si invia una richiesta a una struttura?', risposta: 'La richiesta parte dalla pagina Posti di Convivenza. Si seleziona una struttura e si usa il pulsante “Invia richiesta”, che apre il modulo nuova richiesta già collegato alla struttura.', visibilita: 'interna', ordine: 27.1, tag: ['posti', 'richieste'] },
-    { id: 138, categoria: 'Richieste strutture', domanda: 'Perché il codice richiesta è nell’oggetto?', risposta: 'Ogni richiesta contiene un codice univoco, ad esempio [EC-2026-000001], inserito nell’oggetto email. Il codice serve per collegare automaticamente le risposte della struttura alla richiesta corretta.', visibilita: 'interna', ordine: 27.2, tag: ['codice richiesta', 'email'] },
-    { id: 139, categoria: 'Richieste strutture', domanda: 'Il codice richiesta può essere modificato?', risposta: 'No. Il prefisso con il codice richiesta è bloccato. L’utente può modificare solo il testo dell’oggetto dopo il codice.', visibilita: 'interna', ordine: 27.3, tag: ['codice richiesta', 'oggetto'] },
-    { id: 140, categoria: 'Richieste strutture', domanda: 'Le date in che formato sono mostrate?', risposta: 'Tutte le date visibili nel modulo e nei messaggi sono mostrate in formato italiano gg-mm-aaaa, ad esempio 20-04-2026.', visibilita: 'interna', ordine: 27.4, tag: ['date', 'formato'] },
-    { id: 128, categoria: 'Primo accesso e scelta comunità', domanda: 'Cosa succede al primo accesso?', risposta: 'Dopo l’accesso con email, se l’utente non ha ancora una comunità associata, il gestionale mostra una pagina per scegliere la parrocchia e il numero della comunità. Diocesi e settore vengono compilati automaticamente quando la parrocchia è presente nell’elenco.', visibilita: 'interna', ordine: 28, tag: ['primo accesso', 'onboarding'] },
-    { id: 129, categoria: 'Primo accesso e scelta comunità', domanda: 'Devo scegliere diocesi e settore?', risposta: 'No. Diocesi e settore vengono compilati automaticamente in base alla parrocchia scelta.', visibilita: 'interna', ordine: 29, tag: ['diocesi', 'settore', 'parrocchia'] },
-    { id: 130, categoria: 'Primo accesso e scelta comunità', domanda: 'Posso scegliere la mia comunità?', risposta: 'Sì. In fase iniziale l’utente può indicare la propria comunità scegliendo parrocchia e numero comunità. La scelta potrà essere verificata dal responsabile.', visibilita: 'interna', ordine: 30, tag: ['comunità', 'verifica'] },
-    { id: 131, categoria: 'Primo accesso e scelta comunità', domanda: 'La demo richiede questa scelta?', risposta: 'No. La demo pubblica usa dati finti e non richiede login né scelta comunità reale.', visibilita: 'interna', ordine: 31, tag: ['demo', 'onboarding'] },
-    { id: 132, categoria: 'Primo accesso e scelta comunità', domanda: 'Il responsabile può vedere un fac simile?', risposta: 'Sì. Nell’ambiente gestionale è disponibile un’anteprima del primo accesso utente per verificare il flusso prima di invitare i membri.', visibilita: 'interna', ordine: 32, tag: ['anteprima', 'responsabile'] },
-    { id: 133, categoria: 'Primo accesso e scelta comunità', domanda: 'Dove vengono gestiti telefono ed email dei membri?', risposta: 'Telefono ed email dei membri sono gestiti solo nell’ambiente autenticato e sono visibili agli utenti autorizzati del gestionale.', visibilita: 'interna', ordine: 33, tag: ['contatti', 'membri'] },
-    { id: 134, categoria: 'Primo accesso e scelta comunità', domanda: 'L’equipe dei catechisti fa parte della tabella membri?', risposta: 'No. L’equipe dei catechisti è collegata alla comunità ma non viene conteggiata come elenco membri/fratelli della comunità e non viene inserita automaticamente nelle convivenze.', visibilita: 'interna', ordine: 34, tag: ['equipe', 'catechisti'] },
-    { id: 135, categoria: 'Primo accesso e scelta comunità', domanda: 'Cosa succede se la parrocchia non è nell’elenco?', risposta: 'L’utente può selezionare “Parrocchia non presente in elenco” e inserire manualmente il nome della parrocchia. La scelta potrà essere verificata dal responsabile.', visibilita: 'interna', ordine: 35, tag: ['parrocchia', 'onboarding', 'verifica'] },
-    { id: 136, categoria: 'Primo accesso e scelta comunità', domanda: 'Come viene gestita l’equipe dei catechisti?', risposta: 'L’equipe dei catechisti è mostrata in una sezione separata rispetto ai membri della comunità. Può essere composta da coppie di sposi, fratelli singoli o sorelle singole. Le coppie vengono mostrate come un’unica unità, con possibilità di indicare il capo equipe e i contatti.', visibilita: 'interna', ordine: 36, tag: ['equipe', 'catechisti', 'coppie'] },
-    { id: 141, categoria: 'Membri', domanda: 'Perché alcune persone sono mostrate come coppia?', risposta: 'Nel censimento della comunità il responsabile può inserire una coppia come unità organizzativa, così marito e moglie restano collegati nella gestione. I dati personali e i consensi privacy restano comunque separati per ciascuna persona.', visibilita: 'interna', ordine: 37, tag: ['coppie', 'censimento', 'privacy'] },
-    { id: 142, categoria: 'Membri', domanda: 'Come viene censita inizialmente una comunità?', risposta: 'Il responsabile inserisce dati minimi: coppie, fratelli singoli o sorelle singole con nome, cognome ed email di riferimento. Successivamente il gestionale invierà un link per completare anagrafica e consensi.', visibilita: 'interna', ordine: 38, tag: ['censimento', 'membri', 'invito'] },
-    { id: 143, categoria: 'Privacy e Consensi', domanda: 'Una coppia ha un unico consenso privacy?', risposta: 'No. Anche se una coppia viene gestita come unità, ogni persona mantiene il proprio consenso privacy individuale.', visibilita: 'interna', ordine: 39, tag: ['coppie', 'consenso', 'privacy'] },
-    { id: 144, categoria: 'Primo accesso e scelta comunità', domanda: 'Come viene gestito il capo equipe?', risposta: 'Nell’equipe dei catechisti può essere indicata una sola unità come capo equipe. Solo quella unità mostra il badge “Capo equipe”.', visibilita: 'interna', ordine: 40, tag: ['equipe', 'capo equipe'] },
-    { id: 145, categoria: 'Convivenze', domanda: 'Riporto e Pentecoste sono tappe del Cammino?', risposta: 'No. Riporto e Pentecoste sono convivenze annuali. La Pentecoste si svolge nel weekend di Pentecoste, mentre il Riporto è una convivenza annuale che la comunità può vivere normalmente da ottobre in poi. Non vanno confuse con le tappe del Cammino.', visibilita: 'interna', ordine: 41, tag: ['riporto', 'pentecoste', 'tappe'] },
-    { id: 146, categoria: 'Convivenze', domanda: 'Che differenza c’è tra tappa del Cammino e tipo convivenza?', risposta: 'La tappa del Cammino indica il punto del percorso in cui si trova la comunità. Il tipo convivenza indica invece il tipo di incontro o convivenza programmata, che può essere un passaggio del Cammino oppure una convivenza annuale come Riporto o Pentecoste.', visibilita: 'interna', ordine: 42, tag: ['tappe', 'convivenze'] },
-    { id: 147, categoria: 'Membri', domanda: 'Come censisce la comunità il responsabile?', risposta: 'Il responsabile inserisce inizialmente solo dati minimi: coppie, fratelli singoli o sorelle singole con nome, cognome ed email di riferimento. Poi il gestionale genera un invito per completare anagrafica e consensi.', visibilita: 'interna', ordine: 43, tag: ['censimento', 'responsabile', 'inviti'] },
-    { id: 148, categoria: 'Membri', domanda: 'Cosa riceve il fratello nella mail di invito?', risposta: 'Riceve un link personale per completare i propri dati. Se si tratta di una coppia, il link mostra le due persone ma i consensi restano separati per ciascuna.', visibilita: 'interna', ordine: 44, tag: ['inviti', 'email', 'consensi'] },
-    { id: 149, categoria: 'Privacy e Consensi', domanda: 'I consensi sono della coppia o della singola persona?', risposta: 'I consensi sono sempre individuali. La coppia è solo un’unità organizzativa per semplificare il censimento.', visibilita: 'interna', ordine: 45, tag: ['coppie', 'consensi'] },
-    { id: 150, categoria: 'Membri', domanda: 'L’invio mail è già reale?', risposta: 'In questa fase può essere simulato. L’invio reale sarà collegato successivamente al backend e al servizio email.', visibilita: 'interna', ordine: 46, tag: ['mock', 'email', 'backend'] },
-    { id: 151, categoria: 'Privacy e Consensi', domanda: 'Chi è il titolare del trattamento?', risposta: 'Il titolare del trattamento è PANTELEIA – Associazione di Promozione Sociale (APS), che determina finalità e mezzi del trattamento dei dati personali nell’ambito del gestionale.', visibilita: 'pubblica', ordine: 47, tag: ['privacy', 'titolare', 'panteleia'] },
-    { id: 152, categoria: 'Privacy e Consensi', domanda: 'Dove posso leggere l’informativa privacy completa?', risposta: 'L’informativa privacy completa è disponibile nella sezione Privacy del gestionale e nella pagina pubblica /privacy per gli utenti che ricevono un link di compilazione.', visibilita: 'pubblica', ordine: 48, tag: ['privacy', 'informativa'] },
-    { id: 153, categoria: 'Privacy e Consensi', domanda: 'Chi posso contattare per richieste privacy?', risposta: 'Le richieste privacy possono essere inviate a privacy@panteleia.it o alla PEC panteleia.aps@pec.it.', visibilita: 'pubblica', ordine: 49, tag: ['privacy', 'contatti'] },
-    { id: 154, categoria: 'Privacy e Consensi', domanda: 'Il responsabile della comunità è il titolare del trattamento?', risposta: 'No. Il responsabile della comunità opera come utente autorizzato secondo le istruzioni del titolare. Il titolare del trattamento è PANTELEIA – APS.', visibilita: 'interna', ordine: 50, tag: ['privacy', 'responsabile', 'titolare'] },
-    { id: 155, categoria: 'Privacy e Consensi', domanda: 'L’informativa è definitiva?', risposta: 'La versione presente nel gestionale è una bozza operativa e dovrà essere validata prima dell’uso in produzione.', visibilita: 'pubblica', ordine: 51, tag: ['privacy', 'bozza', 'produzione'] },
-    { id: 156, categoria: 'Convivenze', domanda: 'Chi organizza le convivenze di passaggio del Cammino?', risposta: 'Le convivenze di passaggio del Cammino sono organizzate dall’equipe dei catechisti per una comunità figlia. La comunità destinataria le riceve e può collaborare alla gestione pratica dei partecipanti e della logistica.', visibilita: 'interna', ordine: 52, tag: ['catechisti', 'convivenze', 'passaggi'] },
-    { id: 157, categoria: 'Convivenze', domanda: 'Se un altro catechista dell’equipe inserisce la convivenza, cambia l’organizzatore?', risposta: 'No. La convivenza resta organizzata dall’equipe dei catechisti. Il singolo catechista che la inserisce opera per conto dell’equipe.', visibilita: 'interna', ordine: 53, tag: ['equipe', 'catechisti', 'organizzazione'] },
-    { id: 158, categoria: 'Convivenze', domanda: 'Il responsabile della comunità può creare una convivenza di passaggio?', risposta: 'Di norma no, salvo che faccia parte anche dell’equipe dei catechisti autorizzata. Il responsabile può invece gestire convivenze comunitarie o annuali come Riporto, Pentecoste o domeniche di convivenza.', visibilita: 'interna', ordine: 54, tag: ['responsabile', 'catechisti', 'annuali'] }
-    ,
-    { id: 159, categoria: 'Primo accesso e scelta comunità', domanda: 'Cosa succede dopo aver scelto la comunità al primo accesso?', risposta: 'Il gestionale associa l’utente alla comunità scelta. In ambiente test questa associazione viene salvata in locale nel browser; con il database sarà salvata sul server e disponibile da ogni dispositivo.', visibilita: 'interna', ordine: 55, tag: ['onboarding', 'localStorage', 'comunità'] },
-    { id: 160, categoria: 'Primo accesso e scelta comunità', domanda: 'Perché vedo sempre la comunità pilota?', risposta: 'Se non è stata ancora scelta una comunità o se si sta usando il fallback di test, il gestionale mostra la comunità pilota. Dopo l’onboarding deve invece mostrare la comunità selezionata.', visibilita: 'interna', ordine: 56, tag: ['fallback', 'comunità pilota', 'onboarding'] }
+    {
+        id: 1,
+        categoria: 'Accesso',
+        domanda: 'Come accedo al gestionale?',
+        risposta: 'Puoi accedere usando la tua email tramite Microsoft Entra External ID. Riceverai un codice temporaneo per completare l’accesso.',
+        visibilita: 'pubblica',
+        ordine: 1,
+        tag: ['accesso', 'email', 'entra']
+    },
+    {
+        id: 2,
+        categoria: 'Accesso',
+        domanda: 'Come mi registro al primo accesso?',
+        risposta: 'Premi “Registrati” nella pagina iniziale. Nella schermata Microsoft inserisci la tua email anche se non hai ancora un account: riceverai un codice temporaneo per creare il tuo accesso.',
+        visibilita: 'pubblica',
+        ordine: 2,
+        tag: ['registrazione', 'primo accesso']
+    },
+    {
+        id: 3,
+        categoria: 'Accesso',
+        domanda: 'Perché devo inserire la mail anche se mi sto registrando?',
+        risposta: 'Microsoft usa la tua email per verificare l’identità e inviarti un codice temporaneo. Anche se sei un nuovo utente, il primo passo è inserire la mail nella schermata Microsoft.',
+        visibilita: 'pubblica',
+        ordine: 3,
+        tag: ['registrazione', 'email', 'codice']
+    },
+    {
+        id: 4,
+        categoria: 'Comunità',
+        domanda: 'Come scelgo la mia comunità?',
+        risposta: 'Al primo accesso ti verrà chiesto di indicare diocesi, settore, parrocchia e numero della comunità. Se la parrocchia non è presente, puoi segnalarla tramite il form manuale.',
+        visibilita: 'pubblica',
+        ordine: 4,
+        tag: ['comunità', 'onboarding']
+    },
+    {
+        id: 5,
+        categoria: 'Privacy e Consensi',
+        domanda: 'Chi può vedere i dati della comunità?',
+        risposta: 'Solo gli utenti autorizzati possono accedere ai dati della comunità, secondo il ruolo assegnato nel gestionale.',
+        visibilita: 'pubblica',
+        ordine: 5,
+        tag: ['privacy', 'ruoli']
+    },
+    {
+        id: 6,
+        categoria: 'Privacy e Consensi',
+        domanda: 'I consensi privacy sono individuali?',
+        risposta: 'Sì. Anche se una coppia viene gestita come unità organizzativa, i consensi privacy restano sempre individuali per ciascuna persona.',
+        visibilita: 'pubblica',
+        ordine: 6,
+        tag: ['consensi', 'coppie']
+    },
+    {
+        id: 7,
+        categoria: 'Convivenze',
+        domanda: 'Chi organizza le convivenze di passaggio del Cammino?',
+        risposta: 'Le convivenze di passaggio sono organizzate dall’equipe dei catechisti per una comunità figlia. La comunità destinataria può collaborare alla gestione pratica.',
+        visibilita: 'pubblica',
+        ordine: 7,
+        tag: ['convivenze', 'catechisti']
+    },
+    {
+        id: 8,
+        categoria: 'Convivenze',
+        domanda: 'Riporto e Pentecoste sono tappe del Cammino?',
+        risposta: 'No. Riporto e Pentecoste sono convivenze annuali e non vanno confuse con le tappe del Cammino.',
+        visibilita: 'pubblica',
+        ordine: 8,
+        tag: ['riporto', 'pentecoste', 'tappe']
+    },
+    {
+        id: 9,
+        categoria: 'Richieste strutture',
+        domanda: 'Come funzionano le richieste alle strutture?',
+        risposta: 'Il gestionale permette di preparare richieste di disponibilità verso strutture di convivenza e di seguirne lo stato. L’invio reale sarà collegato al servizio email quando il backend sarà attivo.',
+        visibilita: 'pubblica',
+        ordine: 9,
+        tag: ['strutture', 'richieste']
+    },
+    {
+        id: 10,
+        categoria: 'Privacy e Consensi',
+        domanda: 'Dove posso leggere l’informativa privacy?',
+        risposta: 'L’informativa privacy è disponibile nella sezione “Privacy” del gestionale e nella pagina pubblica /privacy.',
+        visibilita: 'pubblica',
+        ordine: 10,
+        tag: ['privacy', 'informativa']
+    },
+    {
+        id: 11,
+        categoria: 'Supporto',
+        domanda: 'A chi posso scrivere per supporto?',
+        risposta: `Per supporto o problemi di accesso puoi scrivere a: ${SUPPORT_EMAIL}`,
+        visibilita: 'pubblica',
+        ordine: 11,
+        tag: ['supporto', 'accesso']
+    }
 ];

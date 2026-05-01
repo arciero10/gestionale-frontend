@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
-import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock';
+import { FAQ_MOCK, FaqItem, FaqVisibilita, SUPPORT_EMAIL } from '../gestionaleCN/data/faq.mock';
 
 @Component({
     selector: 'app-faq',
@@ -16,8 +16,8 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
             <section class="faq-shell">
                 <header class="faq-head">
                     <div>
-                        <p-tag [value]="visibilita === 'pubblica' ? 'FAQ pubbliche' : 'FAQ interne'" severity="info" />
-                        <h1>{{ visibilita === 'pubblica' ? 'Domande frequenti' : 'Aiuto / FAQ operative' }}</h1>
+                        <p-tag [value]="visibilita === 'pubblica' ? 'FAQ pubbliche' : 'Aiuto / FAQ'" severity="info" />
+                        <h1>{{ visibilita === 'pubblica' ? 'Domande frequenti' : 'Aiuto / FAQ' }}</h1>
                         <p>{{ intro }}</p>
                     </div>
                     @if (visibilita === 'pubblica') {
@@ -30,13 +30,11 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
                     <p-select [options]="categorie" [(ngModel)]="categoria" placeholder="Categoria" [showClear]="true"></p-select>
                 </section>
 
-                @if (visibilita === 'pubblica') {
-                    <p class="notice">Le informazioni presenti in questa sezione sono indicative. La gestione privacy definitiva dovrà essere validata prima della produzione.</p>
-                }
-
-                @if (visibilita === 'interna') {
-                    <p class="notice">Il gestionale aiuta a tracciare lo stato dei consensi. Prima della produzione sarà necessario validare informativa privacy, modalità di raccolta consenso e ruoli autorizzativi.</p>
-                }
+                <section class="support-card">
+                    <span>Supporto</span>
+                    <h2>Hai bisogno di aiuto?</h2>
+                    <p>Scrivi a <a [href]="'mailto:' + supportEmail">{{ supportEmail }}</a> indicando nome e cognome, comunità/parrocchia se già associata, problema riscontrato ed eventuale screenshot.</p>
+                </section>
 
                 <section class="faq-list">
                     @for (faq of faqFiltrate(); track faq.id) {
@@ -56,6 +54,7 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
             <footer>
                 <span>© All rights reserved. Progettato da PANTELEIA - Associazione Promozione Sociale. CF: 96647400587</span>
                 <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
+                <span>Supporto: {{ supportEmail }}</span>
             </footer>
         </main>
     `,
@@ -89,8 +88,8 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
             }
             h1 { margin: .5rem 0 .35rem; color: #111827; font-size: clamp(2rem, 5vw, 3rem); }
             .faq-head p,
-            .notice,
-            details p { color: #64748b; line-height: 1.55; }
+            details p,
+            .support-card p { color: #64748b; line-height: 1.55; }
             .faq-head p { margin: 0; }
             .nav-link {
                 color: #17375e;
@@ -103,13 +102,30 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
                 gap: .75rem;
                 margin: 1.25rem 0;
             }
-            .notice {
+            .support-card {
                 margin: 0 0 1rem;
-                padding: .85rem;
-                border-radius: 12px;
-                background: #f8fafc;
-                border: 1px solid #e4e8ef;
-                font-size: .92rem;
+                padding: 1rem;
+                border-radius: 14px;
+                background: #eff6ff;
+                border: 1px solid #bfdbfe;
+            }
+            .support-card span {
+                display: block;
+                color: #315f8f;
+                font-size: .78rem;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: .03em;
+            }
+            .support-card h2 {
+                margin: .25rem 0;
+                color: #0f2440;
+                font-size: 1.25rem;
+            }
+            .support-card p { margin: 0; }
+            .support-card a {
+                color: #17375e;
+                font-weight: 900;
             }
             .faq-list {
                 display: grid;
@@ -170,6 +186,7 @@ import { FAQ_MOCK, FaqItem, FaqVisibilita } from '../gestionaleCN/data/faq.mock'
 })
 export class Faq {
     private readonly route = inject(ActivatedRoute);
+    readonly supportEmail = SUPPORT_EMAIL;
     ricerca = '';
     categoria: FaqItem['categoria'] | null = null;
 
@@ -178,22 +195,25 @@ export class Faq {
     }
 
     get intro() {
-        return this.visibilita === 'pubblica' ? 'Informazioni essenziali su accesso, demo, dati e consensi.' : 'Risposte operative per l’uso interno del gestionale.';
+        return 'Informazioni essenziali su accesso, scelta comunità, privacy, convivenze, richieste strutture e supporto.';
     }
 
     get categorie() {
-        return [...new Set(FAQ_MOCK.filter((faq) => faq.visibilita === this.visibilita).map((faq) => faq.categoria))];
+        return [...new Set(this.faqVisibili().map((faq) => faq.categoria))];
     }
 
     faqFiltrate() {
         const testo = this.ricerca.trim().toLowerCase();
-        return FAQ_MOCK
-            .filter((faq) => faq.visibilita === this.visibilita)
+        return this.faqVisibili()
             .filter((faq) => !this.categoria || faq.categoria === this.categoria)
             .filter((faq) => {
                 const haystack = `${faq.domanda} ${faq.risposta} ${faq.categoria} ${faq.tag.join(' ')}`.toLowerCase();
                 return !testo || haystack.includes(testo);
             })
             .sort((a, b) => a.ordine - b.ordine);
+    }
+
+    private faqVisibili() {
+        return FAQ_MOCK.filter((faq) => faq.visibilita === 'pubblica' || faq.visibilita === this.visibilita);
     }
 }
