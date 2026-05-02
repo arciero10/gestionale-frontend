@@ -8,7 +8,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
 import { EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
-import { getCurrentCommunity } from '../data/community-selection.storage';
+import { ComunitaFigliaAssociata, getCurrentCommunity } from '../data/community-selection.storage';
 import {
     CategoriaConvivenza,
     SoggettoOrganizzatoreConvivenza,
@@ -63,6 +63,11 @@ interface PostoSintesi {
     regione: string;
 }
 
+interface ComunitaFigliaOption {
+    label: string;
+    value: string;
+}
+
 @Component({
     selector: 'app-convivenze',
     standalone: true,
@@ -99,7 +104,7 @@ interface PostoSintesi {
                             }
                         </div>
 
-                        @if (currentCommunity.isCatechista === true && currentCommunity.comunitaFiglieAssociate && currentCommunity.comunitaFiglieAssociate.length > 0) {
+                        @if (currentUserCanCreateChildCommunityConvivenza) {
                             <div class="choice-card child-community-choice">
                                 <h3>Convivenza con comunità figlie</h3>
                                 <p>Passaggi e tappe del Cammino organizzati dall’equipe dei catechisti.</p>
@@ -115,7 +120,7 @@ interface PostoSintesi {
                     @if (wizardStep === 2 && tipoFlussoNuova === 'comunita') {
                         <div>
                             <label for="tipoAnnuale">Tipo convivenza</label>
-                            <p-select inputId="tipoAnnuale" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiComunitaNuova" [(ngModel)]="nuovoTipoAnnuale"></p-select>
+                            <p-select inputId="tipoAnnuale" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiComunitaNuova" [(ngModel)]="nuovoTipoAnnuale" (ngModelChange)="onTipoComunitaChange()"></p-select>
                         </div>
 
                         <div>
@@ -123,20 +128,34 @@ interface PostoSintesi {
                             <div class="readonly-field">{{ comunitaDestinatariaNome }}</div>
                         </div>
 
-                        <div>
-                            <label for="dataInizio">Data inizio</label>
-                            <input id="dataInizio" type="date" [(ngModel)]="nuovaDataInizio" />
-                        </div>
+                        @if (isNuovaConvivenzaDomenicale) {
+                            <div>
+                                <label for="dataDomenicale">Data domenica</label>
+                                <input id="dataDomenicale" type="date" [(ngModel)]="nuovaDataInizio" (ngModelChange)="onDataDomenicaleChange()" />
+                                <small class="field-help">La convivenza domenicale dura un solo giorno e può essere fissata solo di domenica.</small>
+                            </div>
+                        } @else {
+                            <div>
+                                <label for="dataInizio">Data inizio</label>
+                                <input id="dataInizio" type="date" [(ngModel)]="nuovaDataInizio" />
+                            </div>
 
-                        <div>
-                            <label for="dataFine">Data fine</label>
-                            <input id="dataFine" type="date" [(ngModel)]="nuovaDataFine" />
-                        </div>
+                            <div>
+                                <label for="dataFine">Data fine</label>
+                                <input id="dataFine" type="date" [(ngModel)]="nuovaDataFine" />
+                            </div>
+                        }
 
                         <div>
                             <label for="partecipantiNuovaConvivenza">Numero partecipanti</label>
                             <input id="partecipantiNuovaConvivenza" type="number" min="0" [(ngModel)]="nuoviPartecipanti" />
                         </div>
+
+                        @if (wizardValidationMessage) {
+                            <div class="form-full validation-message">
+                                {{ wizardValidationMessage }}
+                            </div>
+                        }
 
                         <div class="form-full">
                             <label for="noteNuovaConvivenza">Note</label>
@@ -162,8 +181,13 @@ interface PostoSintesi {
 
                         <div>
                             <label for="comunitaFigliaDestinataria">Comunità destinataria</label>
-                            <p-select inputId="comunitaFigliaDestinataria" appendTo="body" panelStyleClass="modal-dropdown-panel"
-                                [options]="currentCommunity.comunitaFiglieAssociate?.map(c => ({ label: `${c.numeroComunita}ª Comunità – ${c.parrocchiaNome}`, value: c }))"
+                            <p-select
+                                inputId="comunitaFigliaDestinataria"
+                                appendTo="body"
+                                panelStyleClass="modal-dropdown-panel"
+                                [options]="comunitaFiglieOptions"
+                                optionLabel="label"
+                                optionValue="value"
                                 [(ngModel)]="nuovaComunitaFigliaDestinataria">
                             </p-select>
                         </div>
@@ -191,8 +215,8 @@ interface PostoSintesi {
                         <section class="form-full wizard-summary">
                             <h3>{{ nuovoTipoCatechistico }}</h3>
                             <p>Organizzata dai catechisti</p>
-                            <div><span>Equipe organizzatrice:</span> <strong>{{ equipeOrganizzatriceNome }}</strong></div>
-                            <div><span>Comunità destinataria:</span> <strong>{{ nuovaComunitaFigliaDestinataria }}</strong></div>
+                            <div><span>Equipe organizzatrice: </span><strong>{{ equipeOrganizzatriceNome }}</strong></div>
+                            <div><span>Comunità destinataria: </span><strong>{{ nuovaComunitaFigliaDestinataria }}</strong></div>
                         </section>
 
                         <footer>
@@ -283,73 +307,73 @@ interface PostoSintesi {
                     </aside>
 
                     @if (selected) {
-                    <main class="detail-panel">
-                        <div class="detail-card">
-                            <div class="detail-head">
-                                <div>
-                                    <span class="eyebrow">{{ selected.categoriaConvivenza === 'Catechistica' ? 'Convivenza ricevuta dai catechisti' : 'Convivenza della comunità' }}</span>
-                                    <h2>{{ selected.titolo }}</h2>
-                                    <span class="tipo-badge" [ngClass]="getTipoClass(selected)">{{ selected.tipoConvivenza }}</span>
+                        <main class="detail-panel">
+                            <div class="detail-card">
+                                <div class="detail-head">
+                                    <div>
+                                        <span class="eyebrow">{{ selected.categoriaConvivenza === 'Catechistica' ? 'Convivenza ricevuta dai catechisti' : 'Convivenza della comunità' }}</span>
+                                        <h2>{{ selected.titolo }}</h2>
+                                        <span class="tipo-badge" [ngClass]="getTipoClass(selected)">{{ selected.tipoConvivenza }}</span>
+                                    </div>
+                                    <p-tag [value]="selected.stato" [severity]="getStatoSeverity(selected.stato)" />
                                 </div>
-                                <p-tag [value]="selected.stato" [severity]="getStatoSeverity(selected.stato)" />
-                            </div>
 
-                            <div class="detail-grid">
-                                @if (selected.categoriaConvivenza === 'Catechistica') {
-                                    <div><span>Organizzazione</span><strong>Organizzata dai catechisti</strong></div>
-                                    <div><span>Equipe organizzatrice</span><strong>{{ selected.equipeOrganizzatriceNome }}</strong></div>
-                                    <div><span>Comunità destinataria</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
-                                } @else {
-                                    <div><span>Categoria</span><strong>{{ selected.categoriaConvivenza }}</strong></div>
-                                    <div><span>Organizzazione</span><strong>{{ getOrganizzazioneLabel(selected) }}</strong></div>
-                                    <div><span>Comunità</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
-                                }
-                                <div><span>Periodo</span><strong>{{ formatDateIt(selected.dataInizio) }} - {{ formatDateIt(selected.dataFine) }}</strong></div>
-                                <div><span>Posto assegnato</span><strong>{{ getPostoNome(selected) }}</strong></div>
-                                <div><span>Partecipanti</span><strong>{{ selected.partecipantiConfermati }}/{{ selected.partecipantiPrevisti }}</strong></div>
-                                <div><span>Richiesta struttura</span><strong>{{ selected.statoRichiestaStruttura }}</strong></div>
-                            </div>
-
-                            <section class="needs-box">
-                                <h3>Partecipanti e necessità</h3>
-                                <div class="needs-grid">
-                                    <div><span>Adulti</span><strong>{{ selected.aggregati.adulti }}</strong></div>
-                                    <div><span>Bambini</span><strong>{{ selected.aggregati.bambini }}</strong></div>
-                                    <div><span>Famiglie con bambini</span><strong>{{ selected.aggregati.famiglieConBambini }}</strong></div>
-                                    <div><span>Pasti speciali</span><strong>{{ selected.aggregati.pastiSpeciali }}</strong></div>
-                                    <div><span>Esigenze alloggio</span><strong>{{ selected.aggregati.esigenzeAlloggio }}</strong></div>
-                                    <div><span>Documenti ricevuti</span><strong>{{ selected.aggregati.documentiRicevuti }}/{{ selected.aggregati.documentiRichiesti }}</strong></div>
-                                    <div><span>Consensi da verificare</span><strong>{{ selected.aggregati.consensiMancanti }}</strong></div>
+                                <div class="detail-grid">
+                                    @if (selected.categoriaConvivenza === 'Catechistica') {
+                                        <div><span>Organizzazione</span><strong>Organizzata dai catechisti</strong></div>
+                                        <div><span>Equipe organizzatrice</span><strong>{{ selected.equipeOrganizzatriceNome }}</strong></div>
+                                        <div><span>Comunità destinataria</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
+                                    } @else {
+                                        <div><span>Categoria</span><strong>{{ selected.categoriaConvivenza }}</strong></div>
+                                        <div><span>Organizzazione</span><strong>{{ getOrganizzazioneLabel(selected) }}</strong></div>
+                                        <div><span>Comunità</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
+                                    }
+                                    <div><span>Periodo</span><strong>{{ formatDateIt(selected.dataInizio) }} - {{ formatDateIt(selected.dataFine) }}</strong></div>
+                                    <div><span>Posto assegnato</span><strong>{{ getPostoNome(selected) }}</strong></div>
+                                    <div><span>Partecipanti</span><strong>{{ selected.partecipantiConfermati }}/{{ selected.partecipantiPrevisti }}</strong></div>
+                                    <div><span>Richiesta struttura</span><strong>{{ selected.statoRichiestaStruttura }}</strong></div>
                                 </div>
-                            </section>
 
-                            <section class="privacy-box">
-                                <h3>Verifica consensi</h3>
-                                <p>Prima di inviare dati a una struttura, controlla che i partecipanti abbiano fornito il consenso necessario alla condivisione dei dati utili all’organizzazione.</p>
-                                <div class="privacy-stats">
-                                    <div><span>Consensi raccolti</span><strong>{{ selected.aggregati.consensiRaccolti }}</strong></div>
-                                    <div><span>Da verificare</span><strong>{{ selected.aggregati.consensiDaVerificare }}</strong></div>
-                                    <div><span>Negati/revocati</span><strong>{{ selected.aggregati.consensiNegatiRevocati }}</strong></div>
+                                <section class="needs-box">
+                                    <h3>Partecipanti e necessità</h3>
+                                    <div class="needs-grid">
+                                        <div><span>Adulti</span><strong>{{ selected.aggregati.adulti }}</strong></div>
+                                        <div><span>Bambini</span><strong>{{ selected.aggregati.bambini }}</strong></div>
+                                        <div><span>Famiglie con bambini</span><strong>{{ selected.aggregati.famiglieConBambini }}</strong></div>
+                                        <div><span>Pasti speciali</span><strong>{{ selected.aggregati.pastiSpeciali }}</strong></div>
+                                        <div><span>Esigenze alloggio</span><strong>{{ selected.aggregati.esigenzeAlloggio }}</strong></div>
+                                        <div><span>Documenti ricevuti</span><strong>{{ selected.aggregati.documentiRicevuti }}/{{ selected.aggregati.documentiRichiesti }}</strong></div>
+                                        <div><span>Consensi da verificare</span><strong>{{ selected.aggregati.consensiMancanti }}</strong></div>
+                                    </div>
+                                </section>
+
+                                <section class="privacy-box">
+                                    <h3>Verifica consensi</h3>
+                                    <p>Prima di inviare dati a una struttura, controlla che i partecipanti abbiano fornito il consenso necessario alla condivisione dei dati utili all’organizzazione.</p>
+                                    <div class="privacy-stats">
+                                        <div><span>Consensi raccolti</span><strong>{{ selected.aggregati.consensiRaccolti }}</strong></div>
+                                        <div><span>Da verificare</span><strong>{{ selected.aggregati.consensiDaVerificare }}</strong></div>
+                                        <div><span>Negati/revocati</span><strong>{{ selected.aggregati.consensiNegatiRevocati }}</strong></div>
+                                    </div>
+                                </section>
+
+                                <div class="actions">
+                                    <button pButton type="button" label="Modifica" icon="pi pi-pencil" outlined></button>
+                                    <button pButton type="button" label="Assegna posto" icon="pi pi-building" outlined></button>
+                                    <button pButton type="button" label="Prepara richiesta struttura" icon="pi pi-send" (click)="apriPreparazioneRichiestaDaConvivenza()"></button>
                                 </div>
-                            </section>
-
-                            <div class="actions">
-                                <button pButton type="button" label="Modifica" icon="pi pi-pencil" outlined></button>
-                                <button pButton type="button" label="Assegna posto" icon="pi pi-building" outlined></button>
-                                <button pButton type="button" label="Prepara richiesta struttura" icon="pi pi-send" (click)="apriPreparazioneRichiestaDaConvivenza()"></button>
                             </div>
-                        </div>
 
-                        <aside class="map-card">
-                            <div class="map-placeholder">
-                                <i class="pi pi-map-marker"></i>
-                                <h3>Mappa luogo convivenza</h3>
-                                <strong>{{ getPostoNome(selected) }}</strong>
-                                <span>{{ selected.citta || selected.luogoTestuale }}</span>
-                                <small>Google Maps sarà integrato in una fase successiva.</small>
-                            </div>
-                        </aside>
-                    </main>
+                            <aside class="map-card">
+                                <div class="map-placeholder">
+                                    <i class="pi pi-map-marker"></i>
+                                    <h3>Mappa luogo convivenza</h3>
+                                    <strong>{{ getPostoNome(selected) }}</strong>
+                                    <span>{{ selected.citta || selected.luogoTestuale }}</span>
+                                    <small>Google Maps sarà integrato in una fase successiva.</small>
+                                </div>
+                            </aside>
+                        </main>
                     } @else {
                         <main class="detail-panel">
                             <div class="detail-card empty-state">
@@ -402,7 +426,6 @@ interface PostoSintesi {
             .new-convivenza-box p { margin: 0; color: #64748b; }
             .choice-card { display: grid; gap: .65rem; align-content: start; min-height: 13rem; padding: 1rem; border: 1px solid #dbe3ec; border-radius: 14px; background: rgba(248, 250, 252, .86); }
             .choice-card h3 { margin: 0; color: #0f2440; }
-            .choice-card.disabled { opacity: .58; }
             .new-convivenza-box label, .filters-card label { display: block; margin-bottom: .4rem; color: #475569; font-weight: 800; }
             .new-convivenza-box input, .new-convivenza-box p-select, .filters-card p-select { width: 100%; }
             .readonly-field { min-height: 42px; display: flex; align-items: center; padding: .55rem .75rem; border-radius: 10px; border: 1px solid #e5e7eb; background: #f8fafc; color: #334155; font-weight: 800; }
@@ -448,7 +471,6 @@ interface PostoSintesi {
             .team-grid dl { display: grid; gap: .55rem; margin: 0; }
             .team-grid dt { color: #64748b; font-size: .8rem; }
             .team-grid dd { margin: .15rem 0 0; color: #111827; font-weight: 800; }
-
             .wizard-box { align-items: start; }
             .wizard-step-label { display: inline-flex; width: fit-content; margin-bottom: .35rem; padding: .18rem .55rem; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: .78rem; font-weight: 900; }
             .child-community-choice { background: rgba(248, 250, 252, .7); }
@@ -473,9 +495,9 @@ interface PostoSintesi {
                 color: #334155;
                 font: inherit;
             }
-            .new-convivenza-box textarea {
-                resize: vertical;
-            }
+            .new-convivenza-box textarea { resize: vertical; }
+            .field-help { display: block; margin-top: .35rem; color: #64748b; font-size: .82rem; line-height: 1.35; }
+            .validation-message { padding: .75rem 1rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; font-weight: 800; }
 
             @media (max-width: 1024px) { .workspace, .detail-panel, .new-convivenza-box, .team-grid, .places-grid { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
             @media (max-width: 767px) { .page-head, .section-title { flex-direction: column; align-items: stretch; } .page-head button, .actions button, .new-convivenza-box footer button { min-height: 44px; width: 100%; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
@@ -515,31 +537,32 @@ export class Convivenze {
         'Altro'
     ] as TipoConvivenza[];
 
-    readonly comunitaFiglieOptions = [
-        '3ª Comunità – S. Maria delle Grazie alle Fornaci'
-    ];
+    readonly comunitaFiglieAssociate: ComunitaFigliaAssociata[] = this.currentCommunity.comunitaFiglieAssociate ?? [];
 
-    readonly currentUserRoles: Array<'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Capo equipe'> = ['Responsabile'];
+    readonly comunitaFiglieOptions: ComunitaFigliaOption[] = this.comunitaFiglieAssociate.map((comunita) => ({
+        label: `${comunita.numeroComunita}ª Comunità – ${comunita.parrocchiaNome}`,
+        value: `${comunita.numeroComunita}ª Comunità – ${comunita.parrocchiaNome}`
+    }));
 
-    readonly currentUserHasCatechistEquipe = this.currentUserRoles.includes('Catechista') || this.currentUserRoles.includes('Capo equipe');
+    readonly currentUserRoles: Array<'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Capo equipe'> = this.currentCommunity.isCatechista
+        ? ['Responsabile', 'Catechista']
+        : ['Responsabile'];
 
-    readonly currentUserHasChildCommunities = false;
-
+    readonly currentUserHasCatechistEquipe = this.currentCommunity.isCatechista === true;
+    readonly currentUserHasChildCommunities = this.comunitaFiglieAssociate.length > 0;
     readonly currentUserCanCreateCommunityConvivenza = this.currentUserRoles.includes('Responsabile') || this.currentUserRoles.includes('Corresponsabile');
-
     readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserHasCatechistEquipe && this.currentUserHasChildCommunities;
-
     readonly currentUserIsEquipe = this.currentUserHasCatechistEquipe;
 
     tipoFiltro: TipoConvivenza | null = null;
-
     nuovaCategoria: CategoriaConvivenza = 'Annuale';
     tipoFlussoNuova: 'comunita' | 'figlie' | null = null;
     nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
     nuovoTipoAnnuale = this.tipiComunitaNuova[0];
-    nuovaDataInizio = '2027-03-12';
+    nuovaDataInizio = '2027-03-14';
     nuovaDataFine = '2027-03-14';
     nuoveNote = '';
+    wizardValidationMessage = '';
     nuoviPartecipanti = 40;
     formNuovaConvivenzaVisibile = false;
 
@@ -549,7 +572,7 @@ export class Convivenze {
     codiceRichiestaMock = '';
     oggettoEmailRichiesta = '';
     corpoEmailRichiesta = '';
-    nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0];
+    nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0]?.value ?? '';
     private convivenzaWizardId: number | null = null;
 
     get isDemo() {
@@ -563,6 +586,10 @@ export class Convivenze {
 
     get comunitaDestinatariaNome() {
         return this.isDemo ? DEMO_COMUNITA.nome : `${this.currentCommunity.nomeComunita} – ${this.currentCommunity.parrocchiaNome}`;
+    }
+
+    get isNuovaConvivenzaDomenicale() {
+        return this.tipoFlussoNuova === 'comunita' && this.nuovoTipoAnnuale === 'Convivenza domenicale';
     }
 
     posti: PostoSintesi[] = this.isDemo ? DEMO_POSTI.map((posto, index) => ({ id: index + 1, nome: posto.nome, citta: posto.citta, regione: posto.regione })) : [
@@ -612,60 +639,92 @@ export class Convivenze {
         }
     }
 
-    creaBozzaConvivenzaEAvanza() {
-        if (!this.tipoFlussoNuova) {
+    apriNuovaConvivenza() {
+        this.formNuovaConvivenzaVisibile = true;
+        this.wizardStep = 1;
+        this.tipoFlussoNuova = null;
+        this.nuovaCategoria = 'Annuale';
+        this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
+        this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
+        this.nuovaDataInizio = '2027-03-14';
+        this.nuovaDataFine = '2027-03-14';
+        this.nuoviPartecipanti = 40;
+        this.nuoveNote = '';
+        this.wizardValidationMessage = '';
+        this.filtroPosti = '';
+        this.strutturaSelezionataId = null;
+        this.codiceRichiestaMock = '';
+        this.oggettoEmailRichiesta = '';
+        this.corpoEmailRichiesta = '';
+        this.convivenzaWizardId = null;
+        this.nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0]?.value ?? '';
+    }
+
+    chiudiWizardNuovaConvivenza() {
+        this.formNuovaConvivenzaVisibile = false;
+        this.wizardStep = 1;
+        this.tipoFlussoNuova = null;
+        this.convivenzaWizardId = null;
+    }
+
+    scegliTipoNuova(tipo: 'comunita' | 'figlie') {
+        if (tipo === 'comunita' && !this.currentUserCanCreateCommunityConvivenza) {
             return;
         }
 
-        const isCatechistica = this.tipoFlussoNuova === 'figlie';
-        const tipo = isCatechistica ? this.nuovoTipoCatechistico : this.nuovoTipoAnnuale;
-        const titolo = isCatechistica ? `${tipo}` : `Convivenza ${tipo}`;
+        if (tipo === 'figlie' && !this.currentUserCanCreateChildCommunityConvivenza) {
+            return;
+        }
 
-        // Regola convivenza domenicale
-        if (tipo === 'Convivenza domenicale') {
-            const data = new Date(this.nuovaDataInizio);
-            if (data.getDay() !== 0) { // 0 = Domenica
-                alert('La convivenza domenicale può essere fissata solo di domenica.');
-                return;
-            }
+        this.tipoFlussoNuova = tipo;
+        this.nuovaCategoria = tipo === 'figlie' ? 'Catechistica' : 'Annuale';
+        this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
+        this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
+        this.wizardValidationMessage = '';
+        this.wizardStep = 2;
+
+        if (tipo === 'comunita' && this.nuovoTipoAnnuale === 'Convivenza domenicale') {
             this.nuovaDataFine = this.nuovaDataInizio;
+            this.onDataDomenicaleChange();
         }
-
-        const nuova: Convivenza = {
-            id: this.convivenzaWizardId ?? Math.max(0, ...this.convivenze.map((convivenza) => convivenza.id)) + 1,
-            titolo,
-            categoriaConvivenza: isCatechistica ? 'Catechistica' : 'Annuale',
-            tipoConvivenza: tipo,
-            soggettoOrganizzatore: isCatechistica ? 'Equipe dei catechisti' : 'Comunità',
-            equipeOrganizzatriceId: isCatechistica ? 1 : null,
-            equipeOrganizzatriceNome: isCatechistica ? this.equipeOrganizzatriceNome : '',
-            comunitaDestinatariaId: 1,
-            comunitaDestinatariaNome: isCatechistica ? this.nuovaComunitaFigliaDestinataria : this.comunitaDestinatariaNome,
-            strutturaId: this.selected?.id === this.convivenzaWizardId ? this.selected.strutturaId : null,
-            dataInizio: this.nuovaDataInizio,
-            dataFine: this.nuovaDataFine,
-            stato: 'Bozza',
-            partecipantiPrevisti: Number(this.nuoviPartecipanti) || 0,
-            partecipantiConfermati: 0,
-            luogoTestuale: 'Luogo non ancora assegnato',
-            citta: 'Da assegnare',
-            note: this.nuoveNote.trim(),
-            statoRichiestaStruttura: 'Non inviata',
-            aggregati: this.aggregatiVuoti()
-        };
-
-        if (this.convivenzaWizardId) {
-            this.convivenze = this.convivenze.map((convivenza) =>
-                convivenza.id === this.convivenzaWizardId ? nuova : convivenza
-            );
-        } else {
-            this.convivenze = [nuova, ...this.convivenze];
-            this.convivenzaWizardId = nuova.id;
-        }
-
-        this.selected = nuova;
-        this.wizardStep++;
     }
+
+    salvaNuovaConvivenza() {
+        this.creaBozzaConvivenzaEAvanza();
+    }
+
+    onTipoComunitaChange() {
+        this.wizardValidationMessage = '';
+
+        if (this.isNuovaConvivenzaDomenicale) {
+            this.nuovaDataFine = this.nuovaDataInizio;
+            this.onDataDomenicaleChange();
+        }
+    }
+
+    onDataDomenicaleChange() {
+        this.nuovaDataFine = this.nuovaDataInizio;
+
+        if (!this.nuovaDataInizio) {
+            this.wizardValidationMessage = '';
+            return;
+        }
+
+        this.wizardValidationMessage = this.isSunday(this.nuovaDataInizio)
+            ? ''
+            : 'La convivenza domenicale può essere fissata solo di domenica.';
+    }
+
+    private isSunday(dateValue: string) {
+        if (!dateValue) {
+            return false;
+        }
+
+        const [year, month, day] = dateValue.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getDay() === 0;
+    }
+
     getWizardIntro() {
         switch (this.wizardStep) {
             case 1:
@@ -686,6 +745,17 @@ export class Convivenze {
             return;
         }
 
+        this.wizardValidationMessage = '';
+
+        if (this.isNuovaConvivenzaDomenicale) {
+            this.nuovaDataFine = this.nuovaDataInizio;
+
+            if (!this.isSunday(this.nuovaDataInizio)) {
+                this.wizardValidationMessage = 'La convivenza domenicale può essere fissata solo di domenica.';
+                return;
+            }
+        }
+
         const isCatechistica = this.tipoFlussoNuova === 'figlie';
         const tipo = isCatechistica ? this.nuovoTipoCatechistico : this.nuovoTipoAnnuale;
         const titolo = isCatechistica ? `${tipo}` : `Convivenza ${tipo}`;
@@ -702,7 +772,7 @@ export class Convivenze {
             comunitaDestinatariaNome: isCatechistica ? this.nuovaComunitaFigliaDestinataria : this.comunitaDestinatariaNome,
             strutturaId: this.selected?.id === this.convivenzaWizardId ? this.selected.strutturaId : null,
             dataInizio: this.nuovaDataInizio,
-            dataFine: this.nuovaDataFine,
+            dataFine: this.isNuovaConvivenzaDomenicale ? this.nuovaDataInizio : this.nuovaDataFine,
             stato: 'Bozza',
             partecipantiPrevisti: Number(this.nuoviPartecipanti) || 0,
             partecipantiConfermati: 0,
