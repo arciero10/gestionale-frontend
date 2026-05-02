@@ -34,7 +34,6 @@ export interface SelectedCommunity {
     comune?: string;
     indirizzo?: string;
     tappaCammino?: TappaCammino;
-
     isCatechista?: boolean;
     comunitaFiglieAssociate?: ComunitaFigliaAssociata[];
 }
@@ -54,7 +53,7 @@ export function saveSelectedCommunity(community: SelectedCommunity): void {
     localStorage.setItem(SELECTED_COMMUNITY_KEY, JSON.stringify({
         ...community,
         isCatechista: community.isCatechista === true,
-        comunitaFiglieAssociate: community.comunitaFiglieAssociate ?? []
+        comunitaFiglieAssociate: Array.isArray(community.comunitaFiglieAssociate) ? community.comunitaFiglieAssociate : []
     }));
 }
 
@@ -89,7 +88,12 @@ export function getCurrentCommunity(): CurrentCommunity {
     const selected = getSelectedCommunity();
 
     if (selected?.communitySelected) {
-        return { ...selected, isPilot: isPilotSelection(selected) };
+        return {
+            ...selected,
+            isCatechista: selected.isCatechista === true,
+            comunitaFiglieAssociate: Array.isArray(selected.comunitaFiglieAssociate) ? selected.comunitaFiglieAssociate : [],
+            isPilot: isPilotSelection(selected)
+        };
     }
 
     const parrocchia = PARROCCHIE_MOCK.find((item) => item.id === COMUNITA_ATTIVA_MOCK.parrocchiaId);

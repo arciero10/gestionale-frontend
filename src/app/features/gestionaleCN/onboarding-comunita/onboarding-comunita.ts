@@ -108,11 +108,11 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                     } @else {
                         <div class="readonly-grid">
                             <div>
-                                <span>Settore:</span>
+                                <span>Settore:&nbsp;</span>
                                 <strong>{{ settoreNome || 'Da completare' }}</strong>
                             </div>
                             <div>
-                                <span>Diocesi:</span>
+                                <span>Diocesi:&nbsp;</span>
                                 <strong>{{ diocesiNome || 'Da completare' }}</strong>
                             </div>
                         </div>
@@ -142,8 +142,8 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
 
                         @if (isCatechista === true) {
                             <aside class="child-community-panel">
-                                <h3>Comunità figlia associata</h3>
-                                <p>Indica una comunità che segui come catechista. Potrai usarla nelle convivenze catechistiche.</p>
+                                <h3>Comunità figlie associate</h3>
+                                <p>Indica una o più comunità che segui come catechista. Potrai usarle nelle convivenze catechistiche.</p>
 
                                 <div class="guided-grid">
                                     <div class="field form-full">
@@ -158,12 +158,64 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                                 </div>
 
                                 <div class="preview-box child-preview">
-                                    <span>Preview comunità figlia</span>
+                                    <span>Anteprima comunità figlia</span>
                                     <strong>{{ previewComunitaFiglia }}</strong>
-                                    <small>Questa comunità abiliterà le convivenze con comunità figlie.</small>
                                 </div>
+
+                                <button type="button" class="add-child-btn" (click)="aggiungiComunitaFiglia()">Aggiungi comunità figlia</button>
+
+                                <ul class="child-list" *ngIf="comunitaFiglieAssociate.length > 0">
+                                    <li *ngFor="let c of comunitaFiglieAssociate; let i = index">
+                                        <span>{{ c.numeroComunita }}ª Comunità – {{ c.parrocchiaNome }}</span>
+                                        <button type="button" class="remove-child-btn" (click)="rimuoviComunitaFiglia(i)">Rimuovi</button>
+                                    </li>
+                                </ul>
                             </aside>
                         }
+                                .add-child-btn {
+                                    margin-top: .5rem;
+                                    background: #17335f;
+                                    color: #fff;
+                                    border: none;
+                                    border-radius: 8px;
+                                    padding: .4rem 1.1rem;
+                                    font-weight: 800;
+                                    cursor: pointer;
+                                    box-shadow: 0 2px 8px rgba(15,23,42,.08);
+                                }
+                                .add-child-btn:hover {
+                                    background: #1e4a79;
+                                }
+                                .child-list {
+                                    margin: .7rem 0 0 0;
+                                    padding: 0;
+                                    list-style: none;
+                                    display: grid;
+                                    gap: .35rem;
+                                }
+                                .child-list li {
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    background: #f0fdf4;
+                                    border: 1px solid #bbf7d0;
+                                    border-radius: 8px;
+                                    padding: .35rem .8rem;
+                                    font-size: .98rem;
+                                }
+                                .remove-child-btn {
+                                    background: #fff0f0;
+                                    color: #b91c1c;
+                                    border: 1px solid #fecaca;
+                                    border-radius: 6px;
+                                    padding: .2rem .7rem;
+                                    font-weight: 700;
+                                    cursor: pointer;
+                                    margin-left: .7rem;
+                                }
+                                .remove-child-btn:hover {
+                                    background: #fee2e2;
+                                }
                     </section>
 
                     <div class="preview-box">
@@ -427,6 +479,7 @@ export class OnboardingComunita {
     isCatechista: boolean | null = null;
     parrocchiaFigliaId = 24;
     numeroComunitaFiglia = 3;
+    comunitaFiglieAssociate: ComunitaFigliaAssociata[] = [];
 
     get settoriFiltrati() {
         return SETTORI_MOCK.filter((settore) => settore.diocesiId === this.diocesiId);
@@ -493,11 +546,35 @@ export class OnboardingComunita {
 
     setCatechista(value: boolean) {
         this.isCatechista = value;
-
         if (!value) {
             this.parrocchiaFigliaId = 24;
             this.numeroComunitaFiglia = 3;
+            this.comunitaFiglieAssociate = [];
         }
+    }
+
+    aggiungiComunitaFiglia() {
+        const parrocchia = this.parrocchiaFiglia;
+        if (!parrocchia || !this.numeroComunitaFiglia) return;
+        const nuova: ComunitaFigliaAssociata = {
+            numeroComunita: this.numeroComunitaFiglia,
+            nomeComunita: generaNomeComunita(this.numeroComunitaFiglia),
+            parrocchiaId: parrocchia.id,
+            parrocchiaNome: parrocchia.nome,
+            settoreId: parrocchia.settoreId,
+            settoreNome: this.settoreFigliaNome,
+            diocesiId: parrocchia.diocesiId,
+            diocesiNome: this.diocesiFigliaNome,
+            parrocchiaManuale: false
+        };
+        // Evita duplicati
+        if (!this.comunitaFiglieAssociate.some(c => c.numeroComunita === nuova.numeroComunita && c.parrocchiaId === nuova.parrocchiaId)) {
+            this.comunitaFiglieAssociate = [...this.comunitaFiglieAssociate, nuova];
+        }
+    }
+
+    rimuoviComunitaFiglia(index: number) {
+        this.comunitaFiglieAssociate = this.comunitaFiglieAssociate.filter((_, i) => i !== index);
     }
 
     onParrocchiaFigliaChange() {
@@ -557,6 +634,11 @@ export class OnboardingComunita {
             return;
         }
 
+        if (this.isCatechista === true && this.comunitaFiglieAssociate.length === 0) {
+            this.messaggio = 'Aggiungi almeno una comunità figlia oppure seleziona No.';
+            return;
+        }
+
         if (this.isPreview) {
             this.messaggio = 'Simulazione completata';
             return;
@@ -579,19 +661,7 @@ export class OnboardingComunita {
             indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo,
             tappaCammino: this.tappaCammino,
             isCatechista: this.isCatechista === true,
-            comunitaFiglieAssociate: this.isCatechista === true && this.parrocchiaFiglia ? [
-                {
-                    numeroComunita: this.numeroComunitaFiglia,
-                    nomeComunita: generaNomeComunita(this.numeroComunitaFiglia),
-                    parrocchiaId: this.parrocchiaFiglia.id,
-                    parrocchiaNome: this.parrocchiaFiglia.nome,
-                    settoreId: this.parrocchiaFiglia.settoreId,
-                    settoreNome: this.settoreFigliaNome,
-                    diocesiId: this.parrocchiaFiglia.diocesiId,
-                    diocesiNome: this.diocesiFigliaNome,
-                    parrocchiaManuale: false
-                }
-            ] : []
+            comunitaFiglieAssociate: this.isCatechista === true ? this.comunitaFiglieAssociate : []
         });
 
         this.router.navigateByUrl('/gestionale-cn/dashboard', { replaceUrl: true });

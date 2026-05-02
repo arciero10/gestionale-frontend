@@ -99,18 +99,13 @@ interface PostoSintesi {
                             }
                         </div>
 
-                        <div class="choice-card child-community-choice">
-                            <h3>Convivenza con comunità figlie</h3>
-                            <p>Passaggi e tappe del Cammino organizzati dall’equipe dei catechisti.</p>
-
-                            @if (currentUserCanCreateChildCommunityConvivenza) {
+                        @if (currentCommunity.isCatechista === true && currentCommunity.comunitaFiglieAssociate && currentCommunity.comunitaFiglieAssociate.length > 0) {
+                            <div class="choice-card child-community-choice">
+                                <h3>Convivenza con comunità figlie</h3>
+                                <p>Passaggi e tappe del Cammino organizzati dall’equipe dei catechisti.</p>
                                 <button pButton type="button" label="Scegli" (click)="scegliTipoNuova('figlie')"></button>
-                            } @else {
-                                <div class="availability-note">
-                                    Disponibile solo per catechisti/equipe con comunità figlie associate.
-                                </div>
-                            }
-                        </div>
+                            </div>
+                        }
 
                         <footer>
                             <button pButton type="button" label="Chiudi" severity="secondary" outlined (click)="chiudiWizardNuovaConvivenza()"></button>
@@ -167,7 +162,10 @@ interface PostoSintesi {
 
                         <div>
                             <label for="comunitaFigliaDestinataria">Comunità destinataria</label>
-                            <p-select inputId="comunitaFigliaDestinataria" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="comunitaFiglieOptions" [(ngModel)]="nuovaComunitaFigliaDestinataria"></p-select>
+                            <p-select inputId="comunitaFigliaDestinataria" appendTo="body" panelStyleClass="modal-dropdown-panel"
+                                [options]="currentCommunity.comunitaFiglieAssociate?.map(c => ({ label: `${c.numeroComunita}ª Comunità – ${c.parrocchiaNome}`, value: c }))"
+                                [(ngModel)]="nuovaComunitaFigliaDestinataria">
+                            </p-select>
                         </div>
 
                         <div>
@@ -614,50 +612,60 @@ export class Convivenze {
         }
     }
 
-    apriNuovaConvivenza() {
-        this.formNuovaConvivenzaVisibile = true;
-        this.wizardStep = 1;
-        this.tipoFlussoNuova = null;
-        this.nuovaCategoria = 'Annuale';
-        this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
-        this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
-        this.nuoviPartecipanti = 40;
-        this.nuoveNote = '';
-        this.filtroPosti = '';
-        this.strutturaSelezionataId = null;
-        this.codiceRichiestaMock = '';
-        this.oggettoEmailRichiesta = '';
-        this.corpoEmailRichiesta = '';
-        this.convivenzaWizardId = null;
-    }
-
-    chiudiWizardNuovaConvivenza() {
-        this.formNuovaConvivenzaVisibile = false;
-        this.wizardStep = 1;
-        this.tipoFlussoNuova = null;
-        this.convivenzaWizardId = null;
-    }
-
-    scegliTipoNuova(tipo: 'comunita' | 'figlie') {
-        if (tipo === 'comunita' && !this.currentUserCanCreateCommunityConvivenza) {
+    creaBozzaConvivenzaEAvanza() {
+        if (!this.tipoFlussoNuova) {
             return;
         }
 
-        if (tipo === 'figlie' && !this.currentUserCanCreateChildCommunityConvivenza) {
-            return;
+        const isCatechistica = this.tipoFlussoNuova === 'figlie';
+        const tipo = isCatechistica ? this.nuovoTipoCatechistico : this.nuovoTipoAnnuale;
+        const titolo = isCatechistica ? `${tipo}` : `Convivenza ${tipo}`;
+
+        // Regola convivenza domenicale
+        if (tipo === 'Convivenza domenicale') {
+            const data = new Date(this.nuovaDataInizio);
+            if (data.getDay() !== 0) { // 0 = Domenica
+                alert('La convivenza domenicale può essere fissata solo di domenica.');
+                return;
+            }
+            this.nuovaDataFine = this.nuovaDataInizio;
         }
 
-        this.tipoFlussoNuova = tipo;
-        this.nuovaCategoria = tipo === 'figlie' ? 'Catechistica' : 'Annuale';
-        this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
-        this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
-        this.wizardStep = 2;
-    }
+        const nuova: Convivenza = {
+            id: this.convivenzaWizardId ?? Math.max(0, ...this.convivenze.map((convivenza) => convivenza.id)) + 1,
+            titolo,
+            categoriaConvivenza: isCatechistica ? 'Catechistica' : 'Annuale',
+            tipoConvivenza: tipo,
+            soggettoOrganizzatore: isCatechistica ? 'Equipe dei catechisti' : 'Comunità',
+            equipeOrganizzatriceId: isCatechistica ? 1 : null,
+            equipeOrganizzatriceNome: isCatechistica ? this.equipeOrganizzatriceNome : '',
+            comunitaDestinatariaId: 1,
+            comunitaDestinatariaNome: isCatechistica ? this.nuovaComunitaFigliaDestinataria : this.comunitaDestinatariaNome,
+            strutturaId: this.selected?.id === this.convivenzaWizardId ? this.selected.strutturaId : null,
+            dataInizio: this.nuovaDataInizio,
+            dataFine: this.nuovaDataFine,
+            stato: 'Bozza',
+            partecipantiPrevisti: Number(this.nuoviPartecipanti) || 0,
+            partecipantiConfermati: 0,
+            luogoTestuale: 'Luogo non ancora assegnato',
+            citta: 'Da assegnare',
+            note: this.nuoveNote.trim(),
+            statoRichiestaStruttura: 'Non inviata',
+            aggregati: this.aggregatiVuoti()
+        };
 
-    salvaNuovaConvivenza() {
-        this.creaBozzaConvivenzaEAvanza();
-    }
+        if (this.convivenzaWizardId) {
+            this.convivenze = this.convivenze.map((convivenza) =>
+                convivenza.id === this.convivenzaWizardId ? nuova : convivenza
+            );
+        } else {
+            this.convivenze = [nuova, ...this.convivenze];
+            this.convivenzaWizardId = nuova.id;
+        }
 
+        this.selected = nuova;
+        this.wizardStep++;
+    }
     getWizardIntro() {
         switch (this.wizardStep) {
             case 1:

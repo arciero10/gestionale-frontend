@@ -31,6 +31,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
           </div>
 
           <div class="login-card">
+            <p class="login-choice-title">Accedi o registrati</p>
             <button type="button" class="login-button primary" (click)="login()">Accedi</button>
             <button type="button" class="login-button secondary" (click)="register()">Registrati</button>
             <a routerLink="/demo" class="demo-link">Guarda la demo</a>
@@ -109,6 +110,9 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       }
 
       .login-shell {
+        min-height: calc(100vh - 120px);
+        align-content: center;
+        justify-content: center;
         position: relative;
         z-index: 2;
         width: 100%;
@@ -151,6 +155,19 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         align-items: center;
         text-align: center;
         pointer-events: auto;
+        gap: 1.25rem;
+      }
+
+      .login-choice-title {
+        margin: 0 0 .25rem;
+        color: #fff;
+        font-weight: 900;
+        font-size: 1rem;
+        text-shadow: 0 1px 10px rgba(0,0,0,.28);
+      }
+
+      .login-button + .login-button {
+        margin-top: .35rem;
       }
 
       .login-card-head {
