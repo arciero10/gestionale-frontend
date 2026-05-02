@@ -125,17 +125,22 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       }
 
       .login-copy {
+        position: fixed;
+        top: 2.2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(92vw, 860px);
+        max-width: 860px;
         color: white;
-        max-width: 720px;
-        text-shadow: 0 2px 16px rgba(0, 0, 0, .24);
+        text-shadow: 0 2px 16px rgba(0, 0, 0, .35);
         text-align: center;
-        transform: translateY(-5.5rem);
-        margin-bottom: -5.5rem;
+        z-index: 5;
+        pointer-events: none;
       }
 
       .login-copy h1 {
-        font-size: clamp(30px, 4.8vw, 50px);
-        line-height: 1.1;
+        font-size: clamp(34px, 4.4vw, 58px);
+        line-height: 1.08;
         margin: 0;
         font-weight: 800;
       }
@@ -309,12 +314,15 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         }
 
         .login-copy {
-          transform: translateY(-2.75rem);
-          margin-bottom: -2.75rem;
+          top: 1.4rem;
+          width: min(94vw, 640px);
+          transform: translateX(-50%);
+          margin-bottom: 0;
         }
 
         .login-copy h1 {
-          font-size: clamp(27px, 8.5vw, 40px);
+          font-size: clamp(28px, 8.5vw, 42px);
+          line-height: 1.08;
         }
 
         .login-card {
