@@ -7,7 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DIOCESI_MOCK, NUMERI_COMUNITA, PARROCCHIE_MOCK, SETTORI_MOCK, Parrocchia, creaNomeComunitaVisualizzato, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
-import { saveSelectedCommunity } from '../data/community-selection.storage';
+import { ComunitaFigliaAssociata, saveSelectedCommunity } from '../data/community-selection.storage';
 import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
@@ -50,10 +50,12 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                                 <label for="diocesi">Diocesi</label>
                                 <p-select inputId="diocesi" name="diocesi" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="diocesiOptions" optionLabel="nome" optionValue="id" [(ngModel)]="diocesiId" (ngModelChange)="onDiocesiChange()"></p-select>
                             </div>
+
                             <div class="field">
                                 <label for="settore">Settore</label>
                                 <p-select inputId="settore" name="settore" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="settoriFiltrati" optionLabel="nome" optionValue="id" [(ngModel)]="settoreId" (ngModelChange)="onSettoreChange()"></p-select>
                             </div>
+
                             <div class="field form-full">
                                 <label for="parrocchiaGuidata">Parrocchia</label>
                                 <p-select inputId="parrocchiaGuidata" name="parrocchiaGuidata" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="parrocchieGuidate" optionLabel="nome" optionValue="id" [(ngModel)]="parrocchiaId" (ngModelChange)="onParrocchiaGuidataChange()"></p-select>
@@ -85,24 +87,29 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                                 <label for="parrocchiaManuale">Nome parrocchia</label>
                                 <input id="parrocchiaManuale" name="parrocchiaManuale" pInputText [(ngModel)]="parrocchiaManuale" required />
                             </div>
+
                             <div class="guided-grid">
                                 <div class="field">
                                     <label for="diocesiManuale">Diocesi</label>
                                     <p-select inputId="diocesiManuale" name="diocesiManuale" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="diocesiOptions" optionLabel="nome" optionValue="id" [(ngModel)]="diocesiManualeId"></p-select>
                                 </div>
+
                                 <div class="field">
                                     <label for="settoreManuale">Settore</label>
                                     <p-select inputId="settoreManuale" name="settoreManuale" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="settoriManuali" [(ngModel)]="settoreManuale"></p-select>
                                 </div>
+
                                 <div class="field">
                                     <label for="comuneManuale">Comune</label>
                                     <input id="comuneManuale" name="comuneManuale" pInputText [(ngModel)]="comuneManuale" required />
                                 </div>
+
                                 <div class="field">
                                     <label for="indirizzoManuale">Indirizzo facoltativo</label>
                                     <input id="indirizzoManuale" name="indirizzoManuale" pInputText [(ngModel)]="indirizzoManuale" />
                                 </div>
                             </div>
+
                             <p class="note">Se la parrocchia non è presente, sarà verificata dal responsabile.</p>
                         </section>
                     } @else {
@@ -134,6 +141,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                                 <strong>Sei catechista di qualche comunità?</strong>
                                 <span>Serve per abilitare le convivenze con comunità figlie.</span>
                             </div>
+
                             <div class="yes-no">
                                 <button type="button" [class.active]="isCatechista === true" (click)="setCatechista(true)">Sì</button>
                                 <button type="button" [class.active]="isCatechista === false" (click)="setCatechista(false)">No</button>
@@ -164,58 +172,18 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
 
                                 <button type="button" class="add-child-btn" (click)="aggiungiComunitaFiglia()">Aggiungi comunità figlia</button>
 
-                                <ul class="child-list" *ngIf="comunitaFiglieAssociate.length > 0">
-                                    <li *ngFor="let c of comunitaFiglieAssociate; let i = index">
-                                        <span>{{ c.numeroComunita }}ª Comunità – {{ c.parrocchiaNome }}</span>
-                                        <button type="button" class="remove-child-btn" (click)="rimuoviComunitaFiglia(i)">Rimuovi</button>
-                                    </li>
-                                </ul>
+                                @if (comunitaFiglieAssociate.length > 0) {
+                                    <ul class="child-list">
+                                        @for (comunita of comunitaFiglieAssociate; track comunita.parrocchiaId + '-' + comunita.numeroComunita; let index = $index) {
+                                            <li>
+                                                <span>{{ comunita.numeroComunita }}ª Comunità – {{ comunita.parrocchiaNome }}</span>
+                                                <button type="button" class="remove-child-btn" (click)="rimuoviComunitaFiglia(index)">Rimuovi</button>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
                             </aside>
                         }
-                                .add-child-btn {
-                                    margin-top: .5rem;
-                                    background: #17335f;
-                                    color: #fff;
-                                    border: none;
-                                    border-radius: 8px;
-                                    padding: .4rem 1.1rem;
-                                    font-weight: 800;
-                                    cursor: pointer;
-                                    box-shadow: 0 2px 8px rgba(15,23,42,.08);
-                                }
-                                .add-child-btn:hover {
-                                    background: #1e4a79;
-                                }
-                                .child-list {
-                                    margin: .7rem 0 0 0;
-                                    padding: 0;
-                                    list-style: none;
-                                    display: grid;
-                                    gap: .35rem;
-                                }
-                                .child-list li {
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: space-between;
-                                    background: #f0fdf4;
-                                    border: 1px solid #bbf7d0;
-                                    border-radius: 8px;
-                                    padding: .35rem .8rem;
-                                    font-size: .98rem;
-                                }
-                                .remove-child-btn {
-                                    background: #fff0f0;
-                                    color: #b91c1c;
-                                    border: 1px solid #fecaca;
-                                    border-radius: 6px;
-                                    padding: .2rem .7rem;
-                                    font-weight: 700;
-                                    cursor: pointer;
-                                    margin-left: .7rem;
-                                }
-                                .remove-child-btn:hover {
-                                    background: #fee2e2;
-                                }
                     </section>
 
                     <div class="preview-box">
@@ -234,6 +202,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
     styles: [
         `
             :host { display: block; }
+
             .onboarding-page {
                 min-height: calc(100vh - 4rem);
                 display: grid;
@@ -241,6 +210,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 padding: clamp(1rem, 3vw, 2rem);
                 background: transparent;
             }
+
             .onboarding-card {
                 width: min(100%, 760px);
                 display: grid;
@@ -252,14 +222,31 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 box-shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
                 backdrop-filter: blur(10px);
             }
-            .page-intro { display: grid; gap: 0.45rem; text-align: center; }
+
+            .page-intro {
+                display: grid;
+                gap: 0.45rem;
+                text-align: center;
+            }
+
             .page-intro h1,
-            .page-intro p { margin: 0; }
-            .page-intro h1 { color: #0f2440; font-size: clamp(1.65rem, 3vw, 2.3rem); }
+            .page-intro p {
+                margin: 0;
+            }
+
+            .page-intro h1 {
+                color: #0f2440;
+                font-size: clamp(1.65rem, 3vw, 2.3rem);
+            }
+
             .page-intro p,
             .page-intro small,
             .note,
-            .field small { color: #64748b; line-height: 1.5; }
+            .field small {
+                color: #64748b;
+                line-height: 1.5;
+            }
+
             .preview-badge {
                 justify-self: center;
                 display: inline-flex;
@@ -274,6 +261,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 font-weight: 800;
                 text-transform: uppercase;
             }
+
             .mode-switch {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -282,6 +270,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 border-radius: 999px;
                 background: #f1f5f9;
             }
+
             .mode-switch button {
                 min-height: 42px;
                 border: 0;
@@ -291,27 +280,42 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 font-weight: 850;
                 cursor: pointer;
             }
+
             .mode-switch button.active {
                 background: #17335f;
                 color: #fff;
                 box-shadow: 0 10px 22px rgba(15, 23, 42, .14);
             }
-            .community-form { display: grid; gap: 1rem; }
+
+            .community-form {
+                display: grid;
+                gap: 1rem;
+            }
+
             .guided-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: .85rem;
             }
+
             .field,
             .manual-box,
-            .preview-box { display: grid; gap: 0.4rem; }
-            .form-full { grid-column: 1 / -1; }
+            .preview-box {
+                display: grid;
+                gap: 0.4rem;
+            }
+
+            .form-full {
+                grid-column: 1 / -1;
+            }
+
             .manual-box {
                 padding: 0.85rem 1rem;
                 border-radius: 14px;
                 background: #fffbeb;
                 border: 1px solid #fde68a;
             }
+
             label,
             .readonly-grid span,
             .preview-box span {
@@ -319,11 +323,13 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 font-size: 0.85rem;
                 font-weight: 800;
             }
+
             .readonly-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 0.75rem;
             }
+
             .readonly-grid div,
             .preview-box,
             .action-message {
@@ -332,12 +338,18 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 background: #f8fafc;
                 border: 1px solid #e5e7eb;
             }
+
             .readonly-grid strong,
             .preview-box strong {
                 color: #0f2440;
                 font-size: 1rem;
             }
-            .preview-box { background: #eff6ff; border-color: #bfdbfe; }
+
+            .preview-box {
+                background: #eff6ff;
+                border-color: #bfdbfe;
+            }
+
             .action-message {
                 display: flex;
                 align-items: center;
@@ -357,23 +369,28 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 background: rgba(248, 250, 252, .92);
                 border: 1px solid #e5e7eb;
             }
+
             .catechist-head {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 1rem;
             }
+
             .catechist-head div:first-child {
                 display: grid;
                 gap: .2rem;
             }
+
             .catechist-head strong {
                 color: #0f2440;
             }
+
             .catechist-head span {
                 color: #64748b;
                 font-size: .9rem;
             }
+
             .yes-no {
                 display: inline-grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -382,6 +399,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 border-radius: 999px;
                 background: #e2e8f0;
             }
+
             .yes-no button {
                 min-width: 72px;
                 min-height: 36px;
@@ -392,11 +410,13 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 font-weight: 900;
                 cursor: pointer;
             }
+
             .yes-no button.active {
                 background: #17335f;
                 color: #fff;
                 box-shadow: 0 8px 18px rgba(15, 23, 42, .16);
             }
+
             .child-community-panel {
                 display: grid;
                 gap: .85rem;
@@ -406,31 +426,101 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 border: 1px solid #dbeafe;
                 box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
             }
+
             .child-community-panel h3 {
                 margin: 0;
                 color: #0f2440;
             }
+
             .child-community-panel p {
                 margin: 0;
                 color: #64748b;
             }
+
             .child-preview {
                 background: #f0fdf4;
                 border-color: #bbf7d0;
             }
 
-            :host ::ng-deep .onboarding-dropdown-panel { z-index: 12000 !important; }
+            .add-child-btn {
+                margin-top: .5rem;
+                background: #17335f;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                padding: .55rem 1.1rem;
+                font-weight: 800;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, .08);
+            }
+
+            .add-child-btn:hover {
+                background: #1e4a79;
+            }
+
+            .child-list {
+                margin: .7rem 0 0;
+                padding: 0;
+                list-style: none;
+                display: grid;
+                gap: .35rem;
+            }
+
+            .child-list li {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: .75rem;
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                border-radius: 8px;
+                padding: .45rem .8rem;
+                font-size: .98rem;
+            }
+
+            .remove-child-btn {
+                background: #fff0f0;
+                color: #b91c1c;
+                border: 1px solid #fecaca;
+                border-radius: 6px;
+                padding: .25rem .7rem;
+                font-weight: 700;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+
+            .remove-child-btn:hover {
+                background: #fee2e2;
+            }
+
+            :host ::ng-deep .onboarding-dropdown-panel {
+                z-index: 12000 !important;
+            }
+
             @media (max-width: 767px) {
-                .onboarding-page { place-items: start stretch; }
+                .onboarding-page {
+                    place-items: start stretch;
+                }
+
                 .guided-grid,
                 .readonly-grid,
-                .mode-switch { grid-template-columns: 1fr; border-radius: 18px; }
+                .mode-switch {
+                    grid-template-columns: 1fr;
+                    border-radius: 18px;
+                }
+
                 .catechist-head {
                     align-items: stretch;
                     flex-direction: column;
                 }
+
                 .yes-no {
                     width: 100%;
+                }
+
+                .child-list li {
+                    align-items: stretch;
+                    flex-direction: column;
                 }
             }
         `
@@ -546,6 +636,8 @@ export class OnboardingComunita {
 
     setCatechista(value: boolean) {
         this.isCatechista = value;
+        this.messaggio = '';
+
         if (!value) {
             this.parrocchiaFigliaId = 24;
             this.numeroComunitaFiglia = 3;
@@ -555,7 +647,11 @@ export class OnboardingComunita {
 
     aggiungiComunitaFiglia() {
         const parrocchia = this.parrocchiaFiglia;
-        if (!parrocchia || !this.numeroComunitaFiglia) return;
+
+        if (!parrocchia || !this.numeroComunitaFiglia) {
+            return;
+        }
+
         const nuova: ComunitaFigliaAssociata = {
             numeroComunita: this.numeroComunitaFiglia,
             nomeComunita: generaNomeComunita(this.numeroComunitaFiglia),
@@ -567,14 +663,23 @@ export class OnboardingComunita {
             diocesiNome: this.diocesiFigliaNome,
             parrocchiaManuale: false
         };
-        // Evita duplicati
-        if (!this.comunitaFiglieAssociate.some(c => c.numeroComunita === nuova.numeroComunita && c.parrocchiaId === nuova.parrocchiaId)) {
-            this.comunitaFiglieAssociate = [...this.comunitaFiglieAssociate, nuova];
+
+        const giaPresente = this.comunitaFiglieAssociate.some((comunita) =>
+            comunita.numeroComunita === nuova.numeroComunita &&
+            comunita.parrocchiaId === nuova.parrocchiaId
+        );
+
+        if (giaPresente) {
+            this.messaggio = 'Questa comunità figlia è già stata aggiunta';
+            return;
         }
+
+        this.comunitaFiglieAssociate = [...this.comunitaFiglieAssociate, nuova];
+        this.messaggio = '';
     }
 
     rimuoviComunitaFiglia(index: number) {
-        this.comunitaFiglieAssociate = this.comunitaFiglieAssociate.filter((_, i) => i !== index);
+        this.comunitaFiglieAssociate = this.comunitaFiglieAssociate.filter((_, currentIndex) => currentIndex !== index);
     }
 
     onParrocchiaFigliaChange() {
@@ -606,12 +711,14 @@ export class OnboardingComunita {
         const risultati = query
             ? PARROCCHIE_MOCK.filter((parrocchia) => `${parrocchia.nome} ${parrocchia.comune} ${parrocchia.indirizzo}`.toLowerCase().includes(query))
             : [...PARROCCHIE_MOCK];
+
         this.parrocchieSuggerite = [...risultati, this.parrocchiaManualeOption];
     }
 
     selezionaParrocchiaDaRicerca(parrocchia: Parrocchia) {
         this.parrocchiaSelezionata = parrocchia;
         this.parrocchiaId = parrocchia.id;
+
         if (parrocchia.id !== PARROCCHIA_MANUALE_ID) {
             this.diocesiId = parrocchia.diocesiId;
             this.settoreId = parrocchia.settoreId;
