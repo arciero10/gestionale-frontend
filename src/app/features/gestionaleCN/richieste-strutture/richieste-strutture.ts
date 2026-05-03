@@ -208,13 +208,42 @@ import {
 
                             <section class="mail-preview">
                                 <h3>Oggetto completo</h3>
-                                <p>{{ selected.oggettoCompleto }}</p>
+
+                                @if (modificaSelezionata) {
+                                    <input pInputText [(ngModel)]="selected.oggettoCompleto" />
+                                } @else {
+                                    <p>{{ selected.oggettoCompleto }}</p>
+                                }
+
                                 <h3>Corpo email</h3>
-                                <pre>{{ selected.corpoEmail }}</pre>
+
+                                @if (modificaSelezionata) {
+                                    <textarea pTextarea rows="16" [(ngModel)]="selected.corpoEmail"></textarea>
+                                } @else {
+                                    <pre>{{ selected.corpoEmail }}</pre>
+                                }
                             </section>
 
                             <div class="actions">
-                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="selected.stato !== 'Bozza'" (click)="inviaRichiesta()"></button>
+                                <button
+                                    pButton
+                                    type="button"
+                                    label="Modifica"
+                                    icon="pi pi-pencil"
+                                    severity="secondary"
+                                    outlined
+                                    [disabled]="selected.stato !== 'Bozza'"
+                                    (click)="modificaRichiestaSelezionata()"
+                                ></button>
+
+                                <button
+                                    pButton
+                                    type="button"
+                                    label="Invia richiesta"
+                                    icon="pi pi-send"
+                                    [disabled]="selected.stato !== 'Bozza'"
+                                    (click)="inviaRichiesta()"
+                                ></button>
                             </div>
                         </section>
 
@@ -291,7 +320,11 @@ import {
     `,
     styles: [
         `
-            .richieste-page { display: grid; gap: 1.25rem; }
+            .richieste-page {
+                display: grid;
+                gap: 1.25rem;
+                color: #0f172a;
+            }
             .page-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
             .page-head h1 { margin: 0 0 .35rem; font-size: 2rem; color: #111827; }
             .page-head p { margin: 0; color: #64748b; }
@@ -303,7 +336,8 @@ import {
             .detail-card,
             .conversation-card,
             .tech-note {
-                background: #fff;
+                background: rgba(255, 255, 255, .95);
+                backdrop-filter: blur(6px);
                 border: 1px solid #e5e7eb;
                 border-radius: 14px;
                 box-shadow: 0 10px 26px rgba(15, 23, 42, .06);
@@ -357,7 +391,7 @@ import {
                 padding: .85rem;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
-                background: #fbfbf8;
+                background: rgba(251, 251, 248, .96);
             }
             .structure-summary span { color: #64748b; font-weight: 800; font-size: .85rem; }
             .structure-summary strong { color: #111827; font-size: 1.05rem; }
@@ -396,7 +430,7 @@ import {
                 padding: .9rem 1rem;
                 border-radius: 12px;
                 border: 1px solid #e5e7eb;
-                background: #fafafa;
+                background: rgba(250, 250, 250, .96);
                 color: #475569;
                 text-align: left;
                 cursor: pointer;
@@ -426,11 +460,22 @@ import {
             .stato-annullata { background: #e5e7eb; color: #374151; border-color: #9ca3af; }
             .detail-panel { display: grid; gap: 1rem; }
             .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 0; }
-            .detail-grid div { padding: .8rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #fbfbf8; }
+            .detail-grid div { padding: .8rem; border: 1px solid #e5e7eb; border-radius: 12px; background: rgba(251, 251, 248, .96); }
             .detail-grid dt { color: #64748b; font-size: .8rem; }
             .detail-grid dd { margin: .25rem 0 0; color: #111827; font-weight: 800; overflow-wrap: anywhere; }
             .mail-preview { margin-top: 1rem; display: grid; gap: .5rem; }
             .mail-preview h3 { margin: .5rem 0 0; color: #111827; font-size: 1rem; }
+            .mail-preview input,
+            .mail-preview textarea {
+                width: 100%;
+                padding: .85rem;
+                border-radius: 12px;
+                background: #ffffff;
+                color: #111827;
+                border: 1px solid #cbd5e1;
+                font-family: inherit;
+                line-height: 1.5;
+            }
             .mail-preview p,
             .mail-preview pre {
                 margin: 0;
@@ -519,8 +564,9 @@ import {
                 gap: 1rem;
                 flex-wrap: wrap;
                 padding: .25rem 0;
+                color: #0f172a;
             }
-            .flusso-breadcrumb span { color: #475569; font-size: .9rem; }
+            .flusso-breadcrumb span { color: #0f172a; font-size: .9rem; font-weight: 700; }
             .sezioni-tabs {
                 display: grid;
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -616,6 +662,7 @@ export class RichiesteStrutture implements OnInit {
     comunitaCoinvolteTesto = `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`;
     strutturaBloccata = false;
     corpoModificato = false;
+    modificaSelezionata = false;
     form = this.creaFormVuoto();
     sezioneAttiva: 'Bozze' | 'Inviate' | 'Ricevute' = this.computeDefaultSection();
 
@@ -633,9 +680,12 @@ export class RichiesteStrutture implements OnInit {
 
     get richiesteFiltrate(): RichiestaStruttura[] {
         switch (this.sezioneAttiva) {
-            case 'Bozze': return this.bozze;
-            case 'Inviate': return this.inviate;
-            case 'Ricevute': return this.ricevute;
+            case 'Bozze':
+                return this.bozze;
+            case 'Inviate':
+                return this.inviate;
+            case 'Ricevute':
+                return this.ricevute;
         }
     }
 
@@ -726,6 +776,18 @@ export class RichiesteStrutture implements OnInit {
     select(richiesta: RichiestaStruttura) {
         this.selected = richiesta;
         this.messaggi = this.service.getMessaggi(richiesta.id);
+        this.modificaSelezionata = false;
+    }
+
+    modificaRichiestaSelezionata() {
+        this.modificaSelezionata = true;
+
+        setTimeout(() => {
+            document.querySelector('.mail-preview')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }, 50);
     }
 
     salvaBozza() {
@@ -849,6 +911,7 @@ export class RichiesteStrutture implements OnInit {
         this.messaggi = this.service.getMessaggi(this.selected.id);
         this.formVisibile = false;
         this.strutturaBloccata = false;
+        this.modificaSelezionata = false;
     }
 
     private creaFormVuoto() {
