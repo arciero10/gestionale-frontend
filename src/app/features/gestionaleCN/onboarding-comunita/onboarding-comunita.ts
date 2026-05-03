@@ -12,6 +12,8 @@ import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
+type RuoloComunitario = 'fratello' | 'responsabile' | 'corresponsabile' | 'presbitero' | 'catechista';
+type PermessiStato = 'tester' | 'in_attesa_approvazione' | 'approvato';
 
 @Component({
     selector: 'app-onboarding-comunita',
@@ -134,6 +136,49 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                         <label for="tappaCammino">Tappa del Cammino</label>
                         <p-select inputId="tappaCammino" name="tappaCammino" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="tappeCammino" [(ngModel)]="tappaCammino"></p-select>
                     </div>
+
+                    <section class="role-box">
+                        <div class="field">
+                            <label for="ruoloComunitario">Ruolo nella comunità</label>
+                            <p-select
+                                inputId="ruoloComunitario"
+                                name="ruoloComunitario"
+                                appendTo="body"
+                                panelStyleClass="onboarding-dropdown-panel"
+                                [options]="ruoliComunitari"
+                                optionLabel="label"
+                                optionValue="value"
+                                [(ngModel)]="ruoloComunitario"
+                            ></p-select>
+                        </div>
+
+                        <div class="field">
+                            <label for="collaboraOrganizzazione">Collabori nell'organizzazione?</label>
+                            <p-select
+                                inputId="collaboraOrganizzazione"
+                                name="collaboraOrganizzazione"
+                                appendTo="body"
+                                panelStyleClass="onboarding-dropdown-panel"
+                                [options]="collaborazioneOptions"
+                                optionLabel="label"
+                                optionValue="value"
+                                [(ngModel)]="collaboraOrganizzazione"
+                            ></p-select>
+                        </div>
+
+                        @if (collaboraOrganizzazione) {
+                            <div class="field form-full">
+                                <label>Ambiti operativi</label>
+                                <div class="ambiti-grid">
+                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('convivenze')" (change)="toggleAmbito('convivenze', $event)" /> Convivenze</label>
+                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('richieste-strutture')" (change)="toggleAmbito('richieste-strutture', $event)" /> Richieste strutture</label>
+                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('privacy-moduli')" (change)="toggleAmbito('privacy-moduli', $event)" /> Privacy / moduli</label>
+                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('anagrafica-comunita')" (change)="toggleAmbito('anagrafica-comunita', $event)" /> Anagrafica comunità</label>
+                                </div>
+                                <small>In produzione questi permessi dovranno essere approvati dal responsabile.</small>
+                            </div>
+                        }
+                    </section>
 
                     <section class="catechist-box">
                         <div class="catechist-head">
@@ -361,6 +406,7 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 font-weight: 800;
             }
 
+            .role-box,
             .catechist-box {
                 display: grid;
                 gap: .85rem;
@@ -368,6 +414,29 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
                 border-radius: 16px;
                 background: rgba(248, 250, 252, .92);
                 border: 1px solid #e5e7eb;
+            }
+
+            .role-box {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                background: rgba(255, 255, 255, .92);
+                border-color: #dbeafe;
+            }
+
+            .ambiti-grid {
+                display: grid;
+                gap: .5rem;
+                padding: .75rem;
+                border-radius: 12px;
+                background: #f8fafc;
+                border: 1px solid #e5e7eb;
+            }
+
+            .ambiti-grid label {
+                display: flex;
+                align-items: center;
+                gap: .5rem;
+                color: #0f2440;
+                font-weight: 700;
             }
 
             .catechist-head {
@@ -504,7 +573,8 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
 
                 .guided-grid,
                 .readonly-grid,
-                .mode-switch {
+                .mode-switch,
+                .role-box {
                     grid-template-columns: 1fr;
                     border-radius: 18px;
                 }
@@ -551,6 +621,19 @@ export class OnboardingComunita {
         statoVerifica: 'Inserita manualmente'
     };
 
+    readonly ruoliComunitari: Array<{ label: string; value: RuoloComunitario }> = [
+        { label: 'Fratello / Sorella', value: 'fratello' },
+        { label: 'Responsabile', value: 'responsabile' },
+        { label: 'Corresponsabile', value: 'corresponsabile' },
+        { label: 'Presbitero', value: 'presbitero' },
+        { label: 'Catechista', value: 'catechista' }
+    ];
+
+    readonly collaborazioneOptions = [
+        { label: 'No', value: false },
+        { label: 'Sì', value: true }
+    ];
+
     modalita: ModalitaOnboarding = 'guidata';
     diocesiId = 1;
     settoreId = 2;
@@ -565,6 +648,11 @@ export class OnboardingComunita {
     comuneManuale = '';
     indirizzoManuale = '';
     messaggio = '';
+
+    ruoloComunitario: RuoloComunitario = 'fratello';
+    collaboraOrganizzazione = false;
+    ambitiOperativi: string[] = [];
+    permessiStato: PermessiStato = 'tester';
 
     isCatechista: boolean | null = null;
     parrocchiaFigliaId = 24;
@@ -638,11 +726,26 @@ export class OnboardingComunita {
         this.isCatechista = value;
         this.messaggio = '';
 
+        if (value) {
+            this.ruoloComunitario = 'catechista';
+        }
+
         if (!value) {
             this.parrocchiaFigliaId = 24;
             this.numeroComunitaFiglia = 3;
             this.comunitaFiglieAssociate = [];
         }
+    }
+
+    toggleAmbito(ambito: string, event: Event) {
+        const checked = (event.target as HTMLInputElement).checked;
+
+        if (checked) {
+            this.ambitiOperativi = [...new Set([...this.ambitiOperativi, ambito])];
+            return;
+        }
+
+        this.ambitiOperativi = this.ambitiOperativi.filter((item) => item !== ambito);
     }
 
     aggiungiComunitaFiglia() {
@@ -746,6 +849,11 @@ export class OnboardingComunita {
             return;
         }
 
+        if (this.collaboraOrganizzazione && this.ambitiOperativi.length === 0) {
+            this.messaggio = 'Se collabori nell’organizzazione, seleziona almeno un ambito operativo.';
+            return;
+        }
+
         if (this.isPreview) {
             this.messaggio = 'Simulazione completata';
             return;
@@ -770,6 +878,18 @@ export class OnboardingComunita {
             isCatechista: this.isCatechista === true,
             comunitaFiglieAssociate: this.isCatechista === true ? this.comunitaFiglieAssociate : []
         });
+
+        localStorage.setItem('onboardingUserProfile', JSON.stringify({
+            ruoloComunitario: this.ruoloComunitario,
+            collaboraOrganizzazione: this.collaboraOrganizzazione,
+            ambitiOperativi: this.collaboraOrganizzazione ? this.ambitiOperativi : [],
+            permessiStato: this.permessiStato,
+            isCatechista: this.isCatechista === true,
+            communityPreview: this.previewComunita,
+            savedAt: new Date().toISOString()
+        }));
+
+        localStorage.setItem('onboardingCompleted', 'true');
 
         this.router.navigateByUrl('/gestionale-cn/dashboard', { replaceUrl: true });
     }
