@@ -144,21 +144,40 @@ import {
                 <div class="workspace">
                     <aside class="list-panel">
                         <div class="panel-title">
-                            <strong>{{ richieste.length }} richieste</strong>
+                            <strong>Richieste strutture</strong>
                             <span>{{ senderMailbox }}</span>
                         </div>
 
-                        @for (richiesta of richieste; track richiesta.id) {
-                            <button type="button" class="request-row" [class.active]="selected.id === richiesta.id" (click)="select(richiesta)">
-                                <span class="code">{{ richiesta.codiceRichiesta }}</span>
-                                <strong>{{ getStrutturaLabel(richiesta.strutturaId) }}</strong>
-                                <span>{{ getConvivenzaLabel(richiesta.convivenzaId) }}</span>
-                                <span>{{ richiesta.comunitaCoinvolte.join(', ') }}</span>
-                                <span class="row-bottom">
-                                    <span class="status-badge" [ngClass]="getStatoClass(richiesta.stato)">{{ richiesta.stato }}</span>
-                                    <small>Ultima risposta: {{ formatDateIt(selectedDate(richiesta.dataUltimaRisposta)) || 'Nessuna' }}</small>
-                                </span>
+                        <nav class="sezioni-tabs">
+                            <button type="button" class="tab-btn" [class.active]="sezioneAttiva === 'Bozze'" (click)="impostaSezione('Bozze')">
+                                <span>Bozze</span>
+                                <span class="tab-count">{{ bozze.length }}</span>
                             </button>
+                            <button type="button" class="tab-btn" [class.active]="sezioneAttiva === 'Inviate'" (click)="impostaSezione('Inviate')">
+                                <span>Inviate</span>
+                                <span class="tab-count">{{ inviate.length }}</span>
+                            </button>
+                            <button type="button" class="tab-btn" [class.active]="sezioneAttiva === 'Ricevute'" (click)="impostaSezione('Ricevute')">
+                                <span>Ricevute</span>
+                                <span class="tab-count">{{ ricevute.length }}</span>
+                            </button>
+                        </nav>
+
+                        @if (richiesteFiltrate.length === 0) {
+                            <div class="empty-tab">Nessuna richiesta in questa sezione.</div>
+                        } @else {
+                            @for (richiesta of richiesteFiltrate; track richiesta.id) {
+                                <button type="button" class="request-row" [class.active]="selected.id === richiesta.id" (click)="select(richiesta)">
+                                    <span class="code">{{ richiesta.codiceRichiesta }}</span>
+                                    <strong>{{ getStrutturaLabel(richiesta.strutturaId) }}</strong>
+                                    <span>{{ getConvivenzaLabel(richiesta.convivenzaId) }}</span>
+                                    <span>{{ richiesta.comunitaCoinvolte.join(', ') }}</span>
+                                    <span class="row-bottom">
+                                        <span class="status-badge" [ngClass]="getStatoClass(richiesta.stato)">{{ richiesta.stato }}</span>
+                                        <small>{{ formatDateIt(selectedDate(richiesta.dataUltimaRisposta)) || 'Nessuna risposta' }}</small>
+                                    </span>
+                                </button>
+                            }
                         }
                     </aside>
 
@@ -502,6 +521,54 @@ import {
                 padding: .25rem 0;
             }
             .flusso-breadcrumb span { color: #475569; font-size: .9rem; }
+            .sezioni-tabs {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: .3rem;
+                padding: .3rem;
+                background: #f1f5f9;
+                border-radius: 10px;
+            }
+            .tab-btn {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: .2rem;
+                padding: .55rem .4rem;
+                border-radius: 8px;
+                border: none;
+                background: transparent;
+                color: #64748b;
+                cursor: pointer;
+                font-size: .82rem;
+                font-weight: 700;
+                transition: background 120ms, color 120ms;
+                line-height: 1.2;
+            }
+            .tab-btn:hover { background: #e2e8f0; }
+            .tab-btn.active { background: #fff; color: #17335f; box-shadow: 0 1px 4px rgba(15,23,42,.1); }
+            .tab-count {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 1.4rem;
+                height: 1.4rem;
+                padding: 0 .3rem;
+                border-radius: 999px;
+                background: #e2e8f0;
+                color: #475569;
+                font-size: .72rem;
+                font-weight: 800;
+            }
+            .tab-btn.active .tab-count { background: #dbeafe; color: #1d4ed8; }
+            .empty-tab {
+                padding: 1rem;
+                text-align: center;
+                color: #94a3b8;
+                font-size: .88rem;
+                border: 1px dashed #e2e8f0;
+                border-radius: 10px;
+            }
             @media (max-width: 1100px) {
                 .workspace,
                 .organizer-summary,
@@ -550,6 +617,46 @@ export class RichiesteStrutture implements OnInit {
     strutturaBloccata = false;
     corpoModificato = false;
     form = this.creaFormVuoto();
+    sezioneAttiva: 'Bozze' | 'Inviate' | 'Ricevute' = this.computeDefaultSection();
+
+    get bozze(): RichiestaStruttura[] {
+        return this.richieste.filter((r) => r.stato === 'Bozza');
+    }
+
+    get inviate(): RichiestaStruttura[] {
+        return this.richieste.filter((r) => r.stato === 'Inviata');
+    }
+
+    get ricevute(): RichiestaStruttura[] {
+        return this.richieste.filter((r) => r.stato === 'Risposta ricevuta');
+    }
+
+    get richiesteFiltrate(): RichiestaStruttura[] {
+        switch (this.sezioneAttiva) {
+            case 'Bozze': return this.bozze;
+            case 'Inviate': return this.inviate;
+            case 'Ricevute': return this.ricevute;
+        }
+    }
+
+    impostaSezione(sezione: 'Bozze' | 'Inviate' | 'Ricevute') {
+        this.sezioneAttiva = sezione;
+        if (!this.richiesteFiltrate.some((r) => r.id === this.selected.id) && this.richiesteFiltrate.length > 0) {
+            this.select(this.richiesteFiltrate[0]);
+        }
+    }
+
+    private computeDefaultSection(): 'Bozze' | 'Inviate' | 'Ricevute' {
+        if (this.richieste.some((r) => r.stato === 'Risposta ricevuta')) return 'Ricevute';
+        if (this.richieste.some((r) => r.stato === 'Bozza')) return 'Bozze';
+        return 'Inviate';
+    }
+
+    private statoToSezione(stato: StatoRichiestaStruttura): 'Bozze' | 'Inviate' | 'Ricevute' {
+        if (stato === 'Bozza') return 'Bozze';
+        if (stato === 'Inviata') return 'Inviate';
+        return 'Ricevute';
+    }
 
     get isNuovaRoute() {
         return this.router.url.split('?')[0].endsWith('/richieste-strutture/nuova');
@@ -586,6 +693,7 @@ export class RichiesteStrutture implements OnInit {
             const trovata = this.service.getRichiestaById(richiestaId);
             if (trovata) {
                 this.select(trovata);
+                this.sezioneAttiva = this.statoToSezione(trovata.stato);
             }
             return;
         }
@@ -631,7 +739,7 @@ export class RichiesteStrutture implements OnInit {
         const richiesta = this.creaRichiestaDaForm();
         const aggiornata = this.service.inviaRichiesta(richiesta.id);
         this.refresh(aggiornata?.id ?? richiesta.id);
-        this.messaggioUtente = 'Richiesta segnata come inviata. L’invio reale tramite Microsoft Graph sarà collegato al backend.';
+        this.messaggioUtente = "Richiesta segnata come inviata. L'invio reale tramite Microsoft Graph sarà collegato al backend.";
         this.router.navigate(['/gestionale-cn/richieste-strutture']);
     }
 
@@ -642,7 +750,8 @@ export class RichiesteStrutture implements OnInit {
         }
 
         this.refresh(aggiornata.id);
-        this.messaggioUtente = 'Richiesta segnata come inviata. L’invio reale tramite Microsoft Graph sarà collegato al backend.';
+        this.messaggioUtente = "Richiesta segnata come inviata. L'invio reale tramite Microsoft Graph sarà collegato al backend.";
+        this.impostaSezione('Inviate');
     }
 
     private nomeRichiedente(): string {
