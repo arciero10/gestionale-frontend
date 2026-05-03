@@ -212,6 +212,8 @@ interface DashboardModule {
             .community-summary dl div.summary-tappa {
                 flex: 3 1 29rem;
                 min-width: min(100%, 29rem);
+                min-height: 3.8rem;
+                align-content: start;
             }
 
             .community-summary dt {
@@ -235,32 +237,36 @@ interface DashboardModule {
             }
 
             .tappa-readonly span {
+                flex: 1;
                 min-width: 0;
                 max-width: 100%;
-                padding: 0.7rem 0.85rem;
+                padding: 0.6rem 1rem;
                 border-radius: 10px;
                 color: #334155;
                 background: #eef2f7;
                 border: 1px solid #dbe3ec;
                 white-space: normal;
                 word-break: break-word;
-                line-height: 1.35;
-                font-weight: 500;
+                line-height: 1.4;
+                font-size: 0.95rem;
+                font-weight: 600;
             }
 
             .tappa-edit p-select {
-                flex: 1 1 21rem;
+                flex: 1 1 0;
+                min-width: 0;
             }
 
             .community-summary p-select {
                 display: block;
-                min-width: 22rem;
+                min-width: 0;
+                width: 100%;
                 max-width: 100%;
             }
 
             :host ::ng-deep .community-summary .p-select {
                 width: 100%;
-                min-height: 2.3rem;
+                min-height: 2.5rem;
                 border-radius: 10px;
                 background: rgba(255, 255, 255, 0.82);
             }
@@ -269,9 +275,10 @@ interface DashboardModule {
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                line-height: 1.2;
-                padding-top: 0.45rem;
-                padding-bottom: 0.45rem;
+                font-size: 0.9rem;
+                line-height: 1.3;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
             }
 
             :host ::ng-deep .dashboard-dropdown-panel {
@@ -440,10 +447,6 @@ interface DashboardModule {
                 .community-summary dl {
                     display: grid;
                     grid-template-columns: 1fr;
-                }
-
-                .community-summary p-select {
-                    min-width: 0;
                 }
 
                 .tappa-readonly,
