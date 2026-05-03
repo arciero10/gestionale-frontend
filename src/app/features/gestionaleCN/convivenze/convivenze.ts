@@ -74,10 +74,6 @@ interface ComunitaFigliaOption {
     imports: [CommonModule, FormsModule, ButtonModule, SelectModule, TagModule, DialogModule],
     template: `
         <section class="convivenze-page">
-            <header class="page-head">
-                <h1>Convivenze</h1>
-                <p>Gestisci le convivenze annuali, comunitarie e le richieste alle strutture.</p>
-            </header>
 
             @if (formNuovaConvivenzaVisibile) {
                 <section class="new-convivenza-box wizard-box">
@@ -603,7 +599,7 @@ export class Convivenze {
     ];
 
     convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : this.currentCommunity.isPilot ? this.creaConvivenzePilota() : [];
-    selected: Convivenza | null = this.convivenze[0] ?? null;
+    selected: Convivenza | null = this.convivenze.find(c => c.soggettoOrganizzatore === 'Comunità') ?? this.convivenze[0] ?? null;
 
     get convivenzeFiltrate() {
         return this.tipoFiltro ? this.convivenze.filter((convivenza) => convivenza.tipoConvivenza === this.tipoFiltro) : this.convivenze;
