@@ -146,6 +146,20 @@ const posto = (
 // Al select dell'indirizzo salvare placeId, indirizzoNormalizzato, latitudine e longitudine.
 
 export const POSTI_CONVIVENZA_MOCK: PostoConvivenza[] = [
+    {
+        ...posto(36, 'San Gaetano', 'Casa di convivenza', 'Santa Marinella', 'Lazio', 'Via Giunone Lucina 50, Santa Severa, Santa Marinella, 00058 Roma', '', 'Struttura disponibile a entrare nel gestionale. Ospita da anni comunità del Cammino e conferma interesse a continuare.'),
+        referente: 'Massimo Cattai',
+        zona: 'Santa Severa / Santa Marinella',
+        statoRelazione: 'Partner attivo',
+        statoDisponibilita: 'Disponibile',
+        valutazioneInterna: 'positivo',
+        lat: 42.0231,
+        lng: 11.9538,
+        latitudine: 42.0231,
+        longitudine: 11.9538,
+        storicoConvivenze: ['Comunità del Cammino (anni precedenti)'],
+        servizi: { camere: true, salaIncontri: true, cucina: true, parcheggio: true, accessibilita: false, spazioBambini: false }
+    },
     posto(1, 'Ancelle della Carità', 'Istituto religioso', 'Roma', 'Lazio', 'Via del Casaletto 538, Roma', 'info@casaperferie-ancelledelsantuario.com; pensioneancelle@virgilio.it', 'Da verificare contatti e disponibilità.'),
     posto(2, 'Benedettine Missionarie di Tutzing', 'Istituto religioso', 'Roma', 'Lazio', 'Via dei Bevilacqua 60, Roma', 'casaroma@osb-tutzing.it', 'Da verificare contatti e disponibilità.'),
     posto(3, 'Carmelitane del Divin Cuore di Gesù', 'Istituto religioso', 'Roma', 'Lazio', 'Via Trionfale 6157, Roma', 'congregazione@carmelitanedcj.it', 'Da verificare contatti e disponibilità.'),
