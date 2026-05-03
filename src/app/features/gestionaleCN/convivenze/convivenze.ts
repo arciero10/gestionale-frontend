@@ -381,37 +381,11 @@ interface ComunitaFigliaOption {
                                 <p>Questa comunità non ha ancora convivenze associate. Puoi crearne una dal form “Nuova convivenza”.</p>
                             </div>
                         </main>
-                    }
+                
                 </div>
             </section>
 
-            @if (currentUserIsEquipe) {
-                <section class="section-block">
-                    <div class="section-title">
-                        <div>
-                            <span>Equipe dei catechisti</span>
-                            <h2>Convivenze organizzate dall'equipe</h2>
-                        </div>
-                        <strong>{{ convivenzeOrganizzateEquipe.length }}</strong>
-                    </div>
-                    <div class="team-grid">
-                        @for (convivenza of convivenzeOrganizzateEquipe; track convivenza.id) {
-                            <article>
-                                <span class="tipo-badge tipo-tappa">{{ convivenza.tipoConvivenza }}</span>
-                                <h3>{{ convivenza.titolo }}</h3>
-                                <dl>
-                                    <div><dt>Equipe organizzatrice</dt><dd>{{ convivenza.equipeOrganizzatriceNome }}</dd></div>
-                                    <div><dt>Comunità destinataria</dt><dd>{{ convivenza.comunitaDestinatariaNome }}</dd></div>
-                                    <div><dt>Stato richiesta struttura</dt><dd>{{ convivenza.statoRichiestaStruttura }}</dd></div>
-                                    <div><dt>Date</dt><dd>{{ formatDateIt(convivenza.dataInizio) }} - {{ formatDateIt(convivenza.dataFine) }}</dd></div>
-                                    <div><dt>Struttura</dt><dd>{{ getPostoNome(convivenza) }}</dd></div>
-                                </dl>
-                            </article>
-                        }
-                    </div>
-                </section>
-            }
-        </section>
+           
     `,
     styles: [
         `
