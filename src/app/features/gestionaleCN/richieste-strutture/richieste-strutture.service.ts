@@ -248,7 +248,6 @@ export class RichiesteStruttureService {
     creaCorpoEmailBase(convivenzaId: number, comunitaCoinvolte: string[], note: string, richiedente?: { nome: string; ruolo: string; comunita: string }): string {
         const convivenza = this.getConvivenzaById(convivenzaId);
         const nome = richiedente?.nome || 'Da indicare';
-        const ruolo = richiedente?.ruolo || 'Da indicare';
         const comunita = richiedente?.comunita || 'Da indicare';
         const numGruppi = comunitaCoinvolte.length || 1;
 
@@ -282,8 +281,7 @@ Vi chiediamo cortesemente di indicarci la disponibilità della struttura per le 
 
 Cordiali saluti
 ${nome}
-${ruolo} – ${comunita}
-Eventi di Comunità`;
+${comunita}`;
     }
 
     private prossimoIdRichiesta(): number {

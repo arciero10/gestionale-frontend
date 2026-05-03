@@ -10,6 +10,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { GRAPH_SENDER_MAILBOX_PLACEHOLDER, RICHIESTE_STRUTTURE_API_CONTRACTS, codiceRichiestaRegexDocumentata } from './graph-email.placeholder';
 import { RichiesteStruttureService } from './richieste-strutture.service';
 import { getCurrentCommunity } from '../data/community-selection.storage';
+import { AuthService } from '@/auth/auth.service';
 import {
     CreaRichiestaStrutturaPayload,
     EsitoRispostaStruttura,
@@ -529,6 +530,7 @@ export class RichiesteStrutture implements OnInit {
     private readonly service = inject(RichiesteStruttureService);
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly authService = inject(AuthService);
     private readonly currentCommunity = getCurrentCommunity();
 
     readonly senderMailbox = GRAPH_SENDER_MAILBOX_PLACEHOLDER;
@@ -643,15 +645,22 @@ export class RichiesteStrutture implements OnInit {
         this.messaggioUtente = 'Richiesta segnata come inviata. L’invio reale tramite Microsoft Graph sarà collegato al backend.';
     }
 
+    private nomeRichiedente(): string {
+        const { firstName, lastName } = this.authService.state();
+        if (firstName && lastName) return `${firstName} ${lastName}`;
+        if (firstName) return firstName;
+        return 'Da indicare';
+    }
+
     aggiornaCorpoDaSelezioni(force = false) {
         if (this.corpoModificato && !force) {
             return;
         }
 
         const richiedente = {
-            nome: 'Da indicare',
-            ruolo: 'Da indicare',
-            comunita: `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`.trim()
+            nome: this.nomeRichiedente(),
+            ruolo: '',
+            comunita: `${this.currentCommunity.nomeComunita} – ${this.currentCommunity.parrocchiaNome}`.trim()
         };
         this.form.corpoEmail = this.service.creaCorpoEmailBase(this.form.convivenzaId ?? 0, this.parseComunitaCoinvolte(), '', richiedente);
     }
@@ -738,9 +747,9 @@ export class RichiesteStrutture implements OnInit {
         const strutturaId = this.struttureOptions[0]?.id ?? null;
         const codiceRichiesta = this.service.generaCodiceRichiesta();
         const richiedente = {
-            nome: 'Da indicare',
-            ruolo: 'Da indicare',
-            comunita: `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`.trim()
+            nome: this.nomeRichiedente(),
+            ruolo: '',
+            comunita: `${this.currentCommunity.nomeComunita} – ${this.currentCommunity.parrocchiaNome}`.trim()
         };
 
         return {

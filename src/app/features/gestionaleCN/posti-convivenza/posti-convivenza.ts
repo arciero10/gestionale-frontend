@@ -20,6 +20,7 @@ import { DEMO_POSTI } from '../../demo/demo.mock';
 import { RichiesteStruttureService } from '../richieste-strutture/richieste-strutture.service';
 import { formatDateIt } from '../richieste-strutture/richieste-strutture.models';
 import { getCurrentCommunity } from '../data/community-selection.storage';
+import { AuthService } from '@/auth/auth.service';
 import { TIPI_CONVIVENZA_ANNUALE, TAPPE_UFFICIALI_CAMMINO } from '../data/tappe-cammino.mock';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
@@ -521,6 +522,7 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly richiesteService = inject(RichiesteStruttureService);
+    private readonly authService = inject(AuthService);
 
     @ViewChild('mapContainer') private mapContainer?: ElementRef<HTMLDivElement>;
 
@@ -716,6 +718,9 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     }
 
     private creaCorpoEmailDaBozza(bozza: ConvivenzaBozza, _posto: PostoConvivenza): string {
+        const { firstName, lastName } = this.authService.state();
+        const nome = firstName && lastName ? `${firstName} ${lastName}` : firstName ?? 'Da indicare';
+
         return `Gentili,
 
 con la presente chiediamo disponibilità presso la vostra struttura per una convivenza.
@@ -745,9 +750,8 @@ ${bozza.note || 'Da completare'}
 Vi chiediamo cortesemente di indicarci la disponibilità della struttura per le date indicate e, se disponibile, di fornirci un preventivo indicativo.
 
 Cordiali saluti
-Da indicare
-Da indicare – ${bozza.comunitaDestinatariaNome}
-Eventi di Comunità`;
+${nome}
+${this.comunitaNome}`;
     }
 
     toggleServizio(servizio: ServizioFiltro) {
