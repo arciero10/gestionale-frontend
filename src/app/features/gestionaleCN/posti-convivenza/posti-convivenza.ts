@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, inject, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -17,8 +17,24 @@ import {
     TipologiaPosto
 } from '../data/posti-convivenza.mock';
 import { DEMO_POSTI } from '../../demo/demo.mock';
+import { RichiesteStruttureService } from '../richieste-strutture/richieste-strutture.service';
+import { formatDateIt } from '../richieste-strutture/richieste-strutture.models';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
+
+interface ConvivenzaBozza {
+    id: number;
+    titolo: string;
+    tipoConvivenza: string;
+    comunitaDestinatariaNome: string;
+    dataInizio: string;
+    dataFine: string;
+    stato: string;
+    soggettoOrganizzatore: string;
+    equipeOrganizzatriceNome: string;
+    partecipantiPrevisti: number;
+    note: string;
+}
 
 @Component({
     selector: 'app-posti-convivenza',
@@ -36,6 +52,25 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                     <button pButton type="button" icon="pi pi-plus" label="Nuovo posto"></button>
                 </div>
             </header>
+
+            @if (convivenzaBozza) {
+                <div class="convivenza-ctx-box">
+                    <div class="ctx-info">
+                        <i class="pi pi-calendar"></i>
+                        <div>
+                            <span class="ctx-label">Stai scegliendo un posto per:</span>
+                            <strong>{{ convivenzaBozza.titolo }}</strong>
+                            <span>{{ convivenzaBozza.comunitaDestinatariaNome }} · {{ formatDateIt(convivenzaBozza.dataInizio) }} – {{ formatDateIt(convivenzaBozza.dataFine) }}</span>
+                        </div>
+                    </div>
+                    @if (postoPerRichiesta) {
+                        <div class="ctx-cta">
+                            <span><i class="pi pi-building"></i> <strong>{{ postoPerRichiesta.nome }}</strong> selezionato</span>
+                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="inviaRichiestaMock()"></button>
+                        </div>
+                    }
+                </div>
+            }
 
             <section class="stats">
                 <div><span>Totale posti</span><strong>{{ posti.length }}</strong></div>
@@ -66,7 +101,11 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                     <section class="list-panel">
                         <div class="result-count">{{ postiFiltrati().length }} strutture</div>
                         @for (posto of postiFiltrati(); track posto.id) {
-                            <button type="button" class="posto-item" [class.active]="posto.id === selected.id" (click)="select(posto, true)">
+                            <div role="button" tabindex="0" class="posto-item"
+                                [class.active]="posto.id === selected.id"
+                                [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
+                                (click)="select(posto, true)"
+                                (keydown.enter)="select(posto, true)">
                                 <span class="posto-title">{{ posto.nome }}</span>
                                 <span class="posto-meta">{{ posto.tipo }} · {{ posto.zona || posto.citta }}</span>
                                 <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
@@ -75,7 +114,18 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
                                     <span class="local-badge">{{ posto.tipo }}</span>
                                     <span class="local-badge" [ngClass]="getDisponibilitaClass(posto.statoDisponibilita)">{{ posto.statoDisponibilita }}</span>
                                 </span>
-                            </button>
+                                @if (convivenzaBozza) {
+                                    <button type="button" class="seleziona-btn"
+                                        [class.selezionato]="postoPerRichiesta?.id === posto.id"
+                                        (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
+                                        @if (postoPerRichiesta?.id === posto.id) {
+                                            <i class="pi pi-check"></i> Selezionato
+                                        } @else {
+                                            Seleziona posto
+                                        }
+                                    </button>
+                                }
+                            </div>
                         } @empty {
                             <div class="empty-state">Nessun posto corrisponde ai filtri selezionati.</div>
                         }
@@ -130,7 +180,12 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
 
                         <div class="actions">
                             <button pButton type="button" label="Dettaglio" icon="pi pi-info-circle" outlined></button>
-                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="apriNuovaRichiesta(selected)"></button>
+                            @if (convivenzaBozza) {
+                                <button pButton type="button" label="Seleziona e invia richiesta" icon="pi pi-send"
+                                    (click)="selezionaPerRichiesta(selected); inviaRichiestaMock()"></button>
+                            } @else {
+                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="apriNuovaRichiesta(selected)"></button>
+                            }
                             @if (selected.googleMapsUrl) {
                                 <a pButton [href]="selected.googleMapsUrl" target="_blank" rel="noopener" icon="pi pi-external-link" label="Apri in Google Maps" outlined></a>
                             }
@@ -287,6 +342,44 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
             .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.15rem; justify-content: flex-end; }
             .actions a,
             .actions button { min-height: 44px; }
+            .convivenza-ctx-box {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                flex-wrap: wrap;
+                padding: .85rem 1.1rem;
+                border-radius: 14px;
+                background: #eff6ff;
+                border: 1px solid #bfdbfe;
+            }
+            .ctx-info { display: flex; align-items: flex-start; gap: .75rem; }
+            .ctx-info .pi { color: #1d4ed8; font-size: 1.1rem; margin-top: .15rem; }
+            .ctx-info div { display: grid; gap: .2rem; }
+            .ctx-label { color: #1e40af; font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+            .ctx-info strong { color: #111827; font-size: 1rem; }
+            .ctx-info span:last-child { color: #475569; font-size: .88rem; }
+            .ctx-cta { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+            .ctx-cta span { color: #111827; font-size: .92rem; }
+            .seleziona-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: .35rem;
+                min-height: 34px;
+                padding: .35rem .75rem;
+                border-radius: 8px;
+                border: 1px solid #315f8f;
+                background: #fff;
+                color: #315f8f;
+                font-weight: 700;
+                font-size: .82rem;
+                cursor: pointer;
+                transition: background 120ms, color 120ms;
+            }
+            .seleziona-btn:hover { background: #eff6ff; }
+            .seleziona-btn.selezionato { background: #dcfce7; border-color: #16a34a; color: #166534; }
+            .posto-item.flusso-selezionato { border-color: #16a34a; background: #f0fdf4; }
+
             @media (max-width: 1200px) {
                 .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
                 .map-layout { grid-template-columns: 1fr; }
@@ -311,9 +404,10 @@ type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parc
         `
     ]
 })
-export class PostiConvivenza implements AfterViewInit, OnDestroy {
+export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly richiesteService = inject(RichiesteStruttureService);
 
     @ViewChild('mapContainer') private mapContainer?: ElementRef<HTMLDivElement>;
 
@@ -339,6 +433,11 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy {
     serviziSelezionati: ServizioFiltro[] = [];
     selected = this.posti[0];
 
+    readonly formatDateIt = formatDateIt;
+
+    convivenzaBozza: ConvivenzaBozza | null = null;
+    postoPerRichiesta: PostoConvivenza | null = null;
+
     private map: L.Map | null = null;
     private markerLayer: L.LayerGroup | null = null;
 
@@ -349,6 +448,21 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy {
 
     get mappaRoute() {
         return this.isDemo ? '/demo/posti-convivenza/mappa' : '/gestionale-cn/posti-convivenza/mappa';
+    }
+
+    ngOnInit() {
+        const param = this.route.snapshot.queryParamMap.get('convivenzaId');
+        if (param) {
+            const id = Number(param);
+            const raw = localStorage.getItem(`bozza-convivenza-${id}`);
+            if (raw) {
+                try {
+                    this.convivenzaBozza = JSON.parse(raw) as ConvivenzaBozza;
+                } catch {
+                    this.convivenzaBozza = null;
+                }
+            }
+        }
     }
 
     ngAfterViewInit() {
@@ -367,6 +481,70 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy {
 
     apriNuovaRichiesta(posto: PostoConvivenza) {
         this.router.navigate(['/gestionale-cn/richieste-strutture/nuova'], { queryParams: { strutturaId: posto.id } });
+    }
+
+    selezionaPerRichiesta(posto: PostoConvivenza) {
+        this.postoPerRichiesta = posto;
+        this.select(posto, true);
+    }
+
+    inviaRichiestaMock() {
+        if (!this.convivenzaBozza || !this.postoPerRichiesta) {
+            return;
+        }
+
+        const bozza = this.convivenzaBozza;
+        const posto = this.postoPerRichiesta;
+
+        const corpoEmail = this.creaCorpoEmailDaBozza(bozza, posto);
+
+        const richiesta = this.richiesteService.creaRichiesta({
+            convivenzaId: bozza.id,
+            strutturaId: posto.id,
+            comunitaCoinvolte: [bozza.comunitaDestinatariaNome],
+            oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
+            corpoEmail,
+            soggettoOrganizzatore: bozza.soggettoOrganizzatore,
+            equipeOrganizzatriceNome: bozza.equipeOrganizzatriceNome,
+            comunitaDestinatariaNome: bozza.comunitaDestinatariaNome
+        });
+
+        localStorage.setItem(`richiesta-struttura-${richiesta.id}`, JSON.stringify(richiesta));
+
+        const convivenzaAggiornata: ConvivenzaBozza = { ...bozza, stato: 'In richiesta' };
+        localStorage.setItem(`bozza-convivenza-${bozza.id}`, JSON.stringify(convivenzaAggiornata));
+
+        const basePath = this.isDemo ? '/demo' : '/gestionale-cn';
+        this.router.navigate([`${basePath}/richieste-strutture`], { queryParams: { richiestaId: richiesta.id } });
+    }
+
+    private creaCorpoEmailDaBozza(bozza: ConvivenzaBozza, posto: PostoConvivenza): string {
+        const equipe = bozza.equipeOrganizzatriceNome
+            ? `\nEquipe organizzatrice:\n${bozza.equipeOrganizzatriceNome}\n`
+            : '';
+        return `Gentili responsabili della struttura ${posto.nome},
+
+con la presente chiediamo disponibilità per una convivenza.
+
+Organizzata da:
+${bozza.soggettoOrganizzatore || 'Comunità'}
+${equipe}
+Comunità destinataria:
+${bozza.comunitaDestinatariaNome}
+
+Date:
+dal ${formatDateIt(bozza.dataInizio)} al ${formatDateIt(bozza.dataFine)}
+
+Numero indicativo partecipanti:
+${bozza.partecipantiPrevisti ?? 'Da completare'}
+
+Note:
+${bozza.note || 'Nessuna nota aggiuntiva.'}
+
+Restiamo in attesa di un vostro riscontro.
+
+Cordiali saluti
+Eventi di Comunità`;
     }
 
     toggleServizio(servizio: ServizioFiltro) {

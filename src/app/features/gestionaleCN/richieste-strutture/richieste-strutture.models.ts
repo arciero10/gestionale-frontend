@@ -51,6 +51,9 @@ export interface CreaRichiestaStrutturaPayload {
     codiceRichiesta?: string;
     oggettoPersonalizzato: string;
     corpoEmail: string;
+    soggettoOrganizzatore?: string;
+    equipeOrganizzatriceNome?: string;
+    comunitaDestinatariaNome?: string;
 }
 
 export interface RichiestaStrutturaOption {
