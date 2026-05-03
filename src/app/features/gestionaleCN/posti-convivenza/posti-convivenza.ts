@@ -518,19 +518,10 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
         this.router.navigate([`${basePath}/richieste-strutture`], { queryParams: { richiestaId: richiesta.id } });
     }
 
-    private creaCorpoEmailDaBozza(bozza: ConvivenzaBozza, posto: PostoConvivenza): string {
-        const equipe = bozza.equipeOrganizzatriceNome
-            ? `\nEquipe organizzatrice:\n${bozza.equipeOrganizzatriceNome}\n`
-            : '';
-        return `Gentili responsabili della struttura ${posto.nome},
+    private creaCorpoEmailDaBozza(bozza: ConvivenzaBozza, _posto: PostoConvivenza): string {
+        return `Gentili,
 
-con la presente chiediamo disponibilità per una convivenza.
-
-Organizzata da:
-${bozza.soggettoOrganizzatore || 'Comunità'}
-${equipe}
-Comunità destinataria:
-${bozza.comunitaDestinatariaNome}
+con la presente chiediamo disponibilità presso la vostra struttura per una convivenza.
 
 Date:
 dal ${formatDateIt(bozza.dataInizio)} al ${formatDateIt(bozza.dataFine)}
@@ -538,12 +529,27 @@ dal ${formatDateIt(bozza.dataInizio)} al ${formatDateIt(bozza.dataFine)}
 Numero indicativo partecipanti:
 ${bozza.partecipantiPrevisti ?? 'Da completare'}
 
-Note:
-${bozza.note || 'Nessuna nota aggiuntiva.'}
+Numero comunità/gruppi coinvolti:
+1
 
-Restiamo in attesa di un vostro riscontro.
+Bambini/ragazzi presenti:
+Da confermare
+
+Necessità principali:
+- Pernottamento: Da indicare
+- Pasti (colazione, pranzo, cena): Da indicare
+- Sala incontri: Da indicare
+- Spazi bambini/ragazzi: Da indicare
+- Parcheggio: Da indicare
+
+Note:
+${bozza.note || 'Da completare'}
+
+Vi chiediamo cortesemente di indicarci la disponibilità della struttura per le date indicate e, se disponibile, di fornirci un preventivo indicativo.
 
 Cordiali saluti
+Da indicare
+Da indicare – ${bozza.comunitaDestinatariaNome}
 Eventi di Comunità`;
     }
 

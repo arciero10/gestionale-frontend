@@ -26,15 +26,22 @@ import {
     imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, SelectModule, TagModule, TextareaModule],
     template: `
         <section class="richieste-page">
-            <header class="page-head">
-                <div>
-                    <h1>Richieste strutture</h1>
-                    <p>Prepara, invia e monitora le richieste di disponibilità alle strutture di accoglienza.</p>
+            @if (!richiestaIdFlusso) {
+                <header class="page-head">
+                    <div>
+                        <h1>Richieste strutture</h1>
+                        <p>Prepara, invia e monitora le richieste di disponibilità alle strutture di accoglienza.</p>
+                    </div>
+                    @if (!isNuovaRoute) {
+                        <button pButton type="button" icon="pi pi-plus" label="Nuova richiesta" (click)="apriNuovaRichiesta()"></button>
+                    }
+                </header>
+            } @else {
+                <div class="flusso-breadcrumb">
+                    <button pButton type="button" icon="pi pi-arrow-left" label="Torna all'elenco" severity="secondary" outlined (click)="tornaElenco()"></button>
+                    <span>Richiesta creata — rivedi i dettagli e invia quando sei pronto.</span>
                 </div>
-                @if (!isNuovaRoute) {
-                    <button pButton type="button" icon="pi pi-plus" label="Nuova richiesta" (click)="apriNuovaRichiesta()"></button>
-                }
-            </header>
+            }
 
             @if (messaggioUtente) {
                 <section class="action-message">
@@ -99,10 +106,16 @@ import {
                             <small>{{ getConvivenzaDescrizione(form.convivenzaId) }}</small>
                         </div>
 
-                        <div class="form-full organizer-summary">
-                            <div><span>Richiedente / organizzatore</span><strong>{{ getConvivenzaOrganizzatore(form.convivenzaId) }}</strong></div>
-                            <div><span>Equipe organizzatrice</span><strong>{{ getConvivenzaEquipe(form.convivenzaId) || 'Non prevista' }}</strong></div>
-                            <div><span>Comunità destinataria</span><strong>{{ getConvivenzaComunitaDestinataria(form.convivenzaId) }}</strong></div>
+                        <div class="form-full riepilogo-interno">
+                            <div class="riepilogo-header">
+                                <i class="pi pi-eye-slash"></i>
+                                <span>Riepilogo interno – non incluso nell'email</span>
+                            </div>
+                            <div class="organizer-summary">
+                                <div><span>Richiedente / organizzatore</span><strong>{{ getConvivenzaOrganizzatore(form.convivenzaId) }}</strong></div>
+                                <div><span>Equipe organizzatrice</span><strong>{{ getConvivenzaEquipe(form.convivenzaId) || 'Non prevista' }}</strong></div>
+                                <div><span>Comunità destinataria</span><strong>{{ getConvivenzaComunitaDestinataria(form.convivenzaId) }}</strong></div>
+                            </div>
                         </div>
 
                         <div>
@@ -421,6 +434,29 @@ import {
             .tech-note p { margin: 0; }
             .tech-note div { display: flex; flex-wrap: wrap; gap: .45rem; }
             .tech-note code { padding: .35rem .55rem; border-radius: 8px; background: #f1f5f9; color: #334155; }
+            .riepilogo-interno {
+                padding: .85rem;
+                border: 1px solid #fed7aa;
+                border-radius: 12px;
+                background: #fff7ed;
+            }
+            .riepilogo-header {
+                display: flex;
+                align-items: center;
+                gap: .5rem;
+                margin-bottom: .75rem;
+                color: #9a3412;
+                font-size: .82rem;
+                font-weight: 800;
+            }
+            .flusso-breadcrumb {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                flex-wrap: wrap;
+                padding: .25rem 0;
+            }
+            .flusso-breadcrumb span { color: #475569; font-size: .9rem; }
             @media (max-width: 1100px) {
                 .workspace,
                 .organizer-summary,
@@ -462,6 +498,7 @@ export class RichiesteStrutture implements OnInit {
     selected: RichiestaStruttura = this.richieste[0];
     messaggi: MessaggioRichiestaStruttura[] = this.service.getMessaggi(this.selected.id);
     formVisibile = false;
+    richiestaIdFlusso: number | null = null;
     messaggioUtente = '';
     comunitaCoinvolteTesto = `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`;
     strutturaBloccata = false;
@@ -485,6 +522,18 @@ export class RichiesteStrutture implements OnInit {
     }
 
     ngOnInit() {
+        const richiestaIdParam = this.route.snapshot.queryParamMap.get('richiestaId');
+        if (richiestaIdParam) {
+            const richiestaId = Number(richiestaIdParam);
+            this.richiestaIdFlusso = richiestaId;
+            this.richieste = this.service.getRichieste();
+            const trovata = this.service.getRichiestaById(richiestaId);
+            if (trovata) {
+                this.select(trovata);
+            }
+            return;
+        }
+
         const strutturaId = Number(this.route.snapshot.queryParamMap.get('strutturaId'));
         if (this.isNuovaRoute || strutturaId) {
             this.formVisibile = true;
@@ -504,6 +553,10 @@ export class RichiesteStrutture implements OnInit {
 
     annullaNuovaRichiesta() {
         this.router.navigate(['/gestionale-cn/richieste-strutture']);
+    }
+
+    tornaElenco() {
+        this.richiestaIdFlusso = null;
     }
 
     select(richiesta: RichiestaStruttura) {
@@ -541,7 +594,12 @@ export class RichiesteStrutture implements OnInit {
             return;
         }
 
-        this.form.corpoEmail = this.service.creaCorpoEmailBase(this.form.convivenzaId ?? 0, this.parseComunitaCoinvolte(), '');
+        const richiedente = {
+            nome: 'Da indicare',
+            ruolo: 'Da indicare',
+            comunita: `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`.trim()
+        };
+        this.form.corpoEmail = this.service.creaCorpoEmailBase(this.form.convivenzaId ?? 0, this.parseComunitaCoinvolte(), '', richiedente);
     }
 
     getConvivenzaLabel(id: number): string {
@@ -625,13 +683,18 @@ export class RichiesteStrutture implements OnInit {
         const convivenzaId = this.convivenzeOptions[0]?.id ?? null;
         const strutturaId = this.struttureOptions[0]?.id ?? null;
         const codiceRichiesta = this.service.generaCodiceRichiesta();
+        const richiedente = {
+            nome: 'Da indicare',
+            ruolo: 'Da indicare',
+            comunita: `${this.currentCommunity.nomeComunita} ${this.currentCommunity.parrocchiaNome}`.trim()
+        };
 
         return {
             codiceRichiesta,
             convivenzaId,
             strutturaId,
             oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
-            corpoEmail: this.service.creaCorpoEmailBase(convivenzaId ?? 0, this.parseComunitaCoinvolte(), '')
+            corpoEmail: this.service.creaCorpoEmailBase(convivenzaId ?? 0, this.parseComunitaCoinvolte(), '', richiedente)
         };
     }
 

@@ -245,33 +245,44 @@ export class RichiesteStruttureService {
         return this.getStrutturaById(id)?.email || 'email-struttura-da-completare@example.test';
     }
 
-    creaCorpoEmailBase(convivenzaId: number, comunitaCoinvolte: string[], note: string): string {
+    creaCorpoEmailBase(convivenzaId: number, comunitaCoinvolte: string[], note: string, richiedente?: { nome: string; ruolo: string; comunita: string }): string {
         const convivenza = this.getConvivenzaById(convivenzaId);
-        const equipe = convivenza?.equipeOrganizzatriceNome ? `\nEquipe organizzatrice:\n${convivenza.equipeOrganizzatriceNome}\n` : '';
-        const destinataria = convivenza?.comunitaDestinatariaNome ? `\nComunità destinataria:\n${convivenza.comunitaDestinatariaNome}\n` : '';
+        const nome = richiedente?.nome || 'Da indicare';
+        const ruolo = richiedente?.ruolo || 'Da indicare';
+        const comunita = richiedente?.comunita || 'Da indicare';
+        const numGruppi = comunitaCoinvolte.length || 1;
 
         return `Gentili,
 
-con la presente chiediamo disponibilità per una convivenza.
+con la presente chiediamo disponibilità presso la vostra struttura per una convivenza.
 
-Organizzata da:
-${convivenza?.soggettoOrganizzatore ?? 'Comunità'}
-${equipe}${destinataria}
 Date:
-dal ${formatDateIt(convivenza?.dataInizio) || 'da completare'} al ${formatDateIt(convivenza?.dataFine) || 'da completare'}
-
-Comunità coinvolte:
-${comunitaCoinvolte.join(', ')}
+dal ${formatDateIt(convivenza?.dataInizio) || 'Da completare'} al ${formatDateIt(convivenza?.dataFine) || 'Da completare'}
 
 Numero indicativo partecipanti:
-${convivenza?.partecipanti ?? 'da completare'}
+${convivenza?.partecipanti ?? 'Da completare'}
+
+Numero comunità/gruppi coinvolti:
+${numGruppi}
+
+Bambini/ragazzi presenti:
+Da confermare
+
+Necessità principali:
+- Pernottamento: Da indicare
+- Pasti (colazione, pranzo, cena): Da indicare
+- Sala incontri: Da indicare
+- Spazi bambini/ragazzi: Da indicare
+- Parcheggio: Da indicare
 
 Note:
 ${note || 'Da completare'}
 
-Restiamo in attesa di un vostro riscontro.
+Vi chiediamo cortesemente di indicarci la disponibilità della struttura per le date indicate e, se disponibile, di fornirci un preventivo indicativo.
 
 Cordiali saluti
+${nome}
+${ruolo} – ${comunita}
 Eventi di Comunità`;
     }
 
