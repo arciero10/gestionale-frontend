@@ -633,6 +633,9 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
         this.formNote = '';
         this.formValidationError = '';
         this.showFormConvivenza = true;
+        setTimeout(() => {
+            document.querySelector('.form-convivenza-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
     }
 
     chiudiFormConvivenza() {
