@@ -110,15 +110,12 @@ interface DashboardModule {
                 position: relative;
                 width: 100%;
                 min-height: 100vh;
-                padding: clamp(1rem, 2.5vw, 2rem);
+                padding: 5rem clamp(1rem, 2.5vw, 2rem) clamp(1rem, 2.5vw, 2rem);
                 display: flex;
                 align-items: center;
                 overflow: hidden;
                 isolation: isolate;
-                background-image: url('/assets/images/dashboard-bg.jpg');
-                background-size: cover;
-                background-position: center;
-                background-repeat: no-repeat;
+                background: transparent;
             }
 
             .dashboard-overlay {

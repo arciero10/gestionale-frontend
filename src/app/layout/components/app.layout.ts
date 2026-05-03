@@ -93,21 +93,21 @@ import { LayoutService } from '@/layout/service/layout.service';
 export class AppLayout implements OnDestroy {
     isDashboardRoute = signal(false);
     isOnboardingRoute = signal(false);
-    currentContentBackground = signal('/assets/images/dashboard-bg.jpg');
+    currentContentBackground = signal('/images/backgrounds/camino-neocatecumenal-jubileo-jovenes-roma-agosto-2025-02-1024x478-1.jpg');
     pageBackgroundStyle = computed(() => `url("${this.currentContentBackground()}")`);
 
     private readonly fallbackContentBackground = '/images/backgrounds/comunita-bg.jpg';
     private readonly contentBackgrounds = [
-        { path: '/gestionale-cn/dashboard', image: '/assets/images/dashboard-bg.jpg' },
-        { path: '/gestionale-cn/comunita', image: '/images/backgrounds/comunita-bg.jpg' },
+        { path: '/gestionale-cn/dashboard', image: '/images/backgrounds/camino-neocatecumenal-jubileo-jovenes-roma-agosto-2025-02-1024x478-1.jpg' },
+        { path: '/gestionale-cn/comunita', image: '/assets/images/dashboard-bg.jpg' },
         { path: '/gestionale-cn/convivenze', image: '/images/backgrounds/convivenze-bg.jpg' },
         { path: '/gestionale-cn/posti-convivenza', image: '/images/backgrounds/posti-convivenza-bg.jpg' },
         { path: '/gestionale-cn/richieste-strutture', image: '/images/backgrounds/richieste-strutture-bg.jpg' },
         { path: '/gestionale-cn/censimento-comunita', image: '/images/backgrounds/censimento-comunita-bg.jpg' },
         { path: '/gestionale-cn/onboarding-comunita-preview', image: '/images/backgrounds/onboarding-comunita-bg.jpg' },
         { path: '/gestionale-cn/onboarding-comunita', image: '/images/backgrounds/onboarding-comunita-bg.jpg' },
-        { path: '/gestionale-cn/faq', image: '/images/backgrounds/faq-bg.jpg' },
-        { path: '/gestionale-cn/privacy', image: '/images/backgrounds/faq-bg.jpg' },
+        { path: '/gestionale-cn/faq', image: '/images/backgrounds/Camino_Neocatecumenal_virgen_maria.jpg' },
+        { path: '/gestionale-cn/privacy', image: '/images/backgrounds/Camino_Neocatecumenal_virgen_maria.jpg' },
         { path: '/gestionale-cn/viaggi', image: '/images/backgrounds/convivenze-bg.jpg' }
     ];
 
@@ -189,7 +189,7 @@ export class AppLayout implements OnDestroy {
 
     private resolveContentBackground(url: string) {
         if (url === '/gestionale-cn' || url === '/gestionale-cn/dashboard') {
-            return '/assets/images/dashboard-bg.jpg';
+            return '/images/backgrounds/camino-neocatecumenal-jubileo-jovenes-roma-agosto-2025-02-1024x478-1.jpg';
         }
 
         return this.contentBackgrounds.find((item) => url === item.path || url.startsWith(`${item.path}/`))?.image ?? this.fallbackContentBackground;
