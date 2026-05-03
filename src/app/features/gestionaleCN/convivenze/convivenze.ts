@@ -75,17 +75,14 @@ interface ComunitaFigliaOption {
     template: `
         <section class="convivenze-page">
             <header class="page-head">
-                <div>
-                    <h1>Convivenze</h1>
-                    <p>Gestisci le convivenze annuali, comunitarie e le richieste alle strutture.</p>
-                </div>
-                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="apriNuovaConvivenza()"></button>
+                <h1>Convivenze</h1>
+                <p>Gestisci le convivenze annuali, comunitarie e le richieste alle strutture.</p>
             </header>
 
             @if (formNuovaConvivenzaVisibile) {
                 <section class="new-convivenza-box wizard-box">
                     <div class="form-intro">
-                        <span class="wizard-step-label">Step {{ wizardStep }} di 4</span>
+                        <span class="wizard-step-label">{{ getWizardStepLabel() }}</span>
                         <h2>Nuova convivenza</h2>
                         <p>{{ getWizardIntro() }}</p>
                     </div>
@@ -120,7 +117,7 @@ interface ComunitaFigliaOption {
                     @if (wizardStep === 2 && tipoFlussoNuova === 'comunita') {
                         <div>
                             <label for="tipoAnnuale">Tipo convivenza</label>
-                            <p-select inputId="tipoAnnuale" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiComunitaNuova" [(ngModel)]="nuovoTipoAnnuale" (ngModelChange)="onTipoComunitaChange()"></p-select>
+                            <p-select inputId="tipoAnnuale" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiComunitaNuova" [(ngModel)]="nuovoTipoAnnuale" (ngModelChange)="onTipoComunitaChange()" style="width:100%"></p-select>
                         </div>
 
                         <div>
@@ -163,8 +160,12 @@ interface ComunitaFigliaOption {
                         </div>
 
                         <footer>
-                            <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 1"></button>
-                            <button pButton type="button" label="Avanti: scegli posto" icon="pi pi-arrow-right" (click)="creaBozzaConvivenzaEAvanza()"></button>
+                            @if (currentUserCanCreateChildCommunityConvivenza) {
+                                <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 1"></button>
+                            } @else {
+                                <button pButton type="button" label="Chiudi" severity="secondary" outlined (click)="chiudiWizardNuovaConvivenza()"></button>
+                            }
+                            <button pButton type="button" label="Avanti: scegli posto" icon="pi pi-arrow-right" iconPos="right" (click)="creaBozzaConvivenzaEAvanza()"></button>
                         </footer>
                     }
 
@@ -221,7 +222,7 @@ interface ComunitaFigliaOption {
 
                         <footer>
                             <button pButton type="button" label="Indietro" severity="secondary" outlined (click)="wizardStep = 1"></button>
-                            <button pButton type="button" label="Avanti: scegli posto" icon="pi pi-arrow-right" (click)="creaBozzaConvivenzaEAvanza()"></button>
+                            <button pButton type="button" label="Avanti: scegli posto" icon="pi pi-arrow-right" iconPos="right" (click)="creaBozzaConvivenzaEAvanza()"></button>
                         </footer>
                     }
 
@@ -276,10 +277,13 @@ interface ComunitaFigliaOption {
                 </section>
             }
 
-            <section class="filters-card">
-                <label for="tipoConvivenzaFiltro">Filtra per tipo convivenza / evento</label>
-                <p-select inputId="tipoConvivenzaFiltro" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiConvivenza" [(ngModel)]="tipoFiltro" [showClear]="true" placeholder="Tutti i tipi"></p-select>
-            </section>
+            <div class="toolbar">
+                <div class="filter-group">
+                    <label for="tipoConvivenzaFiltro">Filtra per tipo convivenza / evento</label>
+                    <p-select inputId="tipoConvivenzaFiltro" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiConvivenza" [(ngModel)]="tipoFiltro" [showClear]="true" placeholder="Tutti i tipi"></p-select>
+                </div>
+                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="apriNuovaConvivenza()"></button>
+            </div>
 
             <section class="section-block">
                 <div class="section-title">
@@ -416,10 +420,10 @@ interface ComunitaFigliaOption {
     styles: [
         `
             .convivenze-page { display: grid; gap: 1.5rem; }
-            .page-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+            .page-head { display: block; }
             .page-head h1 { margin: 0 0 .35rem; font-size: 2rem; }
             .page-head p { margin: 0; color: #64748b; }
-            .new-convivenza-box, .filters-card, .section-block { background: rgba(255, 255, 255, .82); border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); padding: 1rem; backdrop-filter: blur(10px); }
+            .new-convivenza-box, .toolbar, .section-block { background: rgba(255, 255, 255, .82); border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 10px 26px rgba(15, 23, 42, .06); padding: 1rem; backdrop-filter: blur(10px); }
             .new-convivenza-box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: end; }
             .new-convivenza-box .form-intro, .new-convivenza-box footer, .new-convivenza-box .form-full { grid-column: 1 / -1; }
             .new-convivenza-box h2 { margin: 0 0 .25rem; font-size: 1.1rem; }
@@ -429,7 +433,8 @@ interface ComunitaFigliaOption {
             .new-convivenza-box label, .filters-card label { display: block; margin-bottom: .4rem; color: #475569; font-weight: 800; }
             .new-convivenza-box input, .new-convivenza-box p-select, .filters-card p-select { width: 100%; }
             .readonly-field { min-height: 42px; display: flex; align-items: center; padding: .55rem .75rem; border-radius: 10px; border: 1px solid #e5e7eb; background: #f8fafc; color: #334155; font-weight: 800; }
-            .filters-card { max-width: 25rem; }
+            .toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+            .filter-group { flex: 1; max-width: 22rem; }
             .section-title { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
             .section-title span { color: #64748b; font-weight: 800; font-size: .85rem; }
             .section-title h2 { margin: .15rem 0 0; }
@@ -500,7 +505,7 @@ interface ComunitaFigliaOption {
             .validation-message { padding: .75rem 1rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; font-weight: 800; }
 
             @media (max-width: 1024px) { .workspace, .detail-panel, .new-convivenza-box, .team-grid, .places-grid { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-            @media (max-width: 767px) { .page-head, .section-title { flex-direction: column; align-items: stretch; } .page-head button, .actions button, .new-convivenza-box footer button { min-height: 44px; width: 100%; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
+            @media (max-width: 767px) { .page-head, .section-title { flex-direction: column; align-items: stretch; } .toolbar { flex-direction: column; align-items: stretch; } .filter-group { max-width: 100%; } .toolbar button, .actions button, .new-convivenza-box footer button { min-height: 44px; width: 100%; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
         `
     ]
 })
@@ -640,8 +645,6 @@ export class Convivenze {
     }
 
     apriNuovaConvivenza() {
-        this.formNuovaConvivenzaVisibile = true;
-        this.wizardStep = 1;
         this.tipoFlussoNuova = null;
         this.nuovaCategoria = 'Annuale';
         this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
@@ -658,6 +661,15 @@ export class Convivenze {
         this.corpoEmailRichiesta = '';
         this.convivenzaWizardId = null;
         this.nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0]?.value ?? '';
+
+        if (!this.currentUserCanCreateChildCommunityConvivenza) {
+            this.tipoFlussoNuova = 'comunita';
+            this.wizardStep = 2;
+        } else {
+            this.wizardStep = 1;
+        }
+
+        this.formNuovaConvivenzaVisibile = true;
     }
 
     chiudiWizardNuovaConvivenza() {
@@ -723,6 +735,15 @@ export class Convivenze {
         const [year, month, day] = dateValue.split('-').map(Number);
         const date = new Date(year, month - 1, day);
         return date.getDay() === 0;
+    }
+
+    getWizardStepLabel() {
+        switch (this.wizardStep) {
+            case 1: return 'Passo 1 di 2';
+            case 2: return this.currentUserCanCreateChildCommunityConvivenza ? 'Passo 2 di 2' : 'Nuova convivenza';
+            case 3: return 'Scegli struttura';
+            case 4: return 'Bozza richiesta';
+        }
     }
 
     getWizardIntro() {
@@ -793,7 +814,12 @@ export class Convivenze {
         }
 
         this.selected = nuova;
-        this.wizardStep = 3;
+
+        localStorage.setItem(`bozza-convivenza-${nuova.id}`, JSON.stringify(nuova));
+
+        this.formNuovaConvivenzaVisibile = false;
+        const basePath = this.isDemo ? '/demo' : '/gestionale-cn';
+        this.router.navigate([`${basePath}/posti-convivenza`], { queryParams: { convivenzaId: nuova.id } });
     }
 
     selezionaPosto(postoId: number) {
