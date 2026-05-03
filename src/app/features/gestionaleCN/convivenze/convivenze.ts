@@ -373,19 +373,17 @@ interface ComunitaFigliaOption {
                                     <small>Google Maps sarà integrato in una fase successiva.</small>
                                 </div>
                             </aside>
-                        </main>
-                    } @else {
-                        <main class="detail-panel">
-                            <div class="detail-card empty-state">
-                                <h2>Nessuna convivenza ancora programmata</h2>
-                                <p>Questa comunità non ha ancora convivenze associate. Puoi crearne una dal form “Nuova convivenza”.</p>
-                            </div>
-                        </main>
-                
-                </div>
-            </section>
-
-           
+                              </main>
+                } @else {
+                    <main class="detail-panel">
+                        <div class="detail-card empty-state">
+                            <h2>Nessuna convivenza ancora programmata</h2>
+                            <p>Questa comunità non ha ancora convivenze associate. Puoi crearne una dal form “Nuova convivenza”.</p>
+                        </div>
+                    </main>
+                }
+            </div>
+        </section>
     `,
     styles: [
         `
