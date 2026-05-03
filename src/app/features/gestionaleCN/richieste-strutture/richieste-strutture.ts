@@ -12,6 +12,7 @@ import { RichiesteStruttureService } from './richieste-strutture.service';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import {
     CreaRichiestaStrutturaPayload,
+    EsitoRispostaStruttura,
     MessaggioRichiestaStruttura,
     RichiestaStruttura,
     StatoRichiestaStruttura,
@@ -176,6 +177,9 @@ import {
                                 <div><dt>Creazione</dt><dd>{{ formatDateIt(selected.dataCreazione) }}</dd></div>
                                 <div><dt>Invio</dt><dd>{{ formatDateIt(selected.dataInvio) || 'Non inviata' }}</dd></div>
                                 <div><dt>Ultima risposta</dt><dd>{{ formatDateIt(selected.dataUltimaRisposta) || 'Nessuna' }}</dd></div>
+                                @if (selected.esitoRisposta) {
+                                    <div><dt>Esito risposta</dt><dd><span class="status-badge" [ngClass]="getEsitoClass(selected.esitoRisposta)">{{ selected.esitoRisposta }}</span></dd></div>
+                                }
                                 <div><dt>Mailbox mittente futura</dt><dd>{{ senderMailbox }}</dd></div>
                             </dl>
 
@@ -572,18 +576,25 @@ export class RichiesteStrutture implements OnInit {
         switch (stato) {
             case 'Inviata':
                 return 'stato-inviata';
-            case 'RispostaRicevuta':
+            case 'Risposta ricevuta':
                 return 'stato-risposta';
-            case 'Disponibile':
-                return 'stato-disponibile';
-            case 'NonDisponibile':
-                return 'stato-non-disponibile';
-            case 'PreventivoRicevuto':
-                return 'stato-preventivo';
             case 'Confermata':
                 return 'stato-confermata';
             case 'Annullata':
                 return 'stato-annullata';
+            default:
+                return 'stato-bozza';
+        }
+    }
+
+    getEsitoClass(esito: EsitoRispostaStruttura): string {
+        switch (esito) {
+            case 'Disponibile':
+                return 'stato-disponibile';
+            case 'Non disponibile':
+                return 'stato-non-disponibile';
+            case 'Preventivo ricevuto':
+                return 'stato-preventivo';
             default:
                 return 'stato-bozza';
         }

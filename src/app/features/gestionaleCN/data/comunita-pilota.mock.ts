@@ -1,8 +1,8 @@
 export type RuoloComunitaPilota = 'Presbitero' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Ostiario' | 'Fratello';
 export type RuoloOperativoComunita = 'Responsabile' | 'Corresponsabile' | 'Cantore' | 'Ostiario' | 'Fratello';
-export type StatoMembroPilota = 'Attivo' | 'Temporaneamente assente' | 'Da contattare';
-export type AccessoAppPilota = 'Nessuno' | 'Invitato' | 'Attivo' | 'In attesa';
-export type ConsensoPrivacyPilota = 'Da inviare' | 'Inviato' | 'Da raccogliere' | 'Raccolto' | 'Negato' | 'Revocato';
+export type StatoMembroPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
+export type AccessoAppPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
+export type ConsensoPrivacyPilota = 'Da inviare' | 'Inviato' | 'Parziale' | 'Raccolto' | 'Revocato';
 
 export interface MembroComunitaPilota {
     id: number;
@@ -103,7 +103,7 @@ export const COMUNITA_PILOTA = {
 } as const;
 
 const baseMembro = {
-    accessoApp: 'Nessuno' as const,
+    accessoApp: 'Da invitare' as const,
     statoMembro: 'Attivo' as const,
     consensoPrivacyStato: 'Da inviare' as const,
     moduloPrivacyInviato: false,

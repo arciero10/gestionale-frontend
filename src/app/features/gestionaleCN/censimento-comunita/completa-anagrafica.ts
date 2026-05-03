@@ -154,11 +154,11 @@ export class CompletaAnagrafica {
 
         const totaleConsensi = this.unita.persone.length * 3;
         const consensiSelezionati = this.unita.persone.reduce((totale, persona) => totale + Number(persona.consensoInformativo) + Number(persona.consensoPrivacy) + Number(persona.consensoComunicazioni), 0);
-        const statoConsensi = consensiSelezionati === totaleConsensi ? 'Completo' : consensiSelezionati > 0 ? 'Parziale' : 'Da compilare';
+        const statoConsensi = consensiSelezionati === totaleConsensi ? 'Raccolto' : consensiSelezionati > 0 ? 'Parziale' : 'Da inviare';
         const aggiornata: UnitaCensimentoComunita = {
             ...this.unita,
-            statoInvito: 'Compilato',
-            statoAnagrafica: 'Completa',
+            statoInvito: 'Attivo',
+            statoAnagrafica: 'Attivo',
             statoConsensi,
             persone: this.unita.persone.map((persona) => ({ ...persona }))
         };

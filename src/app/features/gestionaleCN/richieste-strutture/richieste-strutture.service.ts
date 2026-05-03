@@ -83,7 +83,8 @@ export class RichiesteStruttureService {
             soggettoOrganizzatore: 'Comunità',
             equipeOrganizzatriceNome: '',
             comunitaDestinatariaNome: this.comunitaDestinatariaNome,
-            stato: 'RispostaRicevuta',
+            stato: 'Risposta ricevuta',
+            esitoRisposta: 'Da valutare',
             dataCreazione: '2026-04-22',
             dataInvio: '2026-04-22',
             dataUltimaRisposta: '2026-04-24'

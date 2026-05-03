@@ -131,6 +131,15 @@ export const FAQ_MOCK: FaqItem[] = [
         tag: ['privacy', 'informativa']
     },
     {
+        id: 15,
+        categoria: 'Convivenze',
+        domanda: 'Perché ci sono pochi stati nel gestionale?',
+        risposta: 'Per rendere i flussi più semplici e chiari. I dettagli vengono gestiti nelle note o negli esiti, senza moltiplicare inutilmente gli stati.',
+        visibilita: 'interna',
+        ordine: 10.5,
+        tag: ['stati', 'flussi', 'semplificazione']
+    },
+    {
         id: 11,
         categoria: 'Supporto',
         domanda: 'A chi posso scrivere per supporto?',

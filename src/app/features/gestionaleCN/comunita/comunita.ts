@@ -1106,9 +1106,9 @@ export class Comunita {
     ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Ostiario', 'Fratello'];
     ruoliForm = this.ruoliOperativi;
     ruoliFiltro: Exclude<RuoloComunitaPilota, 'Catechista'>[] = ['Presbitero', ...this.ruoliOperativi];
-    statiMembro: StatoMembro[] = ['Attivo', 'Temporaneamente assente', 'Da contattare'];
-    accessiApp: AccessoApp[] = ['Nessuno', 'Invitato', 'Attivo', 'In attesa'];
-    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Da raccogliere', 'Raccolto', 'Negato', 'Revocato'];
+    statiMembro: StatoMembro[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
+    accessiApp: AccessoApp[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
+    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Parziale', 'Raccolto', 'Revocato'];
     tipiUnitaEquipe: TipoUnitaEquipeCatechisti[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
     tipiInserimentoMembro: TipoUnitaMembroComunita[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
     parrocchieOptions = PARROCCHIE_MOCK;
@@ -1198,7 +1198,7 @@ export class Comunita {
     }
 
     get membriDaInviare() {
-        return this.membri.filter((membro) => membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Da raccogliere');
+        return this.membri.filter((membro) => membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Parziale');
     }
 
     get membriSelezionatiInvio() {
@@ -1516,8 +1516,10 @@ export class Comunita {
                 return 'success';
             case 'Invitato':
                 return 'info';
-            case 'In attesa':
+            case 'Da completare':
                 return 'warn';
+            case 'Non attivo':
+                return 'danger';
             default:
                 return 'secondary';
         }
@@ -1527,10 +1529,14 @@ export class Comunita {
         switch (stato) {
             case 'Attivo':
                 return 'success';
-            case 'Temporaneamente assente':
-                return 'warn';
-            default:
+            case 'Invitato':
                 return 'info';
+            case 'Da completare':
+                return 'warn';
+            case 'Non attivo':
+                return 'danger';
+            default:
+                return 'secondary';
         }
     }
 
@@ -1541,9 +1547,8 @@ export class Comunita {
             case 'Inviato':
                 return 'info';
             case 'Da inviare':
-            case 'Da raccogliere':
+            case 'Parziale':
                 return 'warn';
-            case 'Negato':
             case 'Revocato':
                 return 'danger';
             default:
@@ -1587,7 +1592,7 @@ export class Comunita {
             cognome: cognomePulito,
             nomeCompleto: `${nomePulito} ${cognomePulito}`.trim(),
             ruolo: 'Fratello',
-            accessoApp: 'Nessuno',
+            accessoApp: 'Da invitare',
             statoMembro: 'Attivo',
             consensoPrivacyStato: 'Da inviare',
             moduloPrivacyInviato: false,
@@ -1614,11 +1619,11 @@ export class Comunita {
             cognome: persona.cognome,
             nomeCompleto: `${persona.nome} ${persona.cognome}`.trim(),
             ruolo: 'Fratello',
-            accessoApp: unita.statoInvito === 'Inviato' ? 'Invitato' : 'Nessuno',
+            accessoApp: unita.statoInvito === 'Inviato' ? 'Invitato' : 'Da invitare',
             statoMembro: 'Attivo',
-            consensoPrivacyStato: unita.statoConsensi === 'Completo' ? 'Raccolto' : 'Da inviare',
+            consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da inviare',
             moduloPrivacyInviato: unita.statoInvito === 'Inviato',
-            moduloPrivacyRicevuto: unita.statoConsensi === 'Completo',
+            moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
             dataInvioModuloPrivacy: '',
             telefono: persona.telefono || unita.telefonoRiferimento,
             email: persona.email || unita.emailRiferimento,
@@ -1682,7 +1687,7 @@ export class Comunita {
             ruolo: 'Fratello',
             telefono: '',
             email: '',
-            accessoApp: 'Nessuno',
+            accessoApp: 'Da invitare',
             statoMembro: 'Attivo',
             consensoPrivacyStato: 'Da inviare',
             moduloPrivacyInviato: false,

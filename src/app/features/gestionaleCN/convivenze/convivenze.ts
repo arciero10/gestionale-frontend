@@ -18,8 +18,8 @@ import {
     isTipoConvivenzaCatechistica
 } from '../data/tappe-cammino.mock';
 
-type StatoConvivenza = 'Bozza' | 'In preparazione' | 'Richiesta inviata' | 'Confermata' | 'Conclusa';
-type StatoRichiestaStruttura = 'Non inviata' | 'In preparazione' | 'Inviata' | 'Confermata' | 'Rifiutata';
+type StatoConvivenza = 'Bozza' | 'In attesa approvazione' | 'Approvata' | 'In richiesta' | 'Confermata' | 'Annullata';
+type StatoRichiestaStruttura = 'Bozza' | 'Inviata' | 'Risposta ricevuta' | 'Confermata' | 'Annullata';
 
 interface Convivenza {
     id: number;
@@ -779,7 +779,7 @@ export class Convivenze {
             luogoTestuale: 'Luogo non ancora assegnato',
             citta: 'Da assegnare',
             note: this.nuoveNote.trim(),
-            statoRichiestaStruttura: 'Non inviata',
+            statoRichiestaStruttura: 'Bozza',
             aggregati: this.aggregatiVuoti()
         };
 
@@ -862,7 +862,7 @@ Pace.`;
 
         this.selected = {
             ...this.selected,
-            statoRichiestaStruttura: 'In preparazione'
+            statoRichiestaStruttura: 'Bozza'
         };
 
         this.convivenze = this.convivenze.map((convivenza) =>
@@ -899,10 +899,12 @@ Pace.`;
         switch (stato) {
             case 'Confermata':
                 return 'success';
-            case 'Richiesta inviata':
-            case 'In preparazione':
+            case 'In richiesta':
+            case 'Approvata':
                 return 'info';
-            case 'Conclusa':
+            case 'In attesa approvazione':
+                return 'warn';
+            case 'Annullata':
                 return 'secondary';
             default:
                 return 'warn';
@@ -930,23 +932,23 @@ Pace.`;
     private creaConvivenzePilota(): Convivenza[] {
         return [
             {
-                ...this.baseConvivenza(1, 'Passaggio 2° Scrutinio', 'Catechistica', '2° Scrutinio', 'Equipe dei catechisti', 'In preparazione'),
+                ...this.baseConvivenza(1, 'Passaggio 2° Scrutinio', 'Catechistica', '2° Scrutinio', 'Equipe dei catechisti', 'In attesa approvazione'),
                 equipeOrganizzatriceId: 1,
                 equipeOrganizzatriceNome: EQUIPE_CATECHISTI_PILOTA.nomeEquipe,
                 strutturaId: null,
                 dataInizio: '2027-03-12',
                 dataFine: '2027-03-14',
-                statoRichiestaStruttura: 'Non inviata',
+                statoRichiestaStruttura: 'Bozza',
                 note: 'Convivenza catechistica ricevuta dalla comunità figlia.'
             },
             {
                 ...this.baseConvivenza(2, 'Convivenza di Riporto', 'Annuale', 'Riporto', 'Comunità', 'Bozza'),
                 dataInizio: '2027-10-18',
                 dataFine: '2027-10-19',
-                statoRichiestaStruttura: 'In preparazione'
+                statoRichiestaStruttura: 'Bozza'
             },
             {
-                ...this.baseConvivenza(3, 'Convivenza di Pentecoste', 'Annuale', 'Pentecoste', 'Comunità', 'Richiesta inviata'),
+                ...this.baseConvivenza(3, 'Convivenza di Pentecoste', 'Annuale', 'Pentecoste', 'Comunità', 'In richiesta'),
                 strutturaId: 2,
                 dataInizio: '2027-05-22',
                 dataFine: '2027-05-24',
@@ -979,7 +981,7 @@ Pace.`;
                 luogoTestuale: convivenza.luogo,
                 citta: index === 2 ? 'Da assegnare' : DEMO_POSTI[index]?.citta ?? 'Roma',
                 note: 'Dato dimostrativo per la demo pubblica.',
-                statoRichiestaStruttura: index === 0 ? 'Confermata' : index === 1 ? 'Inviata' : 'Non inviata',
+                statoRichiestaStruttura: index === 0 ? 'Confermata' : index === 1 ? 'Inviata' : 'Bozza',
                 partecipantiPrevisti: 28 + index * 4,
                 partecipantiConfermati: 18 + index * 3
             };
@@ -1006,7 +1008,7 @@ Pace.`;
             luogoTestuale: 'Luogo non ancora assegnato',
             citta: 'Roma',
             note: '',
-            statoRichiestaStruttura: 'Non inviata',
+            statoRichiestaStruttura: 'Bozza',
             aggregati: { adulti: 30, bambini: 6, famiglieConBambini: 4, pastiSpeciali: 3, esigenzeAlloggio: 2, documentiRicevuti: 15, documentiRichiesti: 20, consensiMancanti: 2, consensiRaccolti: 34, consensiDaVerificare: 2, consensiNegatiRevocati: 0 }
         };
     }

@@ -9,15 +9,15 @@ export const DEMO_COMUNITA = {
 
 export const DEMO_MEMBRI = [
     { nome: 'Mario', cognome: 'Rossi', ruolo: 'Responsabile', stato: 'Attivo', accessoApp: 'Attivo', privacy: 'Raccolto' },
-    { nome: 'Lucia', cognome: 'Bianchi', ruolo: 'Catechista', stato: 'Attivo', accessoApp: 'Nessuno', privacy: 'Da raccogliere' },
-    { nome: 'Giuseppe', cognome: 'Verdi', ruolo: 'Cantore', stato: 'Da contattare', accessoApp: 'In attesa', privacy: 'Raccolto' },
-    { nome: 'Anna', cognome: 'Conti', ruolo: 'Fratello', stato: 'Attivo', accessoApp: 'Nessuno', privacy: 'Revocato' }
+    { nome: 'Lucia', cognome: 'Bianchi', ruolo: 'Catechista', stato: 'Attivo', accessoApp: 'Da invitare', privacy: 'Inviato' },
+    { nome: 'Giuseppe', cognome: 'Verdi', ruolo: 'Cantore', stato: 'Da invitare', accessoApp: 'Da completare', privacy: 'Raccolto' },
+    { nome: 'Anna', cognome: 'Conti', ruolo: 'Fratello', stato: 'Attivo', accessoApp: 'Da invitare', privacy: 'Revocato' }
 ] as const;
 
 export const DEMO_CONVIVENZE = [
     { titolo: 'Convivenza Inizio Corso demo', dataInizio: '2026-10-03', dataFine: '2026-10-04', stato: 'Confermata', luogo: 'Casa San Giuseppe', richiesta: 'Confermata', partecipanti: '32/38', tipoConvivenza: 'Inizio Corso' },
-    { titolo: 'Convivenza di Avvento', dataInizio: '2026-12-06', dataFine: '2026-12-08', stato: 'Richiesta inviata', luogo: 'Centro Fraternità', richiesta: 'Inviata', partecipanti: '24/35', tipoConvivenza: 'Riporto' },
-    { titolo: 'Passaggio demo 1° Scrutinio', dataInizio: '2027-03-14', dataFine: '2027-03-16', stato: 'Bozza', luogo: 'Da assegnare', richiesta: 'Non inviata', partecipanti: '18/40', tipoConvivenza: '1° Scrutinio' }
+    { titolo: 'Convivenza di Avvento', dataInizio: '2026-12-06', dataFine: '2026-12-08', stato: 'In richiesta', luogo: 'Centro Fraternità', richiesta: 'Inviata', partecipanti: '24/35', tipoConvivenza: 'Riporto' },
+    { titolo: 'Passaggio demo 1° Scrutinio', dataInizio: '2027-03-14', dataFine: '2027-03-16', stato: 'Bozza', luogo: 'Da assegnare', richiesta: 'Bozza', partecipanti: '18/40', tipoConvivenza: '1° Scrutinio' }
 ] as const;
 
 export const DEMO_POSTI = [

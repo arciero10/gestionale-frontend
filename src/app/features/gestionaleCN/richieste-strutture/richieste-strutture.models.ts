@@ -1,12 +1,15 @@
 export type StatoRichiestaStruttura =
     | 'Bozza'
     | 'Inviata'
-    | 'RispostaRicevuta'
-    | 'Disponibile'
-    | 'NonDisponibile'
-    | 'PreventivoRicevuto'
+    | 'Risposta ricevuta'
     | 'Confermata'
     | 'Annullata';
+
+export type EsitoRispostaStruttura =
+    | 'Da valutare'
+    | 'Disponibile'
+    | 'Non disponibile'
+    | 'Preventivo ricevuto';
 
 export type TipoMessaggioRichiestaStruttura = 'Inviato' | 'Ricevuto';
 
@@ -23,6 +26,7 @@ export interface RichiestaStruttura {
     equipeOrganizzatriceNome?: string;
     comunitaDestinatariaNome?: string;
     stato: StatoRichiestaStruttura;
+    esitoRisposta?: EsitoRispostaStruttura;
     dataCreazione: string;
     dataInvio: string | null;
     dataUltimaRisposta: string | null;

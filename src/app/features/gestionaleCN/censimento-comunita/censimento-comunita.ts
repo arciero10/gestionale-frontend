@@ -282,11 +282,11 @@ Eventi di Comunità`;
     }
 
     getInvitoSeverity(stato: string) {
-        return stato === 'Inviato' ? 'info' : stato === 'Compilato' ? 'success' : stato === 'Scaduto' ? 'danger' : 'secondary';
+        return stato === 'Attivo' ? 'success' : stato === 'Inviato' ? 'info' : stato === 'Da completare' ? 'warn' : 'secondary';
     }
 
     getConsensiSeverity(stato: string) {
-        return stato === 'Completo' ? 'success' : stato === 'Parziale' ? 'warn' : 'secondary';
+        return stato === 'Raccolto' ? 'success' : stato === 'Parziale' ? 'warn' : 'secondary';
     }
 
     private creaUnitaDaForm(): UnitaCensimentoComunita | null {
@@ -322,7 +322,7 @@ Eventi di Comunità`;
             telefonoRiferimento: telefono,
             statoInvito: this.unitaInModifica?.statoInvito ?? 'Da inviare',
             statoAnagrafica: this.unitaInModifica?.statoAnagrafica ?? 'Da completare',
-            statoConsensi: this.unitaInModifica?.statoConsensi ?? 'Da compilare',
+            statoConsensi: this.unitaInModifica?.statoConsensi ?? 'Da inviare',
             token: this.unitaInModifica?.token ?? '',
             linkInvito: this.unitaInModifica?.linkInvito ?? '',
             persone,

@@ -1,8 +1,8 @@
 import { TipoUnitaMembroComunita } from '../data/comunita-pilota.mock';
 
-export type StatoInvitoCensimento = 'Da inviare' | 'Inviato' | 'Compilato' | 'Scaduto';
-export type StatoAnagraficaCensimento = 'Da completare' | 'Completa';
-export type StatoConsensiCensimento = 'Da compilare' | 'Parziale' | 'Completo';
+export type StatoInvitoCensimento = 'Da inviare' | 'Inviato' | 'Da completare' | 'Attivo';
+export type StatoAnagraficaCensimento = 'Da completare' | 'Attivo';
+export type StatoConsensiCensimento = 'Da inviare' | 'Parziale' | 'Raccolto';
 
 export interface PersonaCensimento {
     id: number;
@@ -79,7 +79,7 @@ export function creaUnitaCensimentoVuota(id: number, tipoUnita: TipoUnitaMembroC
         telefonoRiferimento: '',
         statoInvito: 'Da inviare',
         statoAnagrafica: 'Da completare',
-        statoConsensi: 'Da compilare',
+        statoConsensi: 'Da inviare',
         token: '',
         linkInvito: '',
         persone: tipoUnita === 'Coppia' ? [creaPersona(1, '', ''), creaPersona(2, '', '')] : [creaPersona(1, '', '')],
