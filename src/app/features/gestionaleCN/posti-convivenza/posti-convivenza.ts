@@ -19,6 +19,8 @@ import {
 import { DEMO_POSTI } from '../../demo/demo.mock';
 import { RichiesteStruttureService } from '../richieste-strutture/richieste-strutture.service';
 import { formatDateIt } from '../richieste-strutture/richieste-strutture.models';
+import { getCurrentCommunity } from '../data/community-selection.storage';
+import { TIPI_CONVIVENZA_ANNUALE, TAPPE_UFFICIALI_CAMMINO } from '../data/tappe-cammino.mock';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -70,6 +72,59 @@ interface ConvivenzaBozza {
                         </div>
                     }
                 </div>
+            }
+
+            @if (showFormConvivenza && !convivenzaBozza) {
+                <section class="form-convivenza-inline">
+                    <div class="fci-header">
+                        <div class="fci-eyebrow"><i class="pi pi-calendar-plus"></i> Dati convivenza</div>
+                        <p>Stai per inviare una richiesta a <strong>{{ postoPerRichiesta?.nome }}</strong>. Compila i dati della convivenza per procedere.</p>
+                    </div>
+                    <div class="fci-grid">
+                        <div class="fci-field">
+                            <label>Chi organizza</label>
+                            <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="chiOrganizzaOptions" [(ngModel)]="formChiOrganizza"></p-select>
+                        </div>
+                        @if (hasComunitaFiglie) {
+                            <div class="fci-field">
+                                <label>Comunità destinataria</label>
+                                <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="comunitaFiglieOptions" [(ngModel)]="formComunitaDestinataria" placeholder="Seleziona comunità..."></p-select>
+                            </div>
+                        } @else {
+                            <div class="fci-field">
+                                <label>Comunità destinataria</label>
+                                <div class="fci-readonly">{{ comunitaNome }}</div>
+                            </div>
+                        }
+                        <div class="fci-field fci-col-span-2">
+                            <label>Tipo convivenza</label>
+                            <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiConvivenzaForm" optionLabel="label" optionValue="value" optionDisabled="disabled" [(ngModel)]="formTipoConvivenza" placeholder="Seleziona tipo..."></p-select>
+                        </div>
+                        <div class="fci-field">
+                            <label>Data inizio</label>
+                            <input pInputText type="date" [(ngModel)]="formDataInizio" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Data fine</label>
+                            <input pInputText type="date" [(ngModel)]="formDataFine" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Numero partecipanti</label>
+                            <input pInputText type="number" min="1" [(ngModel)]="formPartecipanti" placeholder="Es. 35" />
+                        </div>
+                        <div class="fci-field fci-col-span-2">
+                            <label>Note (opzionale)</label>
+                            <input pInputText [(ngModel)]="formNote" placeholder="Eventuali necessità specifiche..." />
+                        </div>
+                    </div>
+                    @if (formValidationError) {
+                        <div class="fci-error"><i class="pi pi-exclamation-triangle"></i> {{ formValidationError }}</div>
+                    }
+                    <div class="fci-actions">
+                        <button pButton type="button" severity="secondary" outlined label="Annulla" (click)="chiudiFormConvivenza()"></button>
+                        <button pButton type="button" label="Salva e invia richiesta" icon="pi pi-send" (click)="salvaFormConvivenzaEProcedi()"></button>
+                    </div>
+                </section>
             }
 
             <section class="stats">
@@ -380,6 +435,62 @@ interface ConvivenzaBozza {
             .seleziona-btn.selezionato { background: #dcfce7; border-color: #16a34a; color: #166534; }
             .posto-item.flusso-selezionato { border-color: #16a34a; background: #f0fdf4; }
 
+            .form-convivenza-inline {
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                box-shadow: 0 10px 26px rgba(15,23,42,.06);
+                padding: 1.25rem 1.5rem;
+                display: grid;
+                gap: 1rem;
+            }
+            .fci-header { display: grid; gap: .35rem; }
+            .fci-eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: .45rem;
+                color: #1e40af;
+                font-size: .85rem;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+            .fci-header p { margin: 0; color: #475569; font-size: .9rem; }
+            .fci-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+            .fci-field { display: grid; gap: .4rem; }
+            .fci-field label { font-size: .82rem; font-weight: 700; color: #374151; }
+            .fci-field input,
+            .fci-field p-select { width: 100%; }
+            .fci-col-span-2 { grid-column: span 2; }
+            .fci-readonly {
+                min-height: 38px;
+                padding: .5rem .75rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                background: #f8fafc;
+                color: #64748b;
+                font-size: .9rem;
+                display: flex;
+                align-items: center;
+            }
+            .fci-error {
+                display: inline-flex;
+                align-items: center;
+                gap: .5rem;
+                padding: .55rem .75rem;
+                border-radius: 10px;
+                background: #fff7ed;
+                color: #9a3412;
+                font-weight: 700;
+                font-size: .88rem;
+            }
+            .fci-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: .75rem;
+                flex-wrap: wrap;
+            }
+            .fci-actions button { min-height: 44px; }
+
             @media (max-width: 1200px) {
                 .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
                 .map-layout { grid-template-columns: 1fr; }
@@ -387,6 +498,8 @@ interface ConvivenzaBozza {
                 .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             }
             @media (max-width: 767px) {
+                .fci-grid { grid-template-columns: 1fr; }
+                .fci-col-span-2 { grid-column: span 1; }
                 .page-head { flex-direction: column; align-items: stretch; }
                 .head-actions,
                 .actions { flex-direction: column; }
@@ -435,8 +548,32 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
 
     readonly formatDateIt = formatDateIt;
 
+    private readonly currentCommunity = getCurrentCommunity();
+    readonly comunitaNome = `${this.currentCommunity.nomeComunita} – ${this.currentCommunity.parrocchiaNome}`;
+    readonly hasComunitaFiglie = (this.currentCommunity.comunitaFiglieAssociate?.length ?? 0) > 0;
+    readonly comunitaFiglieOptions = (this.currentCommunity.comunitaFiglieAssociate ?? []).map(
+        (f) => `${f.nomeComunita} – ${f.parrocchiaNome}`
+    );
+    readonly chiOrganizzaOptions = ['Comunità', 'Equipe dei catechisti'];
+    readonly tipiConvivenzaForm = [
+        { label: '── Convivenze annuali ──', value: null, disabled: true },
+        ...TIPI_CONVIVENZA_ANNUALE.map((t) => ({ label: t, value: t, disabled: false })),
+        { label: '── Tappe catechistiche ──', value: null, disabled: true },
+        ...TAPPE_UFFICIALI_CAMMINO.map((t) => ({ label: t, value: t, disabled: false }))
+    ];
+
     convivenzaBozza: ConvivenzaBozza | null = null;
     postoPerRichiesta: PostoConvivenza | null = null;
+
+    showFormConvivenza = false;
+    formChiOrganizza = 'Comunità';
+    formComunitaDestinataria = '';
+    formTipoConvivenza: string | null = null;
+    formDataInizio = '';
+    formDataFine = '';
+    formPartecipanti: number | null = null;
+    formNote = '';
+    formValidationError = '';
 
     private map: L.Map | null = null;
     private markerLayer: L.LayerGroup | null = null;
@@ -480,7 +617,64 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     }
 
     apriNuovaRichiesta(posto: PostoConvivenza) {
-        this.router.navigate(['/gestionale-cn/richieste-strutture/nuova'], { queryParams: { strutturaId: posto.id } });
+        if (this.convivenzaBozza) {
+            this.selezionaPerRichiesta(posto);
+            this.inviaRichiestaMock();
+            return;
+        }
+        this.postoPerRichiesta = posto;
+        this.select(posto, true);
+        this.formChiOrganizza = 'Comunità';
+        this.formComunitaDestinataria = this.comunitaNome;
+        this.formTipoConvivenza = null;
+        this.formDataInizio = '';
+        this.formDataFine = '';
+        this.formPartecipanti = null;
+        this.formNote = '';
+        this.formValidationError = '';
+        this.showFormConvivenza = true;
+    }
+
+    chiudiFormConvivenza() {
+        this.showFormConvivenza = false;
+        this.postoPerRichiesta = null;
+        this.formValidationError = '';
+    }
+
+    salvaFormConvivenzaEProcedi() {
+        if (!this.formTipoConvivenza || !this.formDataInizio || !this.formDataFine || !this.formPartecipanti) {
+            this.formValidationError = 'Compila tipo convivenza, date e numero partecipanti.';
+            return;
+        }
+        if (this.formDataFine < this.formDataInizio) {
+            this.formValidationError = 'La data di fine deve essere uguale o successiva a quella di inizio.';
+            return;
+        }
+        this.formValidationError = '';
+
+        const id = Date.now();
+        const comunitaDestinatariaNome = this.hasComunitaFiglie
+            ? (this.formComunitaDestinataria || this.comunitaNome)
+            : this.comunitaNome;
+
+        const bozza: ConvivenzaBozza = {
+            id,
+            titolo: this.formTipoConvivenza,
+            tipoConvivenza: this.formTipoConvivenza,
+            comunitaDestinatariaNome,
+            dataInizio: this.formDataInizio,
+            dataFine: this.formDataFine,
+            stato: 'Bozza',
+            soggettoOrganizzatore: this.formChiOrganizza,
+            equipeOrganizzatriceNome: this.formChiOrganizza === 'Equipe dei catechisti' ? 'Equipe dei catechisti' : '',
+            partecipantiPrevisti: Number(this.formPartecipanti),
+            note: this.formNote
+        };
+
+        localStorage.setItem(`bozza-convivenza-${id}`, JSON.stringify(bozza));
+        this.convivenzaBozza = bozza;
+        this.showFormConvivenza = false;
+        this.inviaRichiestaMock();
     }
 
     selezionaPerRichiesta(posto: PostoConvivenza) {

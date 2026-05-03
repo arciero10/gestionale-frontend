@@ -26,17 +26,7 @@ import {
     imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, SelectModule, TagModule, TextareaModule],
     template: `
         <section class="richieste-page">
-            @if (!richiestaIdFlusso) {
-                <header class="page-head">
-                    <div>
-                        <h1>Richieste strutture</h1>
-                        <p>Prepara, invia e monitora le richieste di disponibilità alle strutture di accoglienza.</p>
-                    </div>
-                    @if (!isNuovaRoute) {
-                        <button pButton type="button" icon="pi pi-plus" label="Nuova richiesta" (click)="apriNuovaRichiesta()"></button>
-                    }
-                </header>
-            } @else {
+            @if (richiestaIdFlusso) {
                 <div class="flusso-breadcrumb">
                     <button pButton type="button" icon="pi pi-arrow-left" label="Torna all'elenco" severity="secondary" outlined (click)="tornaElenco()"></button>
                     <span>Richiesta creata — rivedi i dettagli e invia quando sei pronto.</span>
