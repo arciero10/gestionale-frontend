@@ -215,22 +215,51 @@ import {
                             </div>
 
                             <div class="messages">
-                                @for (messaggio of messaggi; track messaggio.id) {
-                                    <article class="message" [class.sent]="messaggio.tipo === 'Inviato'" [class.received]="messaggio.tipo === 'Ricevuto'">
-                                        <div class="message-meta">
-                                            <strong>{{ messaggio.tipo }}</strong>
-                                            <span>{{ formatDateIt(messaggio.dataMessaggio) }}</span>
-                                        </div>
-                                        <dl>
-                                            <div><dt>Da</dt><dd>{{ messaggio.mittente }}</dd></div>
-                                            <div><dt>A</dt><dd>{{ messaggio.destinatario }}</dd></div>
-                                        </dl>
-                                        <h3>{{ messaggio.oggetto }}</h3>
-                                        <p>{{ messaggio.corpo }}</p>
-                                        <small>Graph messageId: {{ messaggio.messageIdGraph }}</small>
-                                    </article>
-                                } @empty {
-                                    <div class="empty-state">Nessun messaggio collegato alla richiesta.</div>
+                                @if (messaggi.length === 0) {
+                                    @if (selected.stato === 'Bozza') {
+                                        <div class="empty-state"><i class="pi pi-file-edit"></i> Bozza in preparazione — nessun messaggio ancora inviato.</div>
+                                    } @else {
+                                        <div class="empty-state">Nessun messaggio collegato alla richiesta.</div>
+                                    }
+                                } @else {
+                                    @if (risposteStruttura.length) {
+                                        <div class="thread-label"><i class="pi pi-reply"></i> Risposte della struttura</div>
+                                        @for (messaggio of risposteStruttura; track messaggio.id) {
+                                            <article class="message received">
+                                                <div class="message-meta">
+                                                    <strong>Risposta struttura</strong>
+                                                    <span>{{ formatDateIt(messaggio.dataMessaggio) }}</span>
+                                                </div>
+                                                <dl>
+                                                    <div><dt>Da</dt><dd>{{ messaggio.mittente }}</dd></div>
+                                                    <div><dt>A</dt><dd>{{ messaggio.destinatario }}</dd></div>
+                                                </dl>
+                                                <h3>{{ messaggio.oggetto }}</h3>
+                                                <p>{{ messaggio.corpo }}</p>
+                                                <small>Graph messageId: {{ messaggio.messageIdGraph }}</small>
+                                            </article>
+                                        }
+                                    } @else {
+                                        <div class="empty-responses"><i class="pi pi-clock"></i><span>Nessuna risposta ricevuta dalla struttura.</span></div>
+                                    }
+                                    @if (richiestaInviata.length) {
+                                        <div class="thread-label thread-label-sent"><i class="pi pi-send"></i> Richiesta inviata</div>
+                                        @for (messaggio of richiestaInviata; track messaggio.id) {
+                                            <article class="message sent">
+                                                <div class="message-meta">
+                                                    <strong>Richiesta inviata</strong>
+                                                    <span>{{ formatDateIt(messaggio.dataMessaggio) }}</span>
+                                                </div>
+                                                <dl>
+                                                    <div><dt>Da</dt><dd>{{ messaggio.mittente }}</dd></div>
+                                                    <div><dt>A</dt><dd>{{ messaggio.destinatario }}</dd></div>
+                                                </dl>
+                                                <h3>{{ messaggio.oggetto }}</h3>
+                                                <p>{{ messaggio.corpo }}</p>
+                                                <small>Graph messageId: {{ messaggio.messageIdGraph }}</small>
+                                            </article>
+                                        }
+                                    }
                                 }
                             </div>
                         </section>
@@ -429,6 +458,31 @@ import {
             .message p { margin: 0; white-space: pre-wrap; line-height: 1.5; }
             .message small { display: block; margin-top: .6rem; color: #64748b; overflow-wrap: anywhere; }
             .empty-state { padding: 1rem; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b; text-align: center; }
+            .thread-label {
+                display: flex;
+                align-items: center;
+                gap: .45rem;
+                padding: .45rem .1rem;
+                color: #9a3412;
+                font-size: .78rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: .04em;
+                border-bottom: 1px solid #fed7aa;
+                margin-bottom: .25rem;
+            }
+            .thread-label-sent { color: #1d4ed8; border-bottom-color: #bfdbfe; margin-top: .75rem; }
+            .empty-responses {
+                display: flex;
+                align-items: center;
+                gap: .5rem;
+                padding: .65rem .85rem;
+                border-radius: 10px;
+                background: #f8fafc;
+                border: 1px dashed #cbd5e1;
+                color: #64748b;
+                font-size: .88rem;
+            }
             .tech-note { display: grid; gap: .75rem; }
             .tech-note h2,
             .tech-note p { margin: 0; }
@@ -519,6 +573,16 @@ export class RichiesteStrutture implements OnInit {
 
     get strutturaSelezionataLabel() {
         return this.strutturaSelezionata?.label ?? 'Struttura da verificare';
+    }
+
+    get risposteStruttura(): MessaggioRichiestaStruttura[] {
+        return [...this.messaggi]
+            .filter((m) => m.tipo === 'Ricevuto')
+            .sort((a, b) => b.dataMessaggio.localeCompare(a.dataMessaggio));
+    }
+
+    get richiestaInviata(): MessaggioRichiestaStruttura[] {
+        return this.messaggi.filter((m) => m.tipo === 'Inviato');
     }
 
     ngOnInit() {
