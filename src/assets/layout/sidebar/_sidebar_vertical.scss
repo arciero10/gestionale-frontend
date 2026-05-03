@@ -77,14 +77,18 @@
                 outline: 0 none;
                 color: var(--menuitem-text-color);
                 cursor: pointer;
-                padding: 0.75rem 1.5rem;
+                padding: 0.65rem 0.75rem;
+                margin: 0.125rem 0.75rem;
+                border-radius: 0.5rem;
                 transition:
                     background-color var(--transition-duration),
+                    color var(--transition-duration),
                     box-shadow var(--transition-duration);
 
                 .layout-menuitem-icon {
                     margin-right: 0.5rem;
                     color: var(--menuitem-text-color);
+                    transition: color var(--transition-duration);
                 }
 
                 .layout-submenu-toggler {
@@ -94,7 +98,13 @@
                 }
 
                 &.active-route {
-                    font-weight: 700;
+                    font-weight: 600;
+                    background-color: var(--active-menuitem-bg);
+                    color: var(--active-menuitem-text-color);
+
+                    .layout-menuitem-icon {
+                        color: var(--active-menuitem-text-color);
+                    }
                 }
 
                 &:hover {
@@ -108,32 +118,32 @@
 
                 li {
                     a {
-                        padding-left: 2.5rem;
+                        padding-left: 2rem;
                     }
 
                     li {
                         a {
-                            padding-left: 3rem;
+                            padding-left: 2.5rem;
                         }
 
                         li {
                             a {
-                                padding-left: 3.5rem;
+                                padding-left: 3rem;
                             }
 
                             li {
                                 a {
-                                    padding-left: 4rem;
+                                    padding-left: 3.5rem;
                                 }
 
                                 li {
                                     a {
-                                        padding-left: 5.5rem;
+                                        padding-left: 5rem;
                                     }
 
                                     li {
                                         a {
-                                            padding-left: 5rem;
+                                            padding-left: 4.5rem;
                                         }
                                     }
                                 }

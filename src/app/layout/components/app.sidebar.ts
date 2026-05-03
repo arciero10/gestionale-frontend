@@ -2,14 +2,13 @@ import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AppMenu } from './app.menu';
 import { LayoutService } from '@/layout/service/layout.service';
 import { RouterModule } from '@angular/router';
-import { AppMenuProfile } from './app.menuprofile';
 import { CommonModule } from '@angular/common';
 import { getCurrentCommunity } from '../../features/gestionaleCN/data/community-selection.storage';
 
 @Component({
     selector: '[app-sidebar]',
     standalone: true,
-    imports: [AppMenu, RouterModule, AppMenuProfile, CommonModule],
+    imports: [AppMenu, RouterModule, CommonModule],
     template: ` <div class="layout-sidebar" (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()">
         <div class="layout-sidebar-top">
             <a routerLink="/gestionale-cn/dashboard" class="flex items-center gap-3 no-underline text-white">
@@ -23,11 +22,9 @@ import { getCurrentCommunity } from '../../features/gestionaleCN/data/community-
             <div class="font-semibold text-surface-700 dark:text-surface-100">{{ nomeComunita }}</div>
             <div>{{ parrocchia }}</div>
         </div>
-        <div app-menu-profile *ngIf="menuProfilePosition === 'start'"></div>
         <div class="layout-menu-container">
             <div app-menu></div>
         </div>
-        <div app-menu-profile *ngIf="menuProfilePosition === 'end'"></div>
     </div>`
 })
 export class AppSidebar {
