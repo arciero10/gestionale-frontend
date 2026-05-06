@@ -22,6 +22,7 @@ import { formatDateIt } from '../richieste-strutture/richieste-strutture.models'
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { AuthService } from '@/auth/auth.service';
 import { TIPI_CONVIVENZA_ANNUALE, TAPPE_UFFICIALI_CAMMINO } from '../data/tappe-cammino.mock';
+import { CensimentoStrutturaMock, SAN_GAETANO_CENSIMENTO_LINK, SAN_GAETANO_CENSIMENTO_STORAGE_KEY } from '../../strutture/strutture-censimento.mock';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -38,6 +39,12 @@ interface ConvivenzaBozza {
     partecipantiPrevisti: number;
     note: string;
 }
+
+type PostoConCensimento = PostoConvivenza & {
+    censimento?: CensimentoStrutturaMock;
+    statoCensimento?: CensimentoStrutturaMock['statoCensimento'];
+    statoVerifica?: CensimentoStrutturaMock['statoVerifica'];
+};
 
 @Component({
     selector: 'app-posti-convivenza',
@@ -169,6 +176,12 @@ interface ConvivenzaBozza {
                                 <span class="badges">
                                     <span class="local-badge">{{ posto.tipo }}</span>
                                     <span class="local-badge" [ngClass]="getDisponibilitaClass(posto.statoDisponibilita)">{{ posto.statoDisponibilita }}</span>
+                                    @if (posto.statoCensimento) {
+                                        <span class="local-badge census-received">{{ posto.statoCensimento }}</span>
+                                    }
+                                    @if (posto.statoVerifica) {
+                                        <span class="local-badge census-check">{{ posto.statoVerifica }}</span>
+                                    }
                                 </span>
                                 @if (convivenzaBozza) {
                                     <button type="button" class="seleziona-btn"
@@ -203,6 +216,17 @@ interface ConvivenzaBozza {
                             <p-tag [value]="selected.statoDisponibilita" [severity]="getDisponibilitaSeverity(selected.statoDisponibilita)" />
                         </div>
 
+                        @if (selected.statoCensimento || selected.statoVerifica) {
+                            <div class="census-badges">
+                                @if (selected.statoCensimento) {
+                                    <span class="local-badge census-received">{{ selected.statoCensimento }}</span>
+                                }
+                                @if (selected.statoVerifica) {
+                                    <span class="local-badge census-check">{{ selected.statoVerifica }}</span>
+                                }
+                            </div>
+                        }
+
                         @if (!selected.email) {
                             <div class="email-warning"><i class="pi pi-exclamation-triangle"></i><span>Email struttura mancante.</span></div>
                         }
@@ -217,6 +241,32 @@ interface ConvivenzaBozza {
                             <div><dt>Stato verifica</dt><dd>{{ selected.statoDisponibilita }}</dd></div>
                             <div><dt>Coordinate</dt><dd>{{ selected.lat }}, {{ selected.lng }}</dd></div>
                         </dl>
+
+                        @if (selected.censimento) {
+                            <section class="census-detail">
+                                <h3>Dati censimento struttura</h3>
+                                <dl class="detail-grid">
+                                    <div><dt>Posti letto</dt><dd>{{ selected.censimento.capienzaPostiLetto ?? 'Da completare' }}</dd></div>
+                                    <div><dt>Camere</dt><dd>{{ selected.censimento.numeroCamere ?? 'Da completare' }}</dd></div>
+                                    <div><dt>Bagni</dt><dd>{{ displayValue(selected.censimento.bagni) }}</dd></div>
+                                    <div><dt>Sale incontri</dt><dd>{{ displayValue(selected.censimento.saleIncontri) }}</dd></div>
+                                    <div><dt>Refettorio</dt><dd>{{ booleanLabel(selected.censimento.refettorio) }}</dd></div>
+                                    <div><dt>Cappella</dt><dd>{{ booleanLabel(selected.censimento.cappella) }}</dd></div>
+                                    <div><dt>Parcheggio</dt><dd>{{ booleanLabel(selected.censimento.parcheggio) }}</dd></div>
+                                    <div><dt>Pasti disponibili</dt><dd>{{ displayValue(selected.censimento.pastiDisponibili) }}</dd></div>
+                                </dl>
+                            </section>
+                        }
+
+                        @if (isSanGaetano(selected)) {
+                            <section class="census-link-box">
+                                <div>
+                                    <span>Link censimento struttura</span>
+                                    <code>{{ censimentoSanGaetanoLink }}</code>
+                                </div>
+                                <button pButton type="button" label="Copia link" icon="pi pi-copy" outlined (click)="copyCensimentoLink()"></button>
+                            </section>
+                        }
 
                         <section class="notes">
                             <h3>Note</h3>
@@ -334,6 +384,8 @@ interface ConvivenzaBozza {
             .disp-disponibile { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
             .disp-verificare { background: #fef3c7; color: #92400e; border-color: #fde68a; }
             .disp-non-disponibile { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+            .census-received { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+            .census-check { background: #fef3c7; color: #92400e; border-color: #fde68a; }
             .empty-state {
                 border: 1px dashed #cbd5e1;
                 border-radius: 12px;
@@ -366,6 +418,12 @@ interface ConvivenzaBozza {
             .eyebrow { color: #64748b; font-weight: 800; font-size: .85rem; }
             .detail-head h2 { margin: .2rem 0 .25rem; font-size: 1.45rem; color: #111827; }
             .detail-head p { margin: 0; color: #64748b; }
+            .census-badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: .45rem;
+                margin: -.35rem 0 .9rem;
+            }
             .email-warning {
                 display: inline-flex;
                 gap: .5rem;
@@ -382,9 +440,30 @@ interface ConvivenzaBozza {
             .detail-grid dt { color: #64748b; font-size: .8rem; }
             .detail-grid dd { margin: .25rem 0 0; color: #111827; font-weight: 800; overflow-wrap: anywhere; }
             .notes h3,
-            .history h3 { margin: 1rem 0 .55rem; color: #111827; }
+            .history h3,
+            .census-detail h3 { margin: 1rem 0 .55rem; color: #111827; }
             .notes p,
             .history p { margin: 0; color: #4b5563; line-height: 1.5; }
+            .census-link-box {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: .85rem;
+                flex-wrap: wrap;
+                margin-top: 1rem;
+                padding: .85rem;
+                border: 1px solid #bfdbfe;
+                border-radius: 12px;
+                background: #eff6ff;
+            }
+            .census-link-box div { display: grid; gap: .25rem; min-width: 0; }
+            .census-link-box span { color: #1e40af; font-size: .82rem; font-weight: 850; }
+            .census-link-box code {
+                color: #0f172a;
+                font-weight: 850;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
             .history { display: block; }
             .history span {
                 display: inline-flex;
@@ -536,7 +615,8 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
         { key: 'accessibilita', label: 'Accessibilita' },
         { key: 'spazioBambini', label: 'Spazio bambini' }
     ];
-    readonly posti = this.isDemo ? this.creaPostiDemo() : POSTI_CONVIVENZA_MOCK;
+    readonly censimentoSanGaetanoLink = SAN_GAETANO_CENSIMENTO_LINK;
+    readonly posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : this.creaPostiConCensimento();
     readonly tipi = Array.from(new Set(this.posti.map((posto) => posto.tipo)));
     readonly zone = Array.from(new Set(this.posti.map((posto) => posto.zona || posto.citta))).sort();
 
@@ -546,7 +626,7 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     filtroTipo: TipoStrutturaMappa | null = null;
     filtroDisponibilita: StatoDisponibilitaPosto | null = null;
     serviziSelezionati: ServizioFiltro[] = [];
-    selected = this.posti[0];
+    selected: PostoConCensimento = this.posti[0];
 
     readonly formatDateIt = formatDateIt;
 
@@ -565,7 +645,7 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     ];
 
     convivenzaBozza: ConvivenzaBozza | null = null;
-    postoPerRichiesta: PostoConvivenza | null = null;
+    postoPerRichiesta: PostoConCensimento | null = null;
 
     showFormConvivenza = false;
     formChiOrganizza = 'Comunità';
@@ -613,12 +693,12 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
         this.map = null;
     }
 
-    select(posto: PostoConvivenza, centerMap = false) {
+    select(posto: PostoConCensimento, centerMap = false) {
         this.selected = posto;
         this.aggiornaMappa(centerMap);
     }
 
-    apriNuovaRichiesta(posto: PostoConvivenza) {
+    apriNuovaRichiesta(posto: PostoConCensimento) {
         if (this.convivenzaBozza) {
             this.selezionaPerRichiesta(posto);
             this.inviaRichiestaMock();
@@ -682,7 +762,7 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
         this.inviaRichiestaMock();
     }
 
-    selezionaPerRichiesta(posto: PostoConvivenza) {
+    selezionaPerRichiesta(posto: PostoConCensimento) {
         this.postoPerRichiesta = posto;
         this.select(posto, true);
     }
@@ -786,6 +866,18 @@ ${this.comunitaNome}`;
         return value && value.trim() ? value : 'Da completare';
     }
 
+    booleanLabel(value: boolean) {
+        return value ? 'Sì' : 'No';
+    }
+
+    isSanGaetano(posto: PostoConvivenza) {
+        return posto.nome.trim().toLowerCase() === 'san gaetano';
+    }
+
+    copyCensimentoLink() {
+        navigator.clipboard?.writeText(this.censimentoSanGaetanoLink);
+    }
+
     getDisponibilitaSeverity(stato: StatoDisponibilitaPosto) {
         switch (stato) {
             case 'Disponibile':
@@ -857,7 +949,58 @@ ${this.comunitaNome}`;
         });
     }
 
-    private creaPostiDemo(): PostoConvivenza[] {
+    private creaPostiConCensimento(): PostoConCensimento[] {
+        const censimento = this.readSanGaetanoCensimento();
+
+        return POSTI_CONVIVENZA_MOCK.map((posto) => {
+            if (!censimento || !this.isSanGaetano(posto)) {
+                return posto;
+            }
+
+            return {
+                ...posto,
+                nome: censimento.nomeStruttura || posto.nome,
+                tipo: 'Struttura di accoglienza',
+                indirizzo: censimento.indirizzo || posto.indirizzo,
+                indirizzoNormalizzato: censimento.indirizzo || posto.indirizzoNormalizzato,
+                citta: censimento.citta || posto.citta,
+                regione: censimento.regione || posto.regione,
+                zona: censimento.citta || posto.zona,
+                referente: censimento.referente || posto.referente,
+                telefono: censimento.telefono || posto.telefono,
+                email: censimento.email || posto.email,
+                capienza: censimento.capienzaPostiLetto ?? posto.capienza,
+                statoRelazione: 'Da verificare',
+                statoDisponibilita: 'Da verificare',
+                note: censimento.noteOrganizzative || posto.note,
+                servizi: {
+                    ...posto.servizi,
+                    camere: true,
+                    salaIncontri: Boolean(censimento.saleIncontri?.trim()),
+                    cucina: censimento.refettorio,
+                    parcheggio: censimento.parcheggio
+                },
+                censimento,
+                statoCensimento: censimento.statoCensimento,
+                statoVerifica: censimento.statoVerifica
+            };
+        });
+    }
+
+    private readSanGaetanoCensimento(): CensimentoStrutturaMock | null {
+        const raw = localStorage.getItem(SAN_GAETANO_CENSIMENTO_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(raw) as CensimentoStrutturaMock;
+        } catch {
+            return null;
+        }
+    }
+
+    private creaPostiDemo(): PostoConCensimento[] {
         return DEMO_POSTI.map((posto, index) => {
             const lat = 41.9 + index * 0.015;
             const lng = 12.49 + index * 0.015;

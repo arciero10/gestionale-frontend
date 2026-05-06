@@ -79,6 +79,10 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/gestionaleCN/censimento-comunita/completa-anagrafica').then((c) => c.CompletaAnagrafica)
   },
   {
+    path: 'strutture/censimento',
+    loadComponent: () => import('@/features/strutture/censimento-struttura').then((c) => c.CensimentoStruttura)
+  },
+  {
     path: 'gestionale-cn',
     component: AppLayout,
     canMatch: [gestionaleAuthGuard],

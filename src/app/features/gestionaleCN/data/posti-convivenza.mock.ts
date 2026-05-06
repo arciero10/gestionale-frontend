@@ -1,5 +1,5 @@
 export type TipologiaPosto = 'Casa di convivenza' | 'Parrocchia' | 'Istituto religioso' | 'Casa per ritiri' | 'Albergo / pensione' | 'Altro';
-export type TipoStrutturaMappa = 'Hotel' | 'Casa di convivenza' | 'Istituto' | 'Parrocchia';
+export type TipoStrutturaMappa = 'Hotel' | 'Casa di convivenza' | 'Istituto' | 'Parrocchia' | 'Struttura di accoglienza';
 export type StatoRelazione = 'Da verificare' | 'Censito internamente' | 'Interessato al progetto' | 'Partner attivo' | 'Non disponibile';
 export type StatoDisponibilitaPosto = 'Disponibile' | 'Da verificare' | 'Non disponibile';
 export type ValutazioneInterna = 'non valutato' | 'positivo' | 'da verificare' | 'problematico';
