@@ -22,7 +22,16 @@ import { formatDateIt } from '../richieste-strutture/richieste-strutture.models'
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { AuthService } from '@/auth/auth.service';
 import { TIPI_CONVIVENZA_ANNUALE, TAPPE_UFFICIALI_CAMMINO } from '../data/tappe-cammino.mock';
-import { CensimentoStrutturaMock, SAN_GAETANO_CENSIMENTO_LINK, SAN_GAETANO_CENSIMENTO_STORAGE_KEY } from '../../strutture/strutture-censimento.mock';
+import {
+    CensimentoStrutturaMock,
+    SAN_GAETANO_CENSIMENTO_LINK,
+    SAN_GAETANO_CENSIMENTO_STORAGE_KEY,
+    StatoSegnalazioneStruttura,
+    StatoVerificaStruttura,
+    StrutturaSegnalataMock,
+    readStruttureSegnalate,
+    writeStruttureSegnalate
+} from '../../strutture/strutture-censimento.mock';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -42,8 +51,11 @@ interface ConvivenzaBozza {
 
 type PostoConCensimento = PostoConvivenza & {
     censimento?: CensimentoStrutturaMock;
+    segnalazione?: StrutturaSegnalataMock;
     statoCensimento?: CensimentoStrutturaMock['statoCensimento'];
-    statoVerifica?: CensimentoStrutturaMock['statoVerifica'];
+    statoVerifica?: StatoVerificaStruttura;
+    statoSegnalazione?: StatoSegnalazioneStruttura;
+    pubblicata?: boolean;
 };
 
 @Component({
@@ -59,9 +71,36 @@ type PostoConCensimento = PostoConvivenza & {
                 </div>
                 <div class="head-actions">
                     <a pButton [routerLink]="mappaRoute" icon="pi pi-map" label="Vista mappa futura" outlined></a>
-                    <button pButton type="button" icon="pi pi-plus" label="Nuovo posto"></button>
+                    <button pButton type="button" icon="pi pi-plus" label="Segnala struttura" (click)="toggleSegnalaForm()"></button>
                 </div>
             </header>
+
+            @if (showSegnalaForm) {
+                <section class="signal-card">
+                    <div class="signal-head">
+                        <span>Proposta struttura</span>
+                        <h2>Segnala struttura</h2>
+                        <p>La segnalazione resta interna: il link di censimento verrà inviato solo dall'admin piattaforma.</p>
+                    </div>
+                    <div class="signal-grid">
+                        <label><span>Nome struttura</span><input pInputText [(ngModel)]="segnalazioneForm.nomeStruttura" /></label>
+                        <label><span>Città</span><input pInputText [(ngModel)]="segnalazioneForm.citta" /></label>
+                        <label class="signal-span-2"><span>Indirizzo</span><input pInputText [(ngModel)]="segnalazioneForm.indirizzo" /></label>
+                        <label><span>Regione</span><input pInputText [(ngModel)]="segnalazioneForm.regione" /></label>
+                        <label><span>Referente, se noto</span><input pInputText [(ngModel)]="segnalazioneForm.referente" /></label>
+                        <label><span>Telefono, se noto</span><input pInputText [(ngModel)]="segnalazioneForm.telefono" /></label>
+                        <label><span>Email, se nota</span><input pInputText type="email" [(ngModel)]="segnalazioneForm.email" /></label>
+                        <label class="signal-span-2"><span>Note</span><textarea rows="3" [(ngModel)]="segnalazioneForm.note"></textarea></label>
+                    </div>
+                    @if (segnalazioneErrore) {
+                        <div class="signal-error"><i class="pi pi-exclamation-triangle"></i>{{ segnalazioneErrore }}</div>
+                    }
+                    <footer>
+                        <button pButton type="button" severity="secondary" outlined label="Annulla" (click)="toggleSegnalaForm(false)"></button>
+                        <button pButton type="button" label="Salva segnalazione" icon="pi pi-save" (click)="salvaSegnalazione()"></button>
+                    </footer>
+                </section>
+            }
 
             @if (convivenzaBozza) {
                 <div class="convivenza-ctx-box">
@@ -143,6 +182,34 @@ type PostoConCensimento = PostoConvivenza & {
                 }
             </section>
 
+            @if (struttureSegnalate.length) {
+                <section class="reported-card">
+                    <div class="reported-title">
+                        <div>
+                            <span>Proposte non operative</span>
+                            <h2>Strutture segnalate dalla tua comunità</h2>
+                        </div>
+                        <strong>{{ struttureSegnalate.length }}</strong>
+                    </div>
+                    <div class="reported-grid">
+                        @for (struttura of struttureSegnalate; track struttura.id) {
+                            <article>
+                                <div>
+                                    <h3>{{ struttura.nomeStruttura }}</h3>
+                                    <p>{{ struttura.indirizzo || 'Indirizzo da completare' }} · {{ struttura.citta || 'Città da completare' }}</p>
+                                </div>
+                                <dl>
+                                    <div><dt>Referente</dt><dd>{{ displayValue(struttura.referente) }}</dd></div>
+                                    <div><dt>Stato</dt><dd>{{ struttura.stato }}</dd></div>
+                                    <div><dt>Data segnalazione</dt><dd>{{ formatDateIt(struttura.dataSegnalazione) }}</dd></div>
+                                </dl>
+                                <span class="local-badge census-check">Non operativa</span>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
             <div class="map-layout">
                 <aside class="sidebar-panel">
                     <section class="filters">
@@ -186,9 +253,12 @@ type PostoConCensimento = PostoConvivenza & {
                                 @if (convivenzaBozza) {
                                     <button type="button" class="seleziona-btn"
                                         [class.selezionato]="postoPerRichiesta?.id === posto.id"
+                                        [disabled]="!isPostoOperativo(posto)"
                                         (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
                                         @if (postoPerRichiesta?.id === posto.id) {
                                             <i class="pi pi-check"></i> Selezionato
+                                        } @else if (!isPostoOperativo(posto)) {
+                                            Non operativa
                                         } @else {
                                             Seleziona posto
                                         }
@@ -287,10 +357,10 @@ type PostoConCensimento = PostoConvivenza & {
                         <div class="actions">
                             <button pButton type="button" label="Dettaglio" icon="pi pi-info-circle" outlined></button>
                             @if (convivenzaBozza) {
-                                <button pButton type="button" label="Seleziona e invia richiesta" icon="pi pi-send"
+                                <button pButton type="button" label="Seleziona e invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)"
                                     (click)="selezionaPerRichiesta(selected); inviaRichiestaMock()"></button>
                             } @else {
-                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="apriNuovaRichiesta(selected)"></button>
+                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)" (click)="apriNuovaRichiesta(selected)"></button>
                             }
                             @if (selected.googleMapsUrl) {
                                 <a pButton [href]="selected.googleMapsUrl" target="_blank" rel="noopener" icon="pi pi-external-link" label="Apri in Google Maps" outlined></a>
@@ -511,8 +581,8 @@ type PostoConCensimento = PostoConvivenza & {
                 cursor: pointer;
                 transition: background 120ms, color 120ms;
             }
-            .seleziona-btn:hover { background: #eff6ff; }
             .seleziona-btn.selezionato { background: #dcfce7; border-color: #16a34a; color: #166534; }
+            .seleziona-btn:disabled { border-color: #cbd5e1; color: #64748b; background: #f1f5f9; cursor: not-allowed; }
             .posto-item.flusso-selezionato { border-color: #16a34a; background: #f0fdf4; }
 
             .form-convivenza-inline {
@@ -578,8 +648,11 @@ type PostoConCensimento = PostoConvivenza & {
                 .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             }
             @media (max-width: 767px) {
-                .fci-grid { grid-template-columns: 1fr; }
+                .fci-grid,
+                .signal-grid,
+                .reported-grid { grid-template-columns: 1fr; }
                 .fci-col-span-2 { grid-column: span 1; }
+                .signal-span-2 { grid-column: span 1; }
                 .page-head { flex-direction: column; align-items: stretch; }
                 .head-actions,
                 .actions { flex-direction: column; }
@@ -617,6 +690,7 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     ];
     readonly censimentoSanGaetanoLink = SAN_GAETANO_CENSIMENTO_LINK;
     readonly posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : this.creaPostiConCensimento();
+    struttureSegnalate = this.isDemo ? [] : readStruttureSegnalate().filter((item) => !item.pubblicata && item.stato !== 'Scartata');
     readonly tipi = Array.from(new Set(this.posti.map((posto) => posto.tipo)));
     readonly zone = Array.from(new Set(this.posti.map((posto) => posto.zona || posto.citta))).sort();
 
@@ -656,6 +730,9 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     formPartecipanti: number | null = null;
     formNote = '';
     formValidationError = '';
+    showSegnalaForm = false;
+    segnalazioneErrore = '';
+    segnalazioneForm = this.createEmptySegnalazioneForm();
 
     private map: L.Map | null = null;
     private markerLayer: L.LayerGroup | null = null;
@@ -699,6 +776,10 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     }
 
     apriNuovaRichiesta(posto: PostoConCensimento) {
+        if (!this.isPostoOperativo(posto)) {
+            return;
+        }
+
         if (this.convivenzaBozza) {
             this.selezionaPerRichiesta(posto);
             this.inviaRichiestaMock();
@@ -763,6 +844,10 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     }
 
     selezionaPerRichiesta(posto: PostoConCensimento) {
+        if (!this.isPostoOperativo(posto)) {
+            return;
+        }
+
         this.postoPerRichiesta = posto;
         this.select(posto, true);
     }
@@ -866,6 +951,55 @@ ${this.comunitaNome}`;
         return value && value.trim() ? value : 'Da completare';
     }
 
+    toggleSegnalaForm(force?: boolean) {
+        this.showSegnalaForm = force ?? !this.showSegnalaForm;
+        this.segnalazioneErrore = '';
+        if (!this.showSegnalaForm) {
+            this.segnalazioneForm = this.createEmptySegnalazioneForm();
+        }
+    }
+
+    salvaSegnalazione() {
+        const nome = this.segnalazioneForm.nomeStruttura.trim();
+        if (!nome) {
+            this.segnalazioneErrore = 'Inserisci almeno il nome della struttura.';
+            return;
+        }
+
+        const segnalazioni = readStruttureSegnalate();
+        const nuova: StrutturaSegnalataMock = {
+            id: `segnalata-${Date.now()}`,
+            nomeStruttura: nome,
+            indirizzo: this.segnalazioneForm.indirizzo.trim(),
+            citta: this.segnalazioneForm.citta.trim(),
+            regione: this.segnalazioneForm.regione.trim() || 'Lazio',
+            referente: this.segnalazioneForm.referente.trim(),
+            telefono: this.segnalazioneForm.telefono.trim(),
+            email: this.segnalazioneForm.email.trim(),
+            note: this.segnalazioneForm.note.trim(),
+            origine: 'Segnalata da comunità',
+            propostaDa: 'Responsabile comunità',
+            comunita: this.comunitaNome,
+            stato: 'Segnalazione ricevuta',
+            pubblicata: false,
+            invitoInviato: false,
+            tokenCensimento: '',
+            statoVerifica: 'Da verificare',
+            statoDisponibilita: 'Da verificare',
+            dataSegnalazione: new Date().toISOString()
+        };
+
+        // Fase futura API: POST /api/admin/strutture/segnalazioni con stato iniziale non pubblicato.
+        writeStruttureSegnalate([nuova, ...segnalazioni]);
+        this.struttureSegnalate = [nuova, ...this.struttureSegnalate];
+        this.segnalazioneForm = this.createEmptySegnalazioneForm();
+        this.showSegnalaForm = false;
+    }
+
+    isPostoOperativo(posto: PostoConCensimento) {
+        return posto.pubblicata === true;
+    }
+
     booleanLabel(value: boolean) {
         return value ? 'Sì' : 'No';
     }
@@ -951,16 +1085,17 @@ ${this.comunitaNome}`;
 
     private creaPostiConCensimento(): PostoConCensimento[] {
         const censimento = this.readSanGaetanoCensimento();
+        const segnalazioni = readStruttureSegnalate();
 
-        return POSTI_CONVIVENZA_MOCK.map((posto) => {
+        const postiBase = POSTI_CONVIVENZA_MOCK.map((posto) => {
             if (!censimento || !this.isSanGaetano(posto)) {
-                return posto;
+                return { ...posto, pubblicata: true };
             }
 
             return {
                 ...posto,
                 nome: censimento.nomeStruttura || posto.nome,
-                tipo: 'Struttura di accoglienza',
+                tipo: 'Struttura di accoglienza' as TipoStrutturaMappa,
                 indirizzo: censimento.indirizzo || posto.indirizzo,
                 indirizzoNormalizzato: censimento.indirizzo || posto.indirizzoNormalizzato,
                 citta: censimento.citta || posto.citta,
@@ -970,8 +1105,8 @@ ${this.comunitaNome}`;
                 telefono: censimento.telefono || posto.telefono,
                 email: censimento.email || posto.email,
                 capienza: censimento.capienzaPostiLetto ?? posto.capienza,
-                statoRelazione: 'Da verificare',
-                statoDisponibilita: 'Da verificare',
+                statoRelazione: (censimento.pubblicata ? 'Partner attivo' : 'Da verificare') as StatoRelazione,
+                statoDisponibilita: censimento.statoDisponibilita as StatoDisponibilitaPosto,
                 note: censimento.noteOrganizzative || posto.note,
                 servizi: {
                     ...posto.servizi,
@@ -982,9 +1117,16 @@ ${this.comunitaNome}`;
                 },
                 censimento,
                 statoCensimento: censimento.statoCensimento,
-                statoVerifica: censimento.statoVerifica
+                statoVerifica: censimento.statoVerifica,
+                pubblicata: censimento.pubblicata
             };
         });
+
+        const segnalateNonPubblicate = segnalazioni
+            .filter((item) => !item.pubblicata && item.stato !== 'Scartata')
+            .map((item, index): PostoConCensimento => this.creaPostoDaSegnalazione(item, index));
+
+        return [...postiBase, ...segnalateNonPubblicate];
     }
 
     private readSanGaetanoCensimento(): CensimentoStrutturaMock | null {
@@ -1030,6 +1172,7 @@ ${this.comunitaNome}`;
                 googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${posto.nome}, ${posto.citta}, ${posto.regione}`)}`,
                 ultimoContatto: null,
                 storicoConvivenze: index === 0 ? ['Convivenza di Avvento'] : [],
+                pubblicata: true,
                 servizi: {
                     camere: true,
                     salaIncontri: true,
@@ -1041,5 +1184,56 @@ ${this.comunitaNome}`;
                 valutazioneInterna: index === 0 ? 'positivo' : 'non valutato'
             };
         });
+    }
+
+    private createEmptySegnalazioneForm() {
+        return {
+            nomeStruttura: '',
+            indirizzo: '',
+            citta: '',
+            regione: 'Lazio',
+            referente: '',
+            telefono: '',
+            email: '',
+            note: ''
+        };
+    }
+
+    private creaPostoDaSegnalazione(item: StrutturaSegnalataMock, index: number): PostoConCensimento {
+        const lat = 41.9028 + index * 0.003;
+        const lng = 12.4964 - index * 0.003;
+        return {
+            id: 9000 + index,
+            nome: item.nomeStruttura,
+            tipo: 'Struttura di accoglienza' as TipoStrutturaMappa,
+            tipologia: 'Casa di convivenza',
+            zona: item.citta || item.regione || 'Da verificare',
+            citta: item.citta || 'Da verificare',
+            regione: item.regione || 'Da verificare',
+            indirizzo: item.indirizzo,
+            indirizzoNormalizzato: item.indirizzo,
+            capienza: null,
+            referente: item.referente,
+            telefono: item.telefono,
+            email: item.email,
+            sitoWeb: '',
+            statoRelazione: 'Da verificare',
+            statoDisponibilita: 'Da verificare',
+            note: item.note,
+            latitudine: lat,
+            longitudine: lng,
+            lat,
+            lng,
+            placeId: null,
+            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.nomeStruttura}, ${item.indirizzo}, ${item.citta}, ${item.regione}`)}`,
+            ultimoContatto: null,
+            storicoConvivenze: [],
+            servizi: { camere: false, salaIncontri: false, cucina: false, parcheggio: false, accessibilita: false, spazioBambini: false },
+            valutazioneInterna: 'da verificare',
+            segnalazione: item,
+            statoSegnalazione: item.stato,
+            statoVerifica: item.statoVerifica,
+            pubblicata: false
+        };
     }
 }

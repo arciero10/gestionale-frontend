@@ -62,6 +62,11 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'Posti di Convivenza' }
     },
         {
+        path: 'admin-strutture',
+        loadComponent: () => import('./admin-strutture/admin-strutture').then((c) => c.AdminStrutture),
+        data: { breadcrumb: 'Admin strutture' }
+    },
+        {
         path: 'convivenze',
         component: Convivenze,
         data: { breadcrumb: 'Convivenze' }

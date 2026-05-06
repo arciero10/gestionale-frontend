@@ -6,7 +6,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
-import { CensimentoStrutturaMock, SAN_GAETANO_CENSIMENTO_DEFAULT, SAN_GAETANO_CENSIMENTO_STORAGE_KEY } from './strutture-censimento.mock';
+import { CensimentoStrutturaMock, SAN_GAETANO_CENSIMENTO_DEFAULT, SAN_GAETANO_CENSIMENTO_STORAGE_KEY, readStruttureSegnalate, writeStruttureSegnalate } from './strutture-censimento.mock';
 
 @Component({
     selector: 'app-censimento-struttura',
@@ -209,13 +209,43 @@ export class CensimentoStruttura {
             ...this.form,
             statoCensimento: 'Censimento ricevuto',
             statoVerifica: 'Da verificare',
+            stato: 'Censimento ricevuto',
+            pubblicata: false,
+            statoDisponibilita: 'Da verificare',
+            tokenCensimento: this.form.tokenCensimento || 'SG-2026-000001',
             dataInvio: new Date().toISOString()
         };
 
         // Fase futura: /strutture/dashboard consentirà all'utente struttura di aggiornare solo la propria scheda,
         // senza accedere a dati di comunità, persone o consensi individuali.
         localStorage.setItem(SAN_GAETANO_CENSIMENTO_STORAGE_KEY, JSON.stringify(payload));
+        this.aggiornaSegnalazioneCollegata(payload);
         this.form = payload;
         this.successo = 'Censimento inviato. La scheda sarà verificata prima della pubblicazione.';
+    }
+
+    private aggiornaSegnalazioneCollegata(payload: CensimentoStrutturaMock) {
+        const segnalazioni = readStruttureSegnalate();
+        const index = segnalazioni.findIndex((item) => item.tokenCensimento === payload.tokenCensimento || item.nomeStruttura.trim().toLowerCase() === payload.nomeStruttura.trim().toLowerCase());
+
+        if (index < 0) {
+            return;
+        }
+
+        segnalazioni[index] = {
+            ...segnalazioni[index],
+            nomeStruttura: payload.nomeStruttura,
+            indirizzo: payload.indirizzo,
+            citta: payload.citta,
+            regione: payload.regione,
+            referente: payload.referente,
+            telefono: payload.telefono,
+            email: payload.email,
+            stato: 'Censimento ricevuto',
+            statoVerifica: 'Da verificare',
+            statoDisponibilita: 'Da verificare',
+            pubblicata: false
+        };
+        writeStruttureSegnalate(segnalazioni);
     }
 }

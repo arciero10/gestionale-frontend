@@ -1,5 +1,8 @@
 export const SAN_GAETANO_CENSIMENTO_STORAGE_KEY = 'struttura-censimento-san-gaetano';
 export const SAN_GAETANO_CENSIMENTO_LINK = '/strutture/censimento?token=SG-2026-000001';
+export const STRUTTURE_SEGNALATE_STORAGE_KEY = 'strutture-segnalate';
+export type StatoVerificaStruttura = 'Da verificare' | 'Verificata' | 'Sospesa';
+export type StatoSegnalazioneStruttura = 'Segnalazione ricevuta' | 'Invito preparato' | 'Invito censimento inviato' | 'Censimento ricevuto' | 'Scartata';
 
 export interface CensimentoStrutturaMock {
     nomeStruttura: string;
@@ -21,8 +24,35 @@ export interface CensimentoStrutturaMock {
     noteOrganizzative: string;
     consensoGestionale: boolean;
     statoCensimento: 'Censimento ricevuto';
-    statoVerifica: 'Da verificare';
+    statoVerifica: StatoVerificaStruttura;
+    stato: 'Censimento ricevuto';
+    pubblicata: boolean;
+    statoDisponibilita: 'Da verificare' | 'Disponibile' | 'Non disponibile';
+    tokenCensimento: string;
     dataInvio: string;
+}
+
+export interface StrutturaSegnalataMock {
+    id: string;
+    nomeStruttura: string;
+    indirizzo: string;
+    citta: string;
+    regione: string;
+    referente: string;
+    telefono: string;
+    email: string;
+    note: string;
+    origine: 'Segnalata da comunità';
+    propostaDa: string;
+    comunita: string;
+    stato: StatoSegnalazioneStruttura;
+    pubblicata: boolean;
+    invitoInviato: boolean;
+    tokenCensimento: string;
+    statoVerifica: StatoVerificaStruttura;
+    statoDisponibilita: 'Da verificare' | 'Disponibile' | 'Non disponibile';
+    dataSegnalazione: string;
+    dataInvito?: string;
 }
 
 export const SAN_GAETANO_CENSIMENTO_DEFAULT: CensimentoStrutturaMock = {
@@ -46,5 +76,26 @@ export const SAN_GAETANO_CENSIMENTO_DEFAULT: CensimentoStrutturaMock = {
     consensoGestionale: false,
     statoCensimento: 'Censimento ricevuto',
     statoVerifica: 'Da verificare',
+    stato: 'Censimento ricevuto',
+    pubblicata: false,
+    statoDisponibilita: 'Da verificare',
+    tokenCensimento: 'SG-2026-000001',
     dataInvio: ''
 };
+
+export function readStruttureSegnalate(): StrutturaSegnalataMock[] {
+    const raw = localStorage.getItem(STRUTTURE_SEGNALATE_STORAGE_KEY);
+    if (!raw) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(raw) as StrutturaSegnalataMock[];
+    } catch {
+        return [];
+    }
+}
+
+export function writeStruttureSegnalate(items: StrutturaSegnalataMock[]) {
+    localStorage.setItem(STRUTTURE_SEGNALATE_STORAGE_KEY, JSON.stringify(items));
+}
