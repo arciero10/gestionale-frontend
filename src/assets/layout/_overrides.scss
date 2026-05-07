@@ -39,6 +39,8 @@ p-treetable {
 .layout-container.layout-immersive:not(.layout-demo) .layout-content-wrapper {
     background: transparent;
     padding-top: 0;
+    position: relative;
+    z-index: 1;
 
     @media screen and (min-width: 992px) {
         margin-left: 17rem;
@@ -63,6 +65,7 @@ p-treetable {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     box-shadow: 14px 0 34px rgba(8, 20, 38, 0.3);
+    z-index: 1100;
 }
 
 .layout-container.layout-immersive:not(.layout-demo) .layout-sidebar,
@@ -214,10 +217,11 @@ app-posti-convivenza {
 
 app-posti-convivenza::before {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    inset: -1.25rem;
     z-index: 0;
     pointer-events: none;
+    border-radius: 24px;
     background: rgba(15, 23, 42, 0.55);
     backdrop-filter: blur(2px) grayscale(0.4) contrast(0.72);
     -webkit-backdrop-filter: blur(2px) grayscale(0.4) contrast(0.72);
