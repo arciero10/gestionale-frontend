@@ -3,6 +3,7 @@ import { CreaConvivenza } from "./convivenze/crea.convivevenza";
 import { CreaViaggio } from "./viaggi/crea.viaggio";
 import { GestionalePlaceholder } from "./placeholder/gestionale-placeholder";
 import { Convivenze } from "./convivenze/convivenze";
+import { platformAdminGuard } from "./admin/platform-admin.mock";
 
 
  export default [
@@ -62,9 +63,25 @@ import { Convivenze } from "./convivenze/convivenze";
         data: { breadcrumb: 'Posti di Convivenza' }
     },
         {
+        path: 'admin',
+        canMatch: [platformAdminGuard],
+        children: [
+            {
+                path: '',
+                loadComponent: () => import('./admin/admin-dashboard').then((c) => c.AdminDashboard),
+                data: { breadcrumb: 'Admin piattaforma' }
+            },
+            {
+                path: 'strutture',
+                loadComponent: () => import('./admin-strutture/admin-strutture').then((c) => c.AdminStrutture),
+                data: { breadcrumb: 'Admin strutture' }
+            }
+        ]
+    },
+        {
         path: 'admin-strutture',
-        loadComponent: () => import('./admin-strutture/admin-strutture').then((c) => c.AdminStrutture),
-        data: { breadcrumb: 'Admin strutture' }
+        redirectTo: 'admin/strutture',
+        pathMatch: 'full'
     },
         {
         path: 'convivenze',

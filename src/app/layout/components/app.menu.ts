@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AppMenuitem } from './app.menuitem';
 import { AuthService } from '@/auth/auth.service';
+import { PlatformAdminAccess } from '@/features/gestionaleCN/admin/platform-admin.mock';
 
 @Component({
     selector: '[app-menu]',
@@ -18,6 +19,7 @@ import { AuthService } from '@/auth/auth.service';
 export class AppMenu {
     el = inject(ElementRef);
     authService = inject(AuthService);
+    platformAdminAccess = inject(PlatformAdminAccess);
 
     @ViewChild('menuContainer') menuContainer!: ElementRef;
 
@@ -81,6 +83,23 @@ export class AppMenu {
                     label: 'Nuovo posto',
                     icon: 'pi pi-fw pi-plus',
                     routerLink: ['/gestionale-cn/posti-convivenza']
+                }
+            ]
+        },
+        {
+            label: 'Admin piattaforma',
+            icon: 'pi pi-fw pi-shield',
+            visible: this.platformAdminAccess.isPlatformAdmin(),
+            items: [
+                {
+                    label: 'Dashboard admin',
+                    icon: 'pi pi-fw pi-th-large',
+                    routerLink: ['/gestionale-cn/admin']
+                },
+                {
+                    label: 'Strutture',
+                    icon: 'pi pi-fw pi-building',
+                    routerLink: ['/gestionale-cn/admin/strutture']
                 }
             ]
         },
