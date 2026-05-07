@@ -384,7 +384,7 @@ export class App {
         }
 
         this.authenticated.set(true);
-        this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
+        this.navigatePostLogin();
         return;
       }
 
@@ -441,7 +441,7 @@ export class App {
 
   isPublicRoute(): boolean {
     const path = this.currentPath();
-    return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/privacy' || path === '/completa-profilo' || path.startsWith('/completa-anagrafica/');
+    return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/privacy' || path === '/completa-profilo' || path.startsWith('/completa-anagrafica/') || path.startsWith('/strutture/censimento');
   }
 
   isInternalRoute(): boolean {
@@ -524,6 +524,18 @@ export class App {
   }
 
   private navigatePostLogin(): void {
+    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+
+    const shouldStayOnCurrentRoute =
+      currentUrl.startsWith('/gestionale-cn/') &&
+      currentUrl !== '/gestionale-cn' &&
+      currentUrl !== DASHBOARD_URL &&
+      currentUrl !== ONBOARDING_URL;
+
+    if (shouldStayOnCurrentRoute) {
+      return;
+    }
+
     this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
   }
 
