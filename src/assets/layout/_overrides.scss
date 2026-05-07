@@ -205,8 +205,128 @@ p-treetable {
     background: rgba(255, 255, 255, 0.94);
 }
 
+app-posti-convivenza {
+    display: block;
+    position: relative;
+    isolation: isolate;
+    min-width: 0;
+}
+
+app-posti-convivenza::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px) grayscale(0.4) contrast(0.72);
+    -webkit-backdrop-filter: blur(2px) grayscale(0.4) contrast(0.72);
+}
+
+app-posti-convivenza .posti-page {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+app-posti-convivenza .page-head,
+app-posti-convivenza .signal-card,
+app-posti-convivenza .reported-card,
+app-posti-convivenza .filters,
+app-posti-convivenza .list-panel,
+app-posti-convivenza .map-shell,
+app-posti-convivenza .detail-card,
+app-posti-convivenza .form-convivenza-inline,
+app-posti-convivenza .convivenza-ctx-box,
+app-posti-convivenza .stats div {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    border-radius: 16px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+app-posti-convivenza .page-head,
+app-posti-convivenza .signal-card,
+app-posti-convivenza .reported-card {
+    padding: 1.15rem;
+}
+
+app-posti-convivenza .page-head h1,
+app-posti-convivenza .signal-card h2,
+app-posti-convivenza .reported-card h2,
+app-posti-convivenza .list-panel h2,
+app-posti-convivenza .filters h2 {
+    color: #0f172a;
+}
+
+app-posti-convivenza .page-head p,
+app-posti-convivenza .signal-card p,
+app-posti-convivenza .reported-card p {
+    color: #334155;
+}
+
+app-posti-convivenza .list-panel {
+    background: rgba(255, 255, 255, 0.92) !important;
+}
+
+app-posti-convivenza .posto-item,
+app-posti-convivenza .reported-item,
+app-posti-convivenza .pending-item {
+    background: rgba(255, 255, 255, 0.96) !important;
+    color: #0f172a;
+}
+
+app-posti-convivenza .signal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+app-posti-convivenza .signal-grid label {
+    display: grid;
+    gap: 0.4rem;
+    color: #334155;
+    font-weight: 800;
+}
+
+app-posti-convivenza .signal-grid input,
+app-posti-convivenza .signal-grid textarea {
+    width: 100%;
+}
+
+app-posti-convivenza .signal-card footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+app-posti-convivenza .signal-card button,
+app-posti-convivenza .page-head button,
+app-posti-convivenza .page-head a {
+    min-height: 44px;
+}
+
 @media (max-width: 767px) {
     .layout-container.layout-immersive:not(.layout-demo) {
         background-attachment: scroll;
+    }
+
+    app-posti-convivenza .signal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    app-posti-convivenza .page-head,
+    app-posti-convivenza .signal-card footer {
+        align-items: stretch;
+    }
+
+    app-posti-convivenza .signal-card footer,
+    app-posti-convivenza .head-actions {
+        flex-direction: column;
     }
 }
