@@ -524,20 +524,19 @@ export class App {
   }
 
   private navigatePostLogin(): void {
-    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+  const currentUrl = window.location.pathname;
 
-    const shouldStayOnCurrentRoute =
-      currentUrl.startsWith('/gestionale-cn/') &&
-      currentUrl !== '/gestionale-cn' &&
-      currentUrl !== DASHBOARD_URL &&
-      currentUrl !== ONBOARDING_URL;
+  const shouldStayOnCurrentRoute =
+    currentUrl.startsWith('/gestionale-cn/') &&
+    currentUrl !== DASHBOARD_URL &&
+    currentUrl !== ONBOARDING_URL;
 
-    if (shouldStayOnCurrentRoute) {
-      return;
-    }
-
-    this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
+  if (shouldStayOnCurrentRoute) {
+    return;
   }
+
+  this.router.navigateByUrl(hasSelectedCommunity() ? DASHBOARD_URL : ONBOARDING_URL, { replaceUrl: true });
+}
 
   private ensureMsalInitialized(): Promise<void> {
     if (!this.msalInitPromise) {
