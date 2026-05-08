@@ -850,6 +850,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             .role-cantore { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
             .role-ostiario { background: #fef3c7; color: #92400e; border-color: #fde68a; }
             .role-fratello { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
+            .role-coppia-famiglia { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
             .role-presbitero { background-color: #000000 !important; color: #ffffff !important; border-color: #000000; }
             .role-prete { background: #111827; color: #ffffff; border-color: #111827; }
             .role-catechista { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
@@ -1105,7 +1106,7 @@ export class Comunita {
 
     ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Ostiario', 'Fratello'];
     ruoliForm = this.ruoliOperativi;
-    ruoliFiltro: Exclude<RuoloComunitaPilota, 'Catechista'>[] = ['Presbitero', ...this.ruoliOperativi];
+    ruoliFiltro: Exclude<RuoloComunitaPilota, 'Catechista'>[] = ['Presbitero', 'Coppia / Famiglia', ...this.ruoliOperativi];
     statiMembro: StatoMembro[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
     accessiApp: AccessoApp[] = ['Da invitare', 'Invito inviato', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Da completare', 'Inviato', 'Parziale', 'Raccolto', 'Revocato'];
@@ -1323,7 +1324,7 @@ export class Comunita {
 
     apriModificaRuolo(membro: MembroComunitaPilota) {
         this.ruoloModalMembro = membro;
-        this.nuovoRuolo = membro.ruolo === 'Presbitero' ? 'Fratello' : membro.ruolo;
+        this.nuovoRuolo = this.ruoliOperativi.includes(membro.ruolo as RuoloOperativoComunita) ? (membro.ruolo as RuoloOperativoComunita) : 'Fratello';
     }
 
     salvaRuolo() {
@@ -1507,7 +1508,7 @@ export class Comunita {
     }
 
     getRuoloClass(ruolo: RuoloComunitaPilota) {
-        return `role-${ruolo.toLowerCase()}`;
+        return `role-${ruolo.toLowerCase().replace(/\s*\/\s*/g, '-').replace(/\s+/g, '-')}`;
     }
 
     getAccessoSeverity(accesso: AccessoApp) {
@@ -1574,10 +1575,7 @@ export class Comunita {
 
         const nuoviMembri =
             this.tipoInserimentoMembro === 'Coppia'
-                ? [
-                      this.creaMembroMinimo(this.nuovoMembroMinimo.nomeMarito, this.nuovoMembroMinimo.cognomeMarito, email, noteCensimento),
-                      this.creaMembroMinimo(this.nuovoMembroMinimo.nomeMoglie, this.nuovoMembroMinimo.cognomeMoglie, email, noteCensimento)
-                  ]
+                ? [this.creaMembroCoppiaMinimo(email, noteCensimento)]
                 : [this.creaMembroMinimo(this.nuovoMembroMinimo.nome, this.nuovoMembroMinimo.cognome, email, noteCensimento)];
 
         this.membri = [...this.membri, ...nuoviMembri];
@@ -1606,6 +1604,30 @@ export class Comunita {
         };
     }
 
+    private creaMembroCoppiaMinimo(email: string, note: string): MembroComunitaPilota {
+        const marito = `${this.nuovoMembroMinimo.nomeMarito.trim()} ${this.nuovoMembroMinimo.cognomeMarito.trim()}`.trim();
+        const moglie = `${this.nuovoMembroMinimo.nomeMoglie.trim()} ${this.nuovoMembroMinimo.cognomeMoglie.trim()}`.trim();
+        const cognomeFamiglia = this.nuovoMembroMinimo.cognomeMarito.trim() || this.nuovoMembroMinimo.cognomeMoglie.trim();
+        const nomeVisualizzato = marito && moglie ? `${marito} / ${moglie}` : `Famiglia ${cognomeFamiglia}`.trim();
+
+        return {
+            id: this.prossimoId++,
+            nome: nomeVisualizzato,
+            cognome: cognomeFamiglia ? `Famiglia ${cognomeFamiglia}` : '',
+            nomeCompleto: nomeVisualizzato,
+            ruolo: 'Coppia / Famiglia',
+            accessoApp: 'Da invitare',
+            statoMembro: 'Attivo',
+            consensoPrivacyStato: 'Da inviare',
+            moduloPrivacyInviato: false,
+            moduloPrivacyRicevuto: false,
+            dataInvioModuloPrivacy: '',
+            telefono: '',
+            email,
+            note: `${note} Componenti: ${nomeVisualizzato}`
+        };
+    }
+
     private creaMembriGestionali(): MembroComunitaPilota[] {
         const base = this.currentCommunity.isPilot ? MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro })) : [];
         const censiti = leggiUnitaCensimento().flatMap((unita) => this.creaMembriDaUnitaCensimento(unita));
@@ -1615,6 +1637,10 @@ export class Comunita {
     }
 
     private creaMembriDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota[] {
+        if (unita.tipoUnita === 'Coppia') {
+            return [this.creaMembroCoppiaDaUnitaCensimento(unita)];
+        }
+
         return unita.persone.map((persona, index) => ({
             id: index + 1,
             nome: persona.nome,
@@ -1631,6 +1657,31 @@ export class Comunita {
             email: persona.email || unita.emailRiferimento,
             note: `Unità censimento: ${unita.nomeVisualizzato}`
         }));
+    }
+
+    private creaMembroCoppiaDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota {
+        const componenti = unita.persone.map((persona) => `${persona.nome} ${persona.cognome}`.trim()).filter(Boolean);
+        const cognomi = [...new Set(unita.persone.map((persona) => persona.cognome.trim()).filter(Boolean))];
+        const emails = [...new Set(unita.persone.map((persona) => persona.email.trim()).filter(Boolean))];
+        const telefoni = [...new Set(unita.persone.map((persona) => persona.telefono.trim()).filter(Boolean))];
+        const nomeVisualizzato = componenti.length ? componenti.join(' / ') : unita.nomeVisualizzato || `Famiglia ${cognomi[0] ?? ''}`.trim();
+
+        return {
+            id: unita.id,
+            nome: nomeVisualizzato,
+            cognome: cognomi.length === 1 ? `Famiglia ${cognomi[0]}` : 'Coppia',
+            nomeCompleto: nomeVisualizzato,
+            ruolo: 'Coppia / Famiglia',
+            accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
+            statoMembro: 'Attivo',
+            consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da completare',
+            moduloPrivacyInviato: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato',
+            moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
+            dataInvioModuloPrivacy: '',
+            telefono: telefoni.join(' / ') || unita.telefonoRiferimento,
+            email: emails.join(' / ') || unita.emailRiferimento,
+            note: `Unità censimento coppia: ${unita.nomeVisualizzato}. Componenti: ${componenti.join(', ')}`
+        };
     }
 
     private leggiEquipeCatechisti(): EquipeCatechistiUnita[] {

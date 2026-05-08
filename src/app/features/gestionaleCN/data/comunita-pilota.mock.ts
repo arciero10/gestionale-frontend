@@ -1,4 +1,4 @@
-export type RuoloComunitaPilota = 'Presbitero' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Ostiario' | 'Fratello';
+export type RuoloComunitaPilota = 'Presbitero' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Ostiario' | 'Fratello' | 'Coppia / Famiglia';
 export type RuoloOperativoComunita = 'Responsabile' | 'Corresponsabile' | 'Cantore' | 'Ostiario' | 'Fratello';
 export type StatoMembroPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
 export type AccessoAppPilota = 'Da invitare' | 'Invito inviato' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
