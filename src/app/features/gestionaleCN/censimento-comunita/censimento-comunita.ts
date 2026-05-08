@@ -242,11 +242,11 @@ export class CensimentoComunita {
 
     inviaInvito(item: UnitaCensimentoComunita) {
         const token = item.token || generaTokenCensimento(item.id);
-        const aggiornato = { ...item, token, linkInvito: creaLinkInvito(token), statoInvito: 'Inviato' as const };
+        const aggiornato = { ...item, token, linkInvito: creaLinkInvito(token), statoInvito: 'Invito inviato' as const };
         this.unita = this.unita.map((unita) => (unita.id === item.id ? aggiornato : unita));
         salvaUnitaCensimento(this.unita);
-        this.mailPreview = aggiornato;
-        this.messaggio = 'Invito mock generato e segnato come inviato';
+        this.mailPreview = null;
+        this.messaggio = 'Invito inviato. L’unità compare nella pagina La tua Comunità.';
     }
 
     apriAnteprimaMail(item: UnitaCensimentoComunita) {
@@ -282,7 +282,7 @@ Eventi di Comunità`;
     }
 
     getInvitoSeverity(stato: string) {
-        return stato === 'Attivo' ? 'success' : stato === 'Inviato' ? 'info' : stato === 'Da completare' ? 'warn' : 'secondary';
+        return stato === 'Attivo' ? 'success' : stato === 'Inviato' || stato === 'Invito inviato' ? 'info' : stato === 'Da completare' ? 'warn' : 'secondary';
     }
 
     getConsensiSeverity(stato: string) {

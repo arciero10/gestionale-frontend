@@ -125,7 +125,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       }
 
       .login-copy {
-        position: fixed;
+        position: absolute;
         top: 2.2rem;
         left: 50%;
         transform: translateX(-50%);

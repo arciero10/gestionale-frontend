@@ -1,6 +1,6 @@
 import { TipoUnitaMembroComunita } from '../data/comunita-pilota.mock';
 
-export type StatoInvitoCensimento = 'Da inviare' | 'Inviato' | 'Da completare' | 'Attivo';
+export type StatoInvitoCensimento = 'Da inviare' | 'Invito inviato' | 'Inviato' | 'Da completare' | 'Attivo';
 export type StatoAnagraficaCensimento = 'Da completare' | 'Attivo';
 export type StatoConsensiCensimento = 'Da inviare' | 'Parziale' | 'Raccolto';
 

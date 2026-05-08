@@ -208,6 +208,19 @@ p-treetable {
     background: rgba(255, 255, 255, 0.94);
 }
 
+app-dashboard .summary-tappa .p-select,
+app-onboarding-comunita .field .p-select {
+    width: 100%;
+    min-width: min(100%, 22rem);
+}
+
+app-dashboard .summary-tappa .p-select-label,
+app-onboarding-comunita .field .p-select-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
 app-posti-convivenza {
     display: block;
     position: relative;

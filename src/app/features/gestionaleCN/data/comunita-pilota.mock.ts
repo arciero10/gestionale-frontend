@@ -1,8 +1,8 @@
 export type RuoloComunitaPilota = 'Presbitero' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Ostiario' | 'Fratello';
 export type RuoloOperativoComunita = 'Responsabile' | 'Corresponsabile' | 'Cantore' | 'Ostiario' | 'Fratello';
 export type StatoMembroPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
-export type AccessoAppPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
-export type ConsensoPrivacyPilota = 'Da inviare' | 'Inviato' | 'Parziale' | 'Raccolto' | 'Revocato';
+export type AccessoAppPilota = 'Da invitare' | 'Invito inviato' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
+export type ConsensoPrivacyPilota = 'Da inviare' | 'Da completare' | 'Inviato' | 'Parziale' | 'Raccolto' | 'Revocato';
 
 export interface MembroComunitaPilota {
     id: number;

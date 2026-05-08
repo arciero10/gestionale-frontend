@@ -1107,8 +1107,8 @@ export class Comunita {
     ruoliForm = this.ruoliOperativi;
     ruoliFiltro: Exclude<RuoloComunitaPilota, 'Catechista'>[] = ['Presbitero', ...this.ruoliOperativi];
     statiMembro: StatoMembro[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
-    accessiApp: AccessoApp[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
-    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Inviato', 'Parziale', 'Raccolto', 'Revocato'];
+    accessiApp: AccessoApp[] = ['Da invitare', 'Invito inviato', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
+    statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Da completare', 'Inviato', 'Parziale', 'Raccolto', 'Revocato'];
     tipiUnitaEquipe: TipoUnitaEquipeCatechisti[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
     tipiInserimentoMembro: TipoUnitaMembroComunita[] = ['Coppia', 'Fratello singolo', 'Sorella singola'];
     parrocchieOptions = PARROCCHIE_MOCK;
@@ -1198,7 +1198,7 @@ export class Comunita {
     }
 
     get membriDaInviare() {
-        return this.membri.filter((membro) => membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Parziale');
+        return this.membri.filter((membro) => membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Da completare' || membro.consensoPrivacyStato === 'Parziale');
     }
 
     get membriSelezionatiInvio() {
@@ -1514,6 +1514,7 @@ export class Comunita {
         switch (accesso) {
             case 'Attivo':
                 return 'success';
+            case 'Invito inviato':
             case 'Invitato':
                 return 'info';
             case 'Da completare':
@@ -1547,6 +1548,7 @@ export class Comunita {
             case 'Inviato':
                 return 'info';
             case 'Da inviare':
+            case 'Da completare':
             case 'Parziale':
                 return 'warn';
             case 'Revocato':
@@ -1619,10 +1621,10 @@ export class Comunita {
             cognome: persona.cognome,
             nomeCompleto: `${persona.nome} ${persona.cognome}`.trim(),
             ruolo: 'Fratello',
-            accessoApp: unita.statoInvito === 'Inviato' ? 'Invitato' : 'Da invitare',
+            accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
             statoMembro: 'Attivo',
-            consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da inviare',
-            moduloPrivacyInviato: unita.statoInvito === 'Inviato',
+            consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da completare',
+            moduloPrivacyInviato: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato',
             moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
             dataInvioModuloPrivacy: '',
             telefono: persona.telefono || unita.telefonoRiferimento,

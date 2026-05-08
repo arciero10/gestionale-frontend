@@ -233,6 +233,12 @@ interface DashboardModule {
                 min-width: 0;
             }
 
+            .tappa-edit {
+                display: grid;
+                grid-template-columns: minmax(22rem, 1fr) auto auto;
+                width: 100%;
+            }
+
             .tappa-readonly span {
                 flex: 1;
                 min-width: 0;
@@ -250,8 +256,8 @@ interface DashboardModule {
             }
 
             .tappa-edit p-select {
-                flex: 1 1 0;
-                min-width: 0;
+                min-width: 22rem;
+                width: 100%;
             }
 
             .community-summary p-select {
@@ -269,9 +275,9 @@ interface DashboardModule {
             }
 
             :host ::ng-deep .community-summary .p-select-label {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                white-space: normal;
+                overflow: visible;
+                text-overflow: clip;
                 font-size: 0.9rem;
                 line-height: 1.3;
                 padding-top: 0.5rem;
@@ -449,6 +455,7 @@ interface DashboardModule {
                 .tappa-readonly,
                 .tappa-edit {
                     flex-wrap: wrap;
+                    grid-template-columns: 1fr;
                 }
 
                 .tappa-readonly span {

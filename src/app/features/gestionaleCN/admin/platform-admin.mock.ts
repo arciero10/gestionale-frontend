@@ -2,12 +2,14 @@ import { computed, inject, Injectable } from '@angular/core';
 import { CanMatchFn, Router } from '@angular/router';
 import { AuthService } from '@/auth/auth.service';
 
-const PLATFORM_ADMIN_EMAILS = new Set([
+export const PLATFORM_ADMIN_EMAILS = [
     'admin@eventidicomunita.it',
     'supporto@eventidicomunita.it',
     'alessandro.arciero@panteleia.it',
     'privacy@panteleia.it'
-]);
+];
+
+const PLATFORM_ADMIN_EMAIL_SET = new Set(PLATFORM_ADMIN_EMAILS);
 
 const PLATFORM_ADMIN_DOMAINS = ['@panteleia.it'];
 
@@ -18,7 +20,7 @@ export function isPlatformAdminEmail(email: string | null | undefined): boolean 
         return false;
     }
 
-    return PLATFORM_ADMIN_EMAILS.has(normalized) || PLATFORM_ADMIN_DOMAINS.some((domain) => normalized.endsWith(domain));
+    return PLATFORM_ADMIN_EMAIL_SET.has(normalized) || PLATFORM_ADMIN_DOMAINS.some((domain) => normalized.endsWith(domain));
 }
 
 @Injectable({ providedIn: 'root' })
