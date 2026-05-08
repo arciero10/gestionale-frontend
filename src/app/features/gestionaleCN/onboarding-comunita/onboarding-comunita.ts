@@ -12,7 +12,7 @@ import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
-type RuoloComunitario = 'fratello' | 'responsabile' | 'corresponsabile' | 'presbitero' | 'catechista';
+type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' | 'cantore' | 'presbitero' | 'diacono' | 'organista' | 'lettore' | 'addetto-liturgia' | 'collaboratore-convivenze' | 'collaboratore-segreteria';
 type PermessiStato = 'tester' | 'in_attesa_approvazione' | 'approvato';
 
 @Component({
@@ -139,7 +139,7 @@ type PermessiStato = 'tester' | 'in_attesa_approvazione' | 'approvato';
 
                     <section class="role-box">
                         <div class="field">
-                            <label for="ruoloComunitario">Ruolo nella comunità</label>
+                            <label for="ruoloComunitario">Carisma nella comunità</label>
                             <p-select
                                 inputId="ruoloComunitario"
                                 name="ruoloComunitario"
@@ -622,11 +622,18 @@ export class OnboardingComunita {
     };
 
     readonly ruoliComunitari: Array<{ label: string; value: RuoloComunitario }> = [
-        { label: 'Fratello / Sorella', value: 'fratello' },
+        { label: 'Nessun carisma', value: '' },
         { label: 'Responsabile', value: 'responsabile' },
         { label: 'Corresponsabile', value: 'corresponsabile' },
+        { label: 'Catechista', value: 'catechista' },
+        { label: 'Cantore', value: 'cantore' },
         { label: 'Presbitero', value: 'presbitero' },
-        { label: 'Catechista', value: 'catechista' }
+        { label: 'Diacono', value: 'diacono' },
+        { label: 'Organista', value: 'organista' },
+        { label: 'Lettore', value: 'lettore' },
+        { label: 'Addetto liturgia', value: 'addetto-liturgia' },
+        { label: 'Collaboratore convivenze', value: 'collaboratore-convivenze' },
+        { label: 'Collaboratore segreteria', value: 'collaboratore-segreteria' }
     ];
 
     readonly collaborazioneOptions = [
@@ -649,7 +656,7 @@ export class OnboardingComunita {
     indirizzoManuale = '';
     messaggio = '';
 
-    ruoloComunitario: RuoloComunitario = 'fratello';
+    ruoloComunitario: RuoloComunitario = '';
     collaboraOrganizzazione = false;
     ambitiOperativi: string[] = [];
     permessiStato: PermessiStato = 'tester';

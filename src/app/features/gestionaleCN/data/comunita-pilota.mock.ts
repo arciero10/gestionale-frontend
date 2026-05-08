@@ -1,5 +1,5 @@
-export type RuoloComunitaPilota = 'Presbitero' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Ostiario' | 'Fratello' | 'Coppia / Famiglia';
-export type RuoloOperativoComunita = 'Responsabile' | 'Corresponsabile' | 'Cantore' | 'Ostiario' | 'Fratello';
+export type RuoloComunitaPilota = '' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Presbitero' | 'Diacono' | 'Organista' | 'Lettore' | 'Addetto liturgia' | 'Collaboratore convivenze' | 'Collaboratore segreteria' | 'Ostiario' | 'Fratello';
+export type RuoloOperativoComunita = Exclude<RuoloComunitaPilota, '' | 'Fratello'>;
 export type StatoMembroPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
 export type AccessoAppPilota = 'Da invitare' | 'Invito inviato' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
 export type ConsensoPrivacyPilota = 'Da inviare' | 'Da completare' | 'Inviato' | 'Parziale' | 'Raccolto' | 'Revocato';
@@ -9,7 +9,7 @@ export interface MembroComunitaPilota {
     nome: string;
     cognome: string;
     nomeCompleto: string;
-    ruolo: Exclude<RuoloComunitaPilota, 'Catechista'>;
+    ruolo: Exclude<RuoloComunitaPilota, 'Fratello'>;
     accessoApp: AccessoAppPilota;
     statoMembro: StatoMembroPilota;
     consensoPrivacyStato: ConsensoPrivacyPilota;
@@ -17,6 +17,7 @@ export interface MembroComunitaPilota {
     moduloPrivacyRicevuto: boolean;
     dataInvioModuloPrivacy: string;
     telefono: string;
+    indirizzo: string;
     email: string;
     note: string;
 }
@@ -110,17 +111,18 @@ const baseMembro = {
     moduloPrivacyRicevuto: false,
     dataInvioModuloPrivacy: '',
     telefono: '',
+    indirizzo: '',
     email: '',
     note: ''
 };
 
-function membro(id: number, nome: string, cognome: string, ruolo: MembroComunitaPilota['ruolo'], overrides: Partial<MembroComunitaPilota> = {}): MembroComunitaPilota {
+function membro(id: number, nome: string, cognome: string, ruolo: RuoloComunitaPilota, overrides: Partial<MembroComunitaPilota> = {}): MembroComunitaPilota {
     return {
         id,
         nome,
         cognome,
         nomeCompleto: `${nome} ${cognome}`,
-        ruolo,
+        ruolo: ruolo === 'Fratello' ? '' : ruolo,
         ...baseMembro,
         ...overrides
     };
@@ -207,7 +209,9 @@ export const MEMBRI_COMUNITA_PILOTA: MembroComunitaPilota[] = [
 
 const coppieComunitaPilota = [
     { ids: [5, 6], nomeVisualizzato: 'Egidio e Daniela Carducci' },
+    { ids: [7, 8], nomeVisualizzato: 'Giulio e Barbara Longo' },
     { ids: [18, 19], nomeVisualizzato: 'Cristiano e Laura Giagnorio' },
+    { ids: [24, 25], nomeVisualizzato: 'Davide e Giulia Milano' },
     { ids: [35, 36], nomeVisualizzato: 'Giovanni Greco e Francesca Piergentili' },
     { ids: [55, 56], nomeVisualizzato: 'Salvatore e Maria Baciarlini' }
 ];

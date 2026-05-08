@@ -11,9 +11,11 @@ import { TextareaModule } from 'primeng/textarea';
 import {
     EQUIPE_CATECHISTI_UNITA_PILOTA,
     MEMBRI_COMUNITA_PILOTA,
+    UNITA_MEMBRI_COMUNITA_PILOTA,
     ConsensoPrivacyPilota,
     EquipeCatechistiUnita,
     MembroComunitaPilota,
+    UnitaMembroComunita,
     RuoloComunitaPilota,
     RuoloOperativoComunita,
     TipoUnitaEquipeCatechisti,
@@ -28,7 +30,7 @@ import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-com
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
-type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'telefono' | 'email' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
+type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'telefono' | 'indirizzo' | 'email' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
 
 @Component({
     selector: 'app-comunita',
@@ -130,6 +132,10 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                                     <label for="emailRiferimentoCoppia">Email di riferimento coppia</label>
                                     <input id="emailRiferimentoCoppia" name="emailRiferimentoCoppia" pInputText type="email" [(ngModel)]="nuovoMembroMinimo.emailRiferimento" />
                                 </div>
+                                <div>
+                                    <label for="indirizzoFamiglia">Indirizzo famiglia</label>
+                                    <input id="indirizzoFamiglia" name="indirizzoFamiglia" pInputText [(ngModel)]="nuovoMembroMinimo.indirizzo" />
+                                </div>
                             } @else {
                                 <div>
                                     <label for="nomeMinimo">Nome</label>
@@ -143,6 +149,10 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                                     <label for="emailRiferimentoSingolo">Email</label>
                                     <input id="emailRiferimentoSingolo" name="emailRiferimentoSingolo" pInputText type="email" [(ngModel)]="nuovoMembroMinimo.emailRiferimento" />
                                 </div>
+                                <div>
+                                    <label for="indirizzoSingolo">Indirizzo</label>
+                                    <input id="indirizzoSingolo" name="indirizzoSingolo" pInputText [(ngModel)]="nuovoMembroMinimo.indirizzo" />
+                                </div>
                             }
                             <p class="form-helper">Censimento minimo: il completamento di anagrafica e consensi resta individuale e avverrà tramite modulo personale.</p>
                         } @else {
@@ -155,8 +165,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <input id="cognome" name="cognome" pInputText [(ngModel)]="form.cognome" required />
                         </div>
                         <div>
-                            <label for="ruolo">Ruolo</label>
-                            <p-select inputId="ruolo" name="ruolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="ruoliForm" [(ngModel)]="form.ruolo" required></p-select>
+                            <label for="ruolo">Carisma</label>
+                            <p-select inputId="ruolo" name="ruolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiForm" optionLabel="label" optionValue="value" [(ngModel)]="form.ruolo"></p-select>
                         </div>
                         <div>
                             <label for="telefono">Telefono</label>
@@ -165,6 +175,10 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         <div>
                             <label for="email">Email</label>
                             <input id="email" name="email" pInputText type="email" [(ngModel)]="form.email" />
+                        </div>
+                        <div>
+                            <label for="indirizzo">Indirizzo</label>
+                            <input id="indirizzo" name="indirizzo" pInputText [(ngModel)]="form.indirizzo" />
                         </div>
                         <div>
                             <label for="accessoApp">Accesso app</label>
@@ -205,8 +219,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                     <input id="ricerca" pInputText type="search" placeholder="Nome o cognome" [(ngModel)]="ricerca" />
                 </div>
                 <div class="search-box">
-                    <label for="filtroRuolo">Filtra ruolo</label>
-                    <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="ruoliFiltro" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i ruoli"></p-select>
+                    <label for="filtroRuolo">Filtra carisma</label>
+                    <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiFiltro" optionLabel="label" optionValue="value" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i carismi"></p-select>
                 </div>
                 <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
                 <div class="totals">
@@ -218,7 +232,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 </div>
             </section>
 
-            <section class="role-summary" aria-label="Conteggio per ruolo">
+            <section class="role-summary" aria-label="Conteggio per carisma">
                 @for (item of conteggiRuolo; track item.ruolo) {
                     <article>
                         <span>{{ item.ruolo }}</span>
@@ -239,8 +253,9 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         <tr>
                             <th>Nome</th>
                             <th>Cognome</th>
-                            <th>Ruolo</th>
+                            <th>Carisma</th>
                             <th>Telefono</th>
+                            <th>Indirizzo</th>
                             <th>Email</th>
                             <th>Accesso app</th>
                             <th>Privacy</th>
@@ -252,15 +267,22 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         <tr>
                             <td>{{ membro.nome }}</td>
                             <td>{{ membro.cognome }}</td>
-                            <td><span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ membro.ruolo }}</span></td>
-                            <td>{{ displayContact(membro.telefono) }}</td>
+                            <td>
+                                @if (displayCarisma(membro) !== '—') {
+                                    <span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ displayCarisma(membro) }}</span>
+                                } @else {
+                                    <span class="muted-dash">—</span>
+                                }
+                            </td>
+                            <td class="multiline-cell">{{ displayContact(membro.telefono) }}</td>
+                            <td>{{ displayContact(membro.indirizzo) }}</td>
                             <td>{{ displayContact(membro.email) }}</td>
                             <td><p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" /></td>
                             <td><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
                             <td>
                                 <div class="row-actions">
-                                    <button pButton type="button" label="Modifica ruolo" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
+                                    <button pButton type="button" label="Modifica carisma" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
                                     <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" text (click)="apriModificaContattiMembro(membro)"></button>
                                     <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
                                     <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
@@ -272,7 +294,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                     </ng-template>
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="9">Nessun membro trovato con i filtri attuali.</td>
+                            <td colspan="10">Nessun membro trovato con i filtri attuali.</td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -284,12 +306,15 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         <div class="member-card-head">
                             <div>
                                 <strong>{{ membro.nomeCompleto }}</strong>
-                                <span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ membro.ruolo }}</span>
+                                @if (displayCarisma(membro) !== '—') {
+                                    <span class="role-badge" [ngClass]="getRuoloClass(membro.ruolo)">{{ displayCarisma(membro) }}</span>
+                                }
                             </div>
                             <p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" />
                         </div>
                         <dl>
-                            <div><dt>Telefono</dt><dd>{{ displayContact(membro.telefono) }}</dd></div>
+                            <div><dt>Telefono</dt><dd class="multiline-cell">{{ displayContact(membro.telefono) }}</dd></div>
+                            <div><dt>Indirizzo</dt><dd>{{ displayContact(membro.indirizzo) }}</dd></div>
                             <div><dt>Email</dt><dd>{{ displayContact(membro.email) }}</dd></div>
                             <div><dt>Accesso app</dt><dd>{{ membro.accessoApp }}</dd></div>
                             <div><dt>Privacy</dt><dd><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></dd></div>
@@ -297,7 +322,7 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                             <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'SÃ¬' : 'No' }}</dd></div>
                         </dl>
                         <div class="card-actions">
-                            <button pButton type="button" icon="pi pi-user-edit" label="Modifica ruolo" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
+                            <button pButton type="button" icon="pi pi-user-edit" label="Modifica carisma" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
                             <button pButton type="button" icon="pi pi-address-book" label="Contatti" severity="secondary" outlined (click)="apriModificaContattiMembro(membro)"></button>
                             <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
                             <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
@@ -309,17 +334,17 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
 
             @if (ruoloModalMembro) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
-                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica ruolo" (click)="$event.stopPropagation()">
+                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Modifica carisma" (click)="$event.stopPropagation()">
                         <header>
-                            <span>Modifica ruolo</span>
+                            <span>Modifica carisma</span>
                             <h2>{{ ruoloModalMembro.nomeCompleto }}</h2>
                         </header>
-                        <p>Ruolo attuale: <strong>{{ ruoloModalMembro.ruolo }}</strong></p>
-                        <label for="nuovoRuolo">Nuovo ruolo</label>
-                        <p-select inputId="nuovoRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="ruoliOperativi" [(ngModel)]="nuovoRuolo"></p-select>
+                        <p>Carisma attuale: <strong>{{ displayCarisma(ruoloModalMembro) }}</strong></p>
+                        <label for="nuovoRuolo">Nuovo carisma</label>
+                        <p-select inputId="nuovoRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiForm" optionLabel="label" optionValue="value" [(ngModel)]="nuovoRuolo"></p-select>
                         <footer>
                             <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiModali()"></button>
-                            <button pButton type="button" label="Salva ruolo" icon="pi pi-check" (click)="salvaRuolo()"></button>
+                            <button pButton type="button" label="Salva carisma" icon="pi pi-check" (click)="salvaRuolo()"></button>
                         </footer>
                     </section>
                 </div>
@@ -849,11 +874,11 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             .role-corresponsabile { background: #ede9fe; color: #4c1d95; border-color: #ddd6fe; }
             .role-cantore { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
             .role-ostiario { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-            .role-fratello { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
-            .role-coppia-famiglia { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
             .role-presbitero { background-color: #000000 !important; color: #ffffff !important; border-color: #000000; }
             .role-prete { background: #111827; color: #ffffff; border-color: #111827; }
             .role-catechista { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+            .muted-dash { color: #94a3b8; font-weight: 800; }
+            .multiline-cell { white-space: pre-line; line-height: 1.35; }
             .privacy-da-inviare { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
             .privacy-inviato { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
             .privacy-da-raccogliere { background: #fef3c7; color: #92400e; border-color: #fde68a; }
@@ -1104,9 +1129,10 @@ export class Comunita {
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
 
-    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Ostiario', 'Fratello'];
-    ruoliForm = this.ruoliOperativi;
-    ruoliFiltro: Exclude<RuoloComunitaPilota, 'Catechista'>[] = ['Presbitero', 'Coppia / Famiglia', ...this.ruoliOperativi];
+    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Presbitero', 'Diacono', 'Organista', 'Lettore', 'Addetto liturgia', 'Collaboratore convivenze', 'Collaboratore segreteria'];
+    carismiForm = [{ label: 'Nessun carisma', value: '' as MembroComunitaPilota['ruolo'] }, ...this.ruoliOperativi.map((value) => ({ label: value, value }))];
+    carismiFiltro = this.ruoliOperativi.map((value) => ({ label: value, value }));
+    ruoliFiltro: RuoloOperativoComunita[] = this.ruoliOperativi;
     statiMembro: StatoMembro[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
     accessiApp: AccessoApp[] = ['Da invitare', 'Invito inviato', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Da completare', 'Inviato', 'Parziale', 'Raccolto', 'Revocato'];
@@ -1116,7 +1142,7 @@ export class Comunita {
     numeriComunitaOptions = NUMERI_COMUNITA;
 
     ricerca = '';
-    ruoloFiltro: Exclude<RuoloComunitaPilota, 'Catechista'> | null = null;
+    ruoloFiltro: RuoloOperativoComunita | null = null;
     formVisibile = false;
     membroInModifica: MembroComunitaPilota | null = null;
     tipoInserimentoMembro: TipoUnitaMembroComunita = 'Fratello singolo';
@@ -1124,7 +1150,7 @@ export class Comunita {
     messaggio = '';
 
     ruoloModalMembro: MembroComunitaPilota | null = null;
-    nuovoRuolo: RuoloOperativoComunita = 'Fratello';
+    nuovoRuolo: MembroComunitaPilota['ruolo'] = '';
     privacyModalMembro: MembroComunitaPilota | null = null;
     nuovaPrivacy: ConsensoPrivacyPilota = 'Da inviare';
     privacyModuloRicevuto = false;
@@ -1295,6 +1321,7 @@ export class Comunita {
             cognome: this.form.cognome.trim(),
             nomeCompleto: `${this.form.nome.trim()} ${this.form.cognome.trim()}`.trim(),
             telefono: this.form.telefono.trim(),
+            indirizzo: this.form.indirizzo.trim(),
             email: this.form.email.trim(),
             dataInvioModuloPrivacy: this.form.consensoPrivacyStato === 'Inviato' ? this.oggiIso() : '',
             note: this.form.note.trim()
@@ -1309,8 +1336,9 @@ export class Comunita {
         this.form = {
             nome: membro.nome,
             cognome: membro.cognome,
-            ruolo: membro.ruolo === 'Presbitero' ? 'Fratello' : membro.ruolo,
+            ruolo: this.ruoliOperativi.includes(membro.ruolo as RuoloOperativoComunita) ? membro.ruolo : '',
             telefono: membro.telefono,
+            indirizzo: membro.indirizzo,
             email: membro.email,
             accessoApp: membro.accessoApp,
             statoMembro: membro.statoMembro,
@@ -1324,7 +1352,7 @@ export class Comunita {
 
     apriModificaRuolo(membro: MembroComunitaPilota) {
         this.ruoloModalMembro = membro;
-        this.nuovoRuolo = this.ruoliOperativi.includes(membro.ruolo as RuoloOperativoComunita) ? (membro.ruolo as RuoloOperativoComunita) : 'Fratello';
+        this.nuovoRuolo = this.ruoliOperativi.includes(membro.ruolo as RuoloOperativoComunita) ? (membro.ruolo as RuoloOperativoComunita) : '';
     }
 
     salvaRuolo() {
@@ -1332,7 +1360,7 @@ export class Comunita {
             return;
         }
         this.membri = this.membri.map((membro) => (membro.id === this.ruoloModalMembro?.id ? { ...membro, ruolo: this.nuovoRuolo } : membro));
-        this.messaggio = 'Ruolo aggiornato';
+        this.messaggio = 'Carisma aggiornato';
         this.chiudiModali();
     }
 
@@ -1563,6 +1591,10 @@ export class Comunita {
         return `privacy-${stato.toLowerCase().replace(/\s+/g, '-')}`;
     }
 
+    displayCarisma(membro: MembroComunitaPilota) {
+        return membro.ruolo || '—';
+    }
+
     displayContact(value: string) {
         return value?.trim() || 'Da inserire';
     }
@@ -1576,14 +1608,14 @@ export class Comunita {
         const nuoviMembri =
             this.tipoInserimentoMembro === 'Coppia'
                 ? [this.creaMembroCoppiaMinimo(email, noteCensimento)]
-                : [this.creaMembroMinimo(this.nuovoMembroMinimo.nome, this.nuovoMembroMinimo.cognome, email, noteCensimento)];
+                : [this.creaMembroMinimo(this.nuovoMembroMinimo.nome, this.nuovoMembroMinimo.cognome, email, noteCensimento, this.nuovoMembroMinimo.indirizzo)];
 
         this.membri = [...this.membri, ...nuoviMembri];
         this.messaggio = this.tipoInserimentoMembro === 'Coppia' ? 'Coppia censita in modalità mock' : 'Membro censito in modalità mock';
         this.annullaForm();
     }
 
-    private creaMembroMinimo(nome: string, cognome: string, email: string, note: string): MembroComunitaPilota {
+    private creaMembroMinimo(nome: string, cognome: string, email: string, note: string, indirizzo = ''): MembroComunitaPilota {
         const nomePulito = nome.trim();
         const cognomePulito = cognome.trim();
         return {
@@ -1591,7 +1623,7 @@ export class Comunita {
             nome: nomePulito,
             cognome: cognomePulito,
             nomeCompleto: `${nomePulito} ${cognomePulito}`.trim(),
-            ruolo: 'Fratello',
+            ruolo: '',
             accessoApp: 'Da invitare',
             statoMembro: 'Attivo',
             consensoPrivacyStato: 'Da inviare',
@@ -1599,23 +1631,33 @@ export class Comunita {
             moduloPrivacyRicevuto: false,
             dataInvioModuloPrivacy: '',
             telefono: '',
+            indirizzo: indirizzo.trim(),
             email,
             note
         };
     }
 
     private creaMembroCoppiaMinimo(email: string, note: string): MembroComunitaPilota {
-        const marito = `${this.nuovoMembroMinimo.nomeMarito.trim()} ${this.nuovoMembroMinimo.cognomeMarito.trim()}`.trim();
-        const moglie = `${this.nuovoMembroMinimo.nomeMoglie.trim()} ${this.nuovoMembroMinimo.cognomeMoglie.trim()}`.trim();
+        const nomeMarito = this.nuovoMembroMinimo.nomeMarito.trim();
+        const cognomeMarito = this.nuovoMembroMinimo.cognomeMarito.trim();
+        const nomeMoglie = this.nuovoMembroMinimo.nomeMoglie.trim();
+        const cognomeMoglie = this.nuovoMembroMinimo.cognomeMoglie.trim();
+        const marito = `${nomeMarito} ${cognomeMarito}`.trim();
+        const moglie = `${nomeMoglie} ${cognomeMoglie}`.trim();
         const cognomeFamiglia = this.nuovoMembroMinimo.cognomeMarito.trim() || this.nuovoMembroMinimo.cognomeMoglie.trim();
-        const nomeVisualizzato = marito && moglie ? `${marito} / ${moglie}` : `Famiglia ${cognomeFamiglia}`.trim();
+        const stessoCognome = cognomeMarito && cognomeMoglie && cognomeMarito.toLowerCase() === cognomeMoglie.toLowerCase();
+        const nomeVisualizzato = marito && moglie
+            ? stessoCognome
+                ? `${nomeMarito} e ${nomeMoglie} ${cognomeMarito}`.trim()
+                : `${marito} e ${moglie}`
+            : `Famiglia ${cognomeFamiglia}`.trim();
 
         return {
             id: this.prossimoId++,
             nome: nomeVisualizzato,
             cognome: cognomeFamiglia ? `Famiglia ${cognomeFamiglia}` : '',
             nomeCompleto: nomeVisualizzato,
-            ruolo: 'Coppia / Famiglia',
+            ruolo: '',
             accessoApp: 'Da invitare',
             statoMembro: 'Attivo',
             consensoPrivacyStato: 'Da inviare',
@@ -1623,17 +1665,59 @@ export class Comunita {
             moduloPrivacyRicevuto: false,
             dataInvioModuloPrivacy: '',
             telefono: '',
+            indirizzo: this.nuovoMembroMinimo.indirizzo.trim(),
             email,
             note: `${note} Componenti: ${nomeVisualizzato}`
         };
     }
 
     private creaMembriGestionali(): MembroComunitaPilota[] {
-        const base = this.currentCommunity.isPilot ? MEMBRI_COMUNITA_PILOTA.map((membro) => ({ ...membro })) : [];
+        const base = this.currentCommunity.isPilot ? UNITA_MEMBRI_COMUNITA_PILOTA.map((unita) => this.creaMembroDaUnitaPilota(unita)) : [];
         const censiti = leggiUnitaCensimento().flatMap((unita) => this.creaMembriDaUnitaCensimento(unita));
         const chiaviEsistenti = new Set(base.map((membro) => `${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`));
         const nuovi = censiti.filter((membro) => !chiaviEsistenti.has(`${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`));
         return [...base, ...nuovi.map((membro, index) => ({ ...membro, id: base.length + index + 1 }))];
+    }
+
+    private creaMembroDaUnitaPilota(unita: UnitaMembroComunita): MembroComunitaPilota {
+        const membriCompleti = unita.membri
+            .map((membroUnita) => MEMBRI_COMUNITA_PILOTA.find((membro) => membro.id === membroUnita.membroId))
+            .filter((membro): membro is MembroComunitaPilota => !!membro);
+
+        if (unita.tipoUnita !== 'Coppia') {
+            const membro = membriCompleti[0];
+            return {
+                ...(membro ?? this.creaMembroMinimo(unita.nomeVisualizzato, '', unita.emailRiferimento, unita.note)),
+                id: unita.id,
+                ruolo: membro?.ruolo ?? '',
+                indirizzo: membro?.indirizzo ?? ''
+            };
+        }
+
+        const telefoni = membriCompleti
+            .filter((membro) => membro.telefono.trim())
+            .map((membro) => `${membro.telefono.trim()} (${membro.nome})`);
+        const emails = membriCompleti.map((membro) => membro.email.trim()).filter(Boolean);
+        const carismi = [...new Set(membriCompleti.map((membro) => this.displayCarisma(membro)).filter((carisma) => carisma !== '—'))];
+        const primo = membriCompleti[0];
+
+        return {
+            id: unita.id,
+            nome: unita.nomeVisualizzato,
+            cognome: primo?.cognome ? `Famiglia ${primo.cognome}` : '',
+            nomeCompleto: unita.nomeVisualizzato,
+            ruolo: carismi.length === 1 ? (carismi[0] as MembroComunitaPilota['ruolo']) : '',
+            accessoApp: primo?.accessoApp ?? 'Da invitare',
+            statoMembro: primo?.statoMembro ?? 'Attivo',
+            consensoPrivacyStato: primo?.consensoPrivacyStato ?? 'Da inviare',
+            moduloPrivacyInviato: membriCompleti.some((membro) => membro.moduloPrivacyInviato),
+            moduloPrivacyRicevuto: membriCompleti.every((membro) => membro.moduloPrivacyRicevuto),
+            dataInvioModuloPrivacy: primo?.dataInvioModuloPrivacy ?? '',
+            telefono: telefoni.join('\n'),
+            indirizzo: membriCompleti.find((membro) => membro.indirizzo.trim())?.indirizzo ?? '',
+            email: unita.emailRiferimento || emails[0] || '',
+            note: unita.note
+        };
     }
 
     private creaMembriDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota[] {
@@ -1646,7 +1730,7 @@ export class Comunita {
             nome: persona.nome,
             cognome: persona.cognome,
             nomeCompleto: `${persona.nome} ${persona.cognome}`.trim(),
-            ruolo: 'Fratello',
+            ruolo: '',
             accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
             statoMembro: 'Attivo',
             consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da completare',
@@ -1654,32 +1738,47 @@ export class Comunita {
             moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
             dataInvioModuloPrivacy: '',
             telefono: persona.telefono || unita.telefonoRiferimento,
+            indirizzo: '',
             email: persona.email || unita.emailRiferimento,
             note: `Unità censimento: ${unita.nomeVisualizzato}`
         }));
     }
 
     private creaMembroCoppiaDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota {
-        const componenti = unita.persone.map((persona) => `${persona.nome} ${persona.cognome}`.trim()).filter(Boolean);
+        const persone = unita.persone.map((persona) => ({
+            nome: persona.nome.trim(),
+            cognome: persona.cognome.trim(),
+            email: persona.email.trim(),
+            telefono: persona.telefono.trim()
+        }));
+        const componenti = persone.map((persona) => `${persona.nome} ${persona.cognome}`.trim()).filter(Boolean);
         const cognomi = [...new Set(unita.persone.map((persona) => persona.cognome.trim()).filter(Boolean))];
-        const emails = [...new Set(unita.persone.map((persona) => persona.email.trim()).filter(Boolean))];
-        const telefoni = [...new Set(unita.persone.map((persona) => persona.telefono.trim()).filter(Boolean))];
-        const nomeVisualizzato = componenti.length ? componenti.join(' / ') : unita.nomeVisualizzato || `Famiglia ${cognomi[0] ?? ''}`.trim();
+        const emails = [...new Set(persone.map((persona) => persona.email).filter(Boolean))];
+        const telefoniConNome = persone
+            .filter((persona) => persona.telefono)
+            .map((persona) => `${persona.telefono}${persona.nome ? ` (${persona.nome})` : ''}`);
+        const stessoCognome = cognomi.length === 1 && persone.length >= 2;
+        const nomeVisualizzato = stessoCognome
+            ? `${persone.map((persona) => persona.nome).filter(Boolean).join(' e ')} ${cognomi[0]}`.trim()
+            : componenti.length
+              ? componenti.join(' e ')
+              : unita.nomeVisualizzato || `Famiglia ${cognomi[0] ?? ''}`.trim();
 
         return {
             id: unita.id,
             nome: nomeVisualizzato,
             cognome: cognomi.length === 1 ? `Famiglia ${cognomi[0]}` : 'Coppia',
             nomeCompleto: nomeVisualizzato,
-            ruolo: 'Coppia / Famiglia',
+            ruolo: '',
             accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
             statoMembro: 'Attivo',
             consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da completare',
             moduloPrivacyInviato: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato',
             moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
             dataInvioModuloPrivacy: '',
-            telefono: telefoni.join(' / ') || unita.telefonoRiferimento,
-            email: emails.join(' / ') || unita.emailRiferimento,
+            telefono: telefoniConNome.join('\n') || unita.telefonoRiferimento,
+            indirizzo: '',
+            email: emails[0] || unita.emailRiferimento,
             note: `Unità censimento coppia: ${unita.nomeVisualizzato}. Componenti: ${componenti.join(', ')}`
         };
     }
@@ -1720,7 +1819,7 @@ export class Comunita {
             nome: membro.nome,
             cognome: membro.cognome,
             nomeCompleto: `${membro.nome} ${membro.cognome}`,
-            ruolo: membro.ruolo === 'Catechista' ? 'Fratello' : (membro.ruolo as MembroComunitaPilota['ruolo']),
+            ruolo: membro.ruolo === 'Catechista' ? '' : (membro.ruolo as MembroComunitaPilota['ruolo']),
             accessoApp: membro.accessoApp as AccessoApp,
             statoMembro: membro.stato as StatoMembro,
             consensoPrivacyStato: membro.privacy as ConsensoPrivacyPilota,
@@ -1728,6 +1827,7 @@ export class Comunita {
             moduloPrivacyRicevuto: membro.privacy === 'Raccolto',
             dataInvioModuloPrivacy: '',
             telefono: '',
+            indirizzo: '',
             email: '',
             note: 'Dato dimostrativo'
         }));
@@ -1737,8 +1837,9 @@ export class Comunita {
         return {
             nome: '',
             cognome: '',
-            ruolo: 'Fratello',
+            ruolo: '',
             telefono: '',
+            indirizzo: '',
             email: '',
             accessoApp: 'Da invitare',
             statoMembro: 'Attivo',
@@ -1757,7 +1858,8 @@ export class Comunita {
             cognomeMarito: '',
             nomeMoglie: '',
             cognomeMoglie: '',
-            emailRiferimento: ''
+            emailRiferimento: '',
+            indirizzo: ''
         };
     }
 

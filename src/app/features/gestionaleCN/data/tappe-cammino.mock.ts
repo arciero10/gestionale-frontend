@@ -12,7 +12,9 @@ export const TAPPE_UFFICIALI_CAMMINO = [
     'Chiusura del Padre Nostro',
     '1ª Chiamata all’Elezione',
     '2ª Chiamata all’Elezione',
-    '3ª Chiamata all’Elezione'
+    '3ª Chiamata all’Elezione',
+    'Rinnovate Promesse Battesimali',
+    'Matrimonio Spirituale'
 ] as const;
 
 export const TAPPE_CAMMINO = [STATO_INIZIALE_CAMMINO, ...TAPPE_UFFICIALI_CAMMINO] as const;
