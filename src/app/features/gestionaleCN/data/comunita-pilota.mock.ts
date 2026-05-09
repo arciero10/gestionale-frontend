@@ -1,5 +1,6 @@
-export type RuoloComunitaPilota = '' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Presbitero' | 'Diacono' | 'Organista' | 'Lettore' | 'Addetto liturgia' | 'Collaboratore convivenze' | 'Collaboratore segreteria' | 'Ostiario' | 'Fratello';
-export type RuoloOperativoComunita = Exclude<RuoloComunitaPilota, '' | 'Fratello'>;
+export type CarismaComunita = '' | 'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Cantore' | 'Presbitero' | 'Diacono' | 'Lettore' | 'Ostiario' | 'Didascalo/a';
+export type RuoloComunitaPilota = CarismaComunita | 'Organista' | 'Addetto liturgia' | 'Collaboratore convivenze' | 'Collaboratore segreteria' | 'Fratello' | 'Fratello / Sorella';
+export type RuoloOperativoComunita = Exclude<CarismaComunita, ''>;
 export type StatoMembroPilota = 'Da invitare' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
 export type AccessoAppPilota = 'Da invitare' | 'Invito inviato' | 'Invitato' | 'Da completare' | 'Attivo' | 'Non attivo';
 export type ConsensoPrivacyPilota = 'Da inviare' | 'Da completare' | 'Inviato' | 'Parziale' | 'Raccolto' | 'Revocato';
@@ -9,7 +10,7 @@ export interface MembroComunitaPilota {
     nome: string;
     cognome: string;
     nomeCompleto: string;
-    ruolo: Exclude<RuoloComunitaPilota, 'Fratello'>;
+    ruolo: CarismaComunita;
     accessoApp: AccessoAppPilota;
     statoMembro: StatoMembroPilota;
     consensoPrivacyStato: ConsensoPrivacyPilota;
@@ -122,10 +123,34 @@ function membro(id: number, nome: string, cognome: string, ruolo: RuoloComunitaP
         nome,
         cognome,
         nomeCompleto: `${nome} ${cognome}`,
-        ruolo: ruolo === 'Fratello' ? '' : ruolo,
+        ruolo: normalizeCarismaComunitario(ruolo),
         ...baseMembro,
         ...overrides
     };
+}
+
+export function normalizeCarismaComunitario(ruolo: RuoloComunitaPilota | string | null | undefined): CarismaComunita {
+    switch ((ruolo ?? '').trim()) {
+        case 'Responsabile':
+        case 'Corresponsabile':
+        case 'Catechista':
+        case 'Cantore':
+        case 'Presbitero':
+        case 'Diacono':
+        case 'Lettore':
+        case 'Ostiario':
+        case 'Didascalo/a':
+            return ruolo as CarismaComunita;
+        case 'Addetto liturgia':
+            return 'Ostiario';
+        case 'Organista':
+        case 'Collaboratore convivenze':
+        case 'Collaboratore segreteria':
+        case 'Fratello':
+        case 'Fratello / Sorella':
+        default:
+            return '';
+    }
 }
 
 function catechista(id: number, nome: string, cognome: string): CatechistaComunita {

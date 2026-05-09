@@ -16,6 +16,7 @@ import {
     EquipeCatechistiUnita,
     MembroComunitaPilota,
     UnitaMembroComunita,
+    normalizeCarismaComunitario,
     RuoloComunitaPilota,
     RuoloOperativoComunita,
     TipoUnitaEquipeCatechisti,
@@ -31,6 +32,23 @@ import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-com
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
 type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'telefono' | 'indirizzo' | 'email' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
+type PermessoOperativoRichiedibile = 'Collaboratore convivenze' | 'Collaboratore segreteria' | 'Supporto privacy/moduli' | 'Supporto anagrafica';
+type StatoRichiestaPermesso = 'In attesa approvazione responsabile' | 'Approvata' | 'Rifiutata';
+
+interface RichiestaPermessoOperativo {
+    id: string;
+    personaId: string;
+    nome: string;
+    cognome: string;
+    comunita: string;
+    permessoRichiesto: PermessoOperativoRichiedibile;
+    motivazione: string;
+    stato: StatoRichiestaPermesso;
+    dataRichiesta: string;
+    dataEsito?: string;
+}
+
+const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
 
 @Component({
     selector: 'app-comunita',
@@ -93,6 +111,61 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                         </div>
                     }
                 </section>
+
+                <section class="operative-permissions-card">
+                    <div class="section-title">
+                        <div>
+                            <span>Permessi operativi</span>
+                            <h2>Richiedi collaborazione operativa</h2>
+                            <p>I permessi operativi non sono carismi: vengono richiesti e approvati dal responsabile.</p>
+                        </div>
+                    </div>
+                    <div class="permission-request-form">
+                        <div>
+                            <label for="permessoRichiesto">Permesso richiesto</label>
+                            <p-select inputId="permessoRichiesto" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="permessiOperativiRichiedibili" [(ngModel)]="permessoRichiesto"></p-select>
+                        </div>
+                        <div>
+                            <label for="motivazionePermesso">Motivazione opzionale</label>
+                            <textarea id="motivazionePermesso" pTextarea rows="2" [(ngModel)]="motivazionePermesso"></textarea>
+                        </div>
+                        <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="inviaRichiestaPermesso()"></button>
+                    </div>
+                </section>
+
+                @if (puoGestireRichiestePermessi) {
+                    <section class="operative-permissions-card">
+                        <div class="section-title">
+                            <div>
+                                <span>Responsabile</span>
+                                <h2>Richieste permessi operative</h2>
+                                <p>Mock locale per approvare o rifiutare richieste successive all'onboarding.</p>
+                            </div>
+                            <strong>{{ richiestePermessiInAttesa.length }}</strong>
+                        </div>
+                        @if (richiestePermessiInAttesa.length) {
+                            <div class="permission-requests-list">
+                                @for (richiesta of richiestePermessiInAttesa; track richiesta.id) {
+                                    <article>
+                                        <div>
+                                            <strong>{{ richiesta.nome }} {{ richiesta.cognome }}</strong>
+                                            <span>{{ richiesta.permessoRichiesto }}</span>
+                                            @if (richiesta.motivazione) {
+                                                <small>{{ richiesta.motivazione }}</small>
+                                            }
+                                        </div>
+                                        <div class="unit-actions">
+                                            <button pButton type="button" label="Approva" icon="pi pi-check" severity="success" outlined (click)="approvaRichiestaPermesso(richiesta)"></button>
+                                            <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined (click)="rifiutaRichiestaPermesso(richiesta)"></button>
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+                        } @else {
+                            <p class="empty-copy">Nessuna richiesta in attesa.</p>
+                        }
+                    </section>
+                }
             }
 
             @if (messaggio) {
@@ -696,6 +769,39 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
                 min-height: 40px;
             }
 
+            .operative-permissions-card {
+                margin-bottom: 1rem;
+                padding: 1rem;
+            }
+
+            .permission-request-form {
+                display: grid;
+                grid-template-columns: minmax(14rem, 0.8fr) minmax(16rem, 1fr) auto;
+                gap: 1rem;
+                align-items: end;
+            }
+
+            .permission-requests-list {
+                display: grid;
+                gap: 0.75rem;
+            }
+
+            .permission-requests-list article {
+                display: flex;
+                justify-content: space-between;
+                gap: 1rem;
+                padding: 0.85rem;
+                border-radius: 0.9rem;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+            }
+
+            .permission-requests-list span,
+            .permission-requests-list small,
+            .empty-copy {
+                color: #475569;
+            }
+
             .contact-list {
                 display: grid;
                 gap: 0.35rem;
@@ -875,8 +981,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
             .role-cantore { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
             .role-ostiario { background: #fef3c7; color: #92400e; border-color: #fde68a; }
             .role-presbitero { background-color: #000000 !important; color: #ffffff !important; border-color: #000000; }
-            .role-prete { background: #111827; color: #ffffff; border-color: #111827; }
             .role-catechista { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+            .role-didascalo-a { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
             .muted-dash { color: #94a3b8; font-weight: 800; }
             .multiline-cell { white-space: pre-line; line-height: 1.35; }
             .privacy-da-inviare { background: #e0f2fe; color: #475569; border-color: #bae6fd; }
@@ -1091,7 +1197,8 @@ type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'tel
 
                 .member-form,
                 .role-summary,
-                .catechisti-grid {
+                .catechisti-grid,
+                .permission-request-form {
                     grid-template-columns: 1fr;
                 }
 
@@ -1129,10 +1236,11 @@ export class Comunita {
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
 
-    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Presbitero', 'Diacono', 'Organista', 'Lettore', 'Addetto liturgia', 'Collaboratore convivenze', 'Collaboratore segreteria'];
+    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Presbitero', 'Diacono', 'Lettore', 'Ostiario', 'Didascalo/a'];
     carismiForm = [{ label: 'Nessun carisma', value: '' as MembroComunitaPilota['ruolo'] }, ...this.ruoliOperativi.map((value) => ({ label: value, value }))];
     carismiFiltro = this.ruoliOperativi.map((value) => ({ label: value, value }));
     ruoliFiltro: RuoloOperativoComunita[] = this.ruoliOperativi;
+    permessiOperativiRichiedibili: PermessoOperativoRichiedibile[] = ['Collaboratore convivenze', 'Collaboratore segreteria', 'Supporto privacy/moduli', 'Supporto anagrafica'];
     statiMembro: StatoMembro[] = ['Da invitare', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
     accessiApp: AccessoApp[] = ['Da invitare', 'Invito inviato', 'Invitato', 'Da completare', 'Attivo', 'Non attivo'];
     statiPrivacy: ConsensoPrivacyPilota[] = ['Da inviare', 'Da completare', 'Inviato', 'Parziale', 'Raccolto', 'Revocato'];
@@ -1148,6 +1256,9 @@ export class Comunita {
     tipoInserimentoMembro: TipoUnitaMembroComunita = 'Fratello singolo';
     nuovoMembroMinimo = this.creaNuovoMembroMinimo();
     messaggio = '';
+    permessoRichiesto: PermessoOperativoRichiedibile = 'Collaboratore convivenze';
+    motivazionePermesso = '';
+    richiestePermessi: RichiestaPermessoOperativo[] = this.leggiRichiestePermessi();
 
     ruoloModalMembro: MembroComunitaPilota | null = null;
     nuovoRuolo: MembroComunitaPilota['ruolo'] = '';
@@ -1206,6 +1317,15 @@ export class Comunita {
 
     get diocesiComunita() {
         return this.isDemo ? DEMO_COMUNITA.diocesi : this.currentCommunity.diocesiNome;
+    }
+
+    get puoGestireRichiestePermessi() {
+        const carisma = this.currentUserCarisma();
+        return carisma === 'Responsabile' || carisma === 'Corresponsabile';
+    }
+
+    get richiestePermessiInAttesa() {
+        return this.richiestePermessi.filter((richiesta) => richiesta.stato === 'In attesa approvazione responsabile' && richiesta.comunita === this.nomeComunita);
     }
 
     get membriFiltrati() {
@@ -1359,9 +1479,40 @@ export class Comunita {
         if (!this.ruoloModalMembro) {
             return;
         }
-        this.membri = this.membri.map((membro) => (membro.id === this.ruoloModalMembro?.id ? { ...membro, ruolo: this.nuovoRuolo } : membro));
+        this.membri = this.membri.map((membro) => (membro.id === this.ruoloModalMembro?.id ? { ...membro, ruolo: normalizeCarismaComunitario(this.nuovoRuolo) } : membro));
         this.messaggio = 'Carisma aggiornato';
         this.chiudiModali();
+    }
+
+    inviaRichiestaPermesso() {
+        const profile = this.leggiProfiloOnboarding();
+        const richiesta: RichiestaPermessoOperativo = {
+            id: `permesso-${Date.now()}`,
+            personaId: profile?.['mockUserId'] ?? 'mock-current-user',
+            nome: profile?.['nome'] ?? 'Utente',
+            cognome: profile?.['cognome'] ?? 'corrente',
+            comunita: this.nomeComunita,
+            permessoRichiesto: this.permessoRichiesto,
+            motivazione: this.motivazionePermesso.trim(),
+            stato: 'In attesa approvazione responsabile',
+            dataRichiesta: new Date().toISOString()
+        };
+
+        this.richiestePermessi = [...this.richiestePermessi, richiesta];
+        this.salvaRichiestePermessi();
+        this.motivazionePermesso = '';
+        this.messaggio = 'La richiesta è stata inviata al responsabile della comunità.';
+    }
+
+    approvaRichiestaPermesso(richiesta: RichiestaPermessoOperativo) {
+        this.aggiornaStatoRichiestaPermesso(richiesta.id, 'Approvata');
+        this.aggiungiPermessoOperativoAlProfilo(richiesta.permessoRichiesto);
+        this.messaggio = `Permesso approvato: ${richiesta.permessoRichiesto}`;
+    }
+
+    rifiutaRichiestaPermesso(richiesta: RichiestaPermessoOperativo) {
+        this.aggiornaStatoRichiestaPermesso(richiesta.id, 'Rifiutata');
+        this.messaggio = `Richiesta rifiutata: ${richiesta.permessoRichiesto}`;
     }
 
     apriModificaContattiMembro(membro: MembroComunitaPilota) {
@@ -1597,6 +1748,78 @@ export class Comunita {
 
     displayContact(value: string) {
         return value?.trim() || 'Da inserire';
+    }
+
+    private leggiRichiestePermessi(): RichiestaPermessoOperativo[] {
+        const raw = localStorage.getItem(RICHIESTE_PERMESSI_OPERATIVI_KEY);
+        if (!raw) {
+            return [];
+        }
+
+        try {
+            return JSON.parse(raw) as RichiestaPermessoOperativo[];
+        } catch {
+            return [];
+        }
+    }
+
+    private salvaRichiestePermessi() {
+        localStorage.setItem(RICHIESTE_PERMESSI_OPERATIVI_KEY, JSON.stringify(this.richiestePermessi));
+    }
+
+    private aggiornaStatoRichiestaPermesso(id: string, stato: StatoRichiestaPermesso) {
+        this.richiestePermessi = this.richiestePermessi.map((richiesta) =>
+            richiesta.id === id ? { ...richiesta, stato, dataEsito: new Date().toISOString() } : richiesta
+        );
+        this.salvaRichiestePermessi();
+    }
+
+    private aggiungiPermessoOperativoAlProfilo(permesso: PermessoOperativoRichiedibile) {
+        const profile = this.leggiProfiloOnboarding() ?? {};
+        const permessiOperativi = Array.isArray(profile['permessiOperativi']) ? profile['permessiOperativi'] : [];
+        const ambitiOperativi = Array.isArray(profile['ambitiOperativi']) ? profile['ambitiOperativi'] : [];
+        const updated = {
+            ...profile,
+            permessiOperativi: [...new Set([...permessiOperativi, permesso])],
+            ambitiOperativi: [...new Set([...ambitiOperativi, permesso])]
+        };
+
+        localStorage.setItem('onboardingUserProfile', JSON.stringify(updated));
+    }
+
+    private leggiProfiloOnboarding(): Record<string, any> | null {
+        const raw = localStorage.getItem('onboardingUserProfile');
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(raw) as Record<string, any>;
+        } catch {
+            return null;
+        }
+    }
+
+    private currentUserCarisma(): MembroComunitaPilota['ruolo'] {
+        const profile = this.leggiProfiloOnboarding();
+        const onboardingCarisma = this.mapOnboardingCarisma(profile?.['ruoloComunitario']);
+        return onboardingCarisma || (this.currentCommunity.isPilot ? 'Responsabile' : '');
+    }
+
+    private mapOnboardingCarisma(value: unknown): MembroComunitaPilota['ruolo'] {
+        const map: Record<string, MembroComunitaPilota['ruolo']> = {
+            responsabile: 'Responsabile',
+            corresponsabile: 'Corresponsabile',
+            catechista: 'Catechista',
+            cantore: 'Cantore',
+            presbitero: 'Presbitero',
+            diacono: 'Diacono',
+            lettore: 'Lettore',
+            ostiario: 'Ostiario',
+            didascalo: 'Didascalo/a'
+        };
+
+        return typeof value === 'string' ? map[value] ?? '' : '';
     }
 
     private salvaCensimentoMinimo() {

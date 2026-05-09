@@ -12,8 +12,7 @@ import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
-type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' | 'cantore' | 'presbitero' | 'diacono' | 'organista' | 'lettore' | 'addetto-liturgia' | 'collaboratore-convivenze' | 'collaboratore-segreteria';
-type PermessiStato = 'tester' | 'in_attesa_approvazione' | 'approvato';
+type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' | 'cantore' | 'presbitero' | 'diacono' | 'lettore' | 'ostiario' | 'didascalo';
 
 @Component({
     selector: 'app-onboarding-comunita',
@@ -145,39 +144,14 @@ type PermessiStato = 'tester' | 'in_attesa_approvazione' | 'approvato';
                                 name="ruoloComunitario"
                                 appendTo="body"
                                 panelStyleClass="onboarding-dropdown-panel"
-                                [options]="ruoliComunitari"
+                                [options]="carismiOnboarding"
                                 optionLabel="label"
                                 optionValue="value"
                                 [(ngModel)]="ruoloComunitario"
                             ></p-select>
                         </div>
 
-                        <div class="field">
-                            <label for="collaboraOrganizzazione">Collabori nell'organizzazione?</label>
-                            <p-select
-                                inputId="collaboraOrganizzazione"
-                                name="collaboraOrganizzazione"
-                                appendTo="body"
-                                panelStyleClass="onboarding-dropdown-panel"
-                                [options]="collaborazioneOptions"
-                                optionLabel="label"
-                                optionValue="value"
-                                [(ngModel)]="collaboraOrganizzazione"
-                            ></p-select>
-                        </div>
-
-                        @if (collaboraOrganizzazione) {
-                            <div class="field form-full">
-                                <label>Ambiti operativi</label>
-                                <div class="ambiti-grid">
-                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('convivenze')" (change)="toggleAmbito('convivenze', $event)" /> Convivenze</label>
-                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('richieste-strutture')" (change)="toggleAmbito('richieste-strutture', $event)" /> Richieste strutture</label>
-                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('privacy-moduli')" (change)="toggleAmbito('privacy-moduli', $event)" /> Privacy / moduli</label>
-                                    <label><input type="checkbox" [checked]="ambitiOperativi.includes('anagrafica-comunita')" (change)="toggleAmbito('anagrafica-comunita', $event)" /> Anagrafica comunità</label>
-                                </div>
-                                <small>In produzione questi permessi dovranno essere approvati dal responsabile.</small>
-                            </div>
-                        }
+                        <small>I permessi operativi si richiedono dopo l'accesso e devono essere approvati dal responsabile.</small>
                     </section>
 
                     <section class="catechist-box">
@@ -621,7 +595,7 @@ export class OnboardingComunita {
         statoVerifica: 'Inserita manualmente'
     };
 
-    readonly ruoliComunitari: Array<{ label: string; value: RuoloComunitario }> = [
+    readonly carismiOnboarding: Array<{ label: string; value: RuoloComunitario }> = [
         { label: 'Nessun carisma', value: '' },
         { label: 'Responsabile', value: 'responsabile' },
         { label: 'Corresponsabile', value: 'corresponsabile' },
@@ -629,11 +603,9 @@ export class OnboardingComunita {
         { label: 'Cantore', value: 'cantore' },
         { label: 'Presbitero', value: 'presbitero' },
         { label: 'Diacono', value: 'diacono' },
-        { label: 'Organista', value: 'organista' },
         { label: 'Lettore', value: 'lettore' },
-        { label: 'Addetto liturgia', value: 'addetto-liturgia' },
-        { label: 'Collaboratore convivenze', value: 'collaboratore-convivenze' },
-        { label: 'Collaboratore segreteria', value: 'collaboratore-segreteria' }
+        { label: 'Ostiario', value: 'ostiario' },
+        { label: 'Didascalo/a', value: 'didascalo' }
     ];
 
     readonly collaborazioneOptions = [
@@ -657,9 +629,6 @@ export class OnboardingComunita {
     messaggio = '';
 
     ruoloComunitario: RuoloComunitario = '';
-    collaboraOrganizzazione = false;
-    ambitiOperativi: string[] = [];
-    permessiStato: PermessiStato = 'tester';
 
     isCatechista: boolean | null = null;
     parrocchiaFigliaId = 24;
@@ -742,17 +711,6 @@ export class OnboardingComunita {
             this.numeroComunitaFiglia = 3;
             this.comunitaFiglieAssociate = [];
         }
-    }
-
-    toggleAmbito(ambito: string, event: Event) {
-        const checked = (event.target as HTMLInputElement).checked;
-
-        if (checked) {
-            this.ambitiOperativi = [...new Set([...this.ambitiOperativi, ambito])];
-            return;
-        }
-
-        this.ambitiOperativi = this.ambitiOperativi.filter((item) => item !== ambito);
     }
 
     aggiungiComunitaFiglia() {
@@ -856,11 +814,6 @@ export class OnboardingComunita {
             return;
         }
 
-        if (this.collaboraOrganizzazione && this.ambitiOperativi.length === 0) {
-            this.messaggio = 'Se collabori nell’organizzazione, seleziona almeno un ambito operativo.';
-            return;
-        }
-
         if (this.isPreview) {
             this.messaggio = 'Simulazione completata';
             return;
@@ -888,9 +841,9 @@ export class OnboardingComunita {
 
         localStorage.setItem('onboardingUserProfile', JSON.stringify({
             ruoloComunitario: this.ruoloComunitario,
-            collaboraOrganizzazione: this.collaboraOrganizzazione,
-            ambitiOperativi: this.collaboraOrganizzazione ? this.ambitiOperativi : [],
-            permessiStato: this.permessiStato,
+            collaboraOrganizzazione: false,
+            ambitiOperativi: [],
+            permessiOperativi: [],
             isCatechista: this.isCatechista === true,
             communityPreview: this.previewComunita,
             savedAt: new Date().toISOString()
