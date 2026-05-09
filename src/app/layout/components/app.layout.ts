@@ -49,6 +49,7 @@ import { LayoutService } from '@/layout/service/layout.service';
                 background-size: cover;
                 background-position: center;
                 background-repeat: no-repeat;
+                background-attachment: fixed;
             }
 
             .onboarding-layout-content {

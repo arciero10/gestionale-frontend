@@ -232,11 +232,13 @@ type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' |
 
             .onboarding-card {
                 width: min(100%, 760px);
+                max-height: calc(100vh - 4rem);
+                overflow: auto;
                 display: grid;
                 gap: 1.25rem;
                 padding: clamp(1.25rem, 3vw, 2rem);
                 border-radius: 20px;
-                background: rgba(255, 255, 255, .78);
+                background: rgba(255, 255, 255, .94);
                 border: 1px solid #e5e7eb;
                 box-shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
                 backdrop-filter: blur(10px);
@@ -262,7 +264,7 @@ type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' |
             .page-intro small,
             .note,
             .field small {
-                color: #64748b;
+                color: #475569;
                 line-height: 1.5;
             }
 

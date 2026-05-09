@@ -1334,7 +1334,7 @@ export class Comunita {
             const matchQuery = !query || membro.nome.toLowerCase().includes(query) || membro.cognome.toLowerCase().includes(query) || membro.nomeCompleto.toLowerCase().includes(query);
             const matchRuolo = !this.ruoloFiltro || membro.ruolo === this.ruoloFiltro;
             return matchQuery && matchRuolo;
-        });
+        }).sort((a, b) => this.compareMembri(a, b));
     }
 
     get conteggiRuolo() {
@@ -1750,6 +1750,26 @@ export class Comunita {
         return value?.trim() || 'Da inserire';
     }
 
+    private compareMembri(a: MembroComunitaPilota, b: MembroComunitaPilota) {
+        const priority = this.prioritaCarisma(a.ruolo) - this.prioritaCarisma(b.ruolo);
+        if (priority !== 0) {
+            return priority;
+        }
+
+        return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it-IT', { sensitivity: 'base' });
+    }
+
+    private prioritaCarisma(carisma: MembroComunitaPilota['ruolo']) {
+        const priorita: Partial<Record<MembroComunitaPilota['ruolo'], number>> = {
+            Presbitero: 1,
+            Responsabile: 2,
+            Corresponsabile: 3,
+            Ostiario: 4
+        };
+
+        return priorita[carisma] ?? 5;
+    }
+
     private leggiRichiestePermessi(): RichiestaPermessoOperativo[] {
         const raw = localStorage.getItem(RICHIESTE_PERMESSI_OPERATIVI_KEY);
         if (!raw) {
@@ -1862,24 +1882,16 @@ export class Comunita {
 
     private creaMembroCoppiaMinimo(email: string, note: string): MembroComunitaPilota {
         const nomeMarito = this.nuovoMembroMinimo.nomeMarito.trim();
-        const cognomeMarito = this.nuovoMembroMinimo.cognomeMarito.trim();
         const nomeMoglie = this.nuovoMembroMinimo.nomeMoglie.trim();
-        const cognomeMoglie = this.nuovoMembroMinimo.cognomeMoglie.trim();
-        const marito = `${nomeMarito} ${cognomeMarito}`.trim();
-        const moglie = `${nomeMoglie} ${cognomeMoglie}`.trim();
         const cognomeFamiglia = this.nuovoMembroMinimo.cognomeMarito.trim() || this.nuovoMembroMinimo.cognomeMoglie.trim();
-        const stessoCognome = cognomeMarito && cognomeMoglie && cognomeMarito.toLowerCase() === cognomeMoglie.toLowerCase();
-        const nomeVisualizzato = marito && moglie
-            ? stessoCognome
-                ? `${nomeMarito} e ${nomeMoglie} ${cognomeMarito}`.trim()
-                : `${marito} e ${moglie}`
-            : `Famiglia ${cognomeFamiglia}`.trim();
+        const nomeCoppia = [nomeMarito, nomeMoglie].filter(Boolean).join(' e ') || 'Famiglia';
+        const nomeCompleto = cognomeFamiglia ? `${nomeCoppia} ${cognomeFamiglia}`.trim() : nomeCoppia;
 
         return {
             id: this.prossimoId++,
-            nome: nomeVisualizzato,
-            cognome: cognomeFamiglia ? `Famiglia ${cognomeFamiglia}` : '',
-            nomeCompleto: nomeVisualizzato,
+            nome: nomeCoppia,
+            cognome: cognomeFamiglia,
+            nomeCompleto,
             ruolo: '',
             accessoApp: 'Da invitare',
             statoMembro: 'Attivo',
@@ -1890,7 +1902,7 @@ export class Comunita {
             telefono: '',
             indirizzo: this.nuovoMembroMinimo.indirizzo.trim(),
             email,
-            note: `${note} Componenti: ${nomeVisualizzato}`
+            note: `${note} Componenti: ${nomeCompleto}`
         };
     }
 
@@ -1923,12 +1935,14 @@ export class Comunita {
         const emails = membriCompleti.map((membro) => membro.email.trim()).filter(Boolean);
         const carismi = [...new Set(membriCompleti.map((membro) => this.displayCarisma(membro)).filter((carisma) => carisma !== '—'))];
         const primo = membriCompleti[0];
+        const nomeCoppia = membriCompleti.map((membro) => membro.nome.trim()).filter(Boolean).join(' e ') || unita.nomeVisualizzato;
+        const cognomeFamiglia = primo?.cognome ?? '';
 
         return {
             id: unita.id,
-            nome: unita.nomeVisualizzato,
-            cognome: primo?.cognome ? `Famiglia ${primo.cognome}` : '',
-            nomeCompleto: unita.nomeVisualizzato,
+            nome: nomeCoppia,
+            cognome: cognomeFamiglia,
+            nomeCompleto: cognomeFamiglia ? `${nomeCoppia} ${cognomeFamiglia}`.trim() : nomeCoppia,
             ruolo: carismi.length === 1 ? (carismi[0] as MembroComunitaPilota['ruolo']) : '',
             accessoApp: primo?.accessoApp ?? 'Da invitare',
             statoMembro: primo?.statoMembro ?? 'Attivo',
@@ -1980,18 +1994,15 @@ export class Comunita {
         const telefoniConNome = persone
             .filter((persona) => persona.telefono)
             .map((persona) => `${persona.telefono}${persona.nome ? ` (${persona.nome})` : ''}`);
-        const stessoCognome = cognomi.length === 1 && persone.length >= 2;
-        const nomeVisualizzato = stessoCognome
-            ? `${persone.map((persona) => persona.nome).filter(Boolean).join(' e ')} ${cognomi[0]}`.trim()
-            : componenti.length
-              ? componenti.join(' e ')
-              : unita.nomeVisualizzato || `Famiglia ${cognomi[0] ?? ''}`.trim();
+        const nomeCoppia = persone.map((persona) => persona.nome).filter(Boolean).join(' e ') || unita.nomeVisualizzato || 'Famiglia';
+        const cognomeFamiglia = persone[0]?.cognome || cognomi[0] || '';
+        const nomeCompleto = cognomeFamiglia ? `${nomeCoppia} ${cognomeFamiglia}`.trim() : nomeCoppia;
 
         return {
             id: unita.id,
-            nome: nomeVisualizzato,
-            cognome: cognomi.length === 1 ? `Famiglia ${cognomi[0]}` : 'Coppia',
-            nomeCompleto: nomeVisualizzato,
+            nome: nomeCoppia,
+            cognome: cognomeFamiglia || 'Coppia',
+            nomeCompleto,
             ruolo: '',
             accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
             statoMembro: 'Attivo',
