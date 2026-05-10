@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { AppMenuitem } from './app.menuitem';
 import { AuthService } from '@/auth/auth.service';
 import { PlatformAdminAccess } from '@/features/gestionaleCN/admin/platform-admin.mock';
+import { getAccessContexts } from '@/features/gestionaleCN/data/access-context.mock';
 
 @Component({
     selector: '[app-menu]',
@@ -20,6 +21,7 @@ export class AppMenu {
     el = inject(ElementRef);
     authService = inject(AuthService);
     platformAdminAccess = inject(PlatformAdminAccess);
+    hasCatechistContext = getAccessContexts().some((context) => context.id === 'catechista');
 
     @ViewChild('menuContainer') menuContainer!: ElementRef;
 
@@ -42,6 +44,12 @@ export class AppMenu {
                     label: 'Censimento comunità',
                     icon: 'pi pi-fw pi-user-plus',
                     routerLink: ['/gestionale-cn/censimento-comunita']
+                },
+                {
+                    label: 'Area Catechista',
+                    icon: 'pi pi-fw pi-sitemap',
+                    routerLink: ['/gestionale-cn/catechista/dashboard'],
+                    visible: this.hasCatechistContext
                 },
                 {
                     label: 'Convivenze',

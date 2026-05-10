@@ -8,6 +8,7 @@ import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 import { getCurrentCommunity, hasSelectedCommunity, updateSelectedCommunityTappa } from '../gestionaleCN/data/community-selection.storage';
+import { ensureAccessContext, shouldChooseAccessContext } from '../gestionaleCN/data/access-context.mock';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../gestionaleCN/data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 
@@ -485,8 +486,18 @@ export class Dashboard {
     constructor() {
         const normalizedUrl = this.router.url.split('?')[0].split('#')[0];
 
-        if (!this.isDemo && (normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard') && !hasSelectedCommunity()) {
-            this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
+        if (!this.isDemo && (normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard')) {
+            if (!hasSelectedCommunity()) {
+                this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
+                return;
+            }
+
+            if (shouldChooseAccessContext()) {
+                this.router.navigateByUrl('/gestionale-cn/scelta-contesto', { replaceUrl: true });
+                return;
+            }
+
+            ensureAccessContext();
         }
 
         this.tappaCammino = this.isDemo ? normalizeTappaCammino(DEMO_COMUNITA.tappaCammino) : this.leggiTappaSalvata();

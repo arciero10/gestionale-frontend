@@ -252,15 +252,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                 </div>
             </section>
 
-            <section class="role-summary" aria-label="Conteggio per carisma">
-                @for (item of conteggiRuolo; track item.ruolo) {
-                    <article>
-                        <span>{{ item.ruolo }}</span>
-                        <strong>{{ item.totale }}</strong>
-                    </article>
-                }
-            </section>
-
             <section class="card member-table">
                 <p-table [value]="membriFiltrati" dataKey="id" responsiveLayout="scroll" [paginator]="membriFiltrati.length > 12" [rows]="12">
                     <ng-template #caption>
@@ -619,7 +610,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
 
             .identity-card,
             .controls-card,
-            .role-summary article,
             .member-card,
             .action-message,
             .catechisti-card {
@@ -643,7 +633,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
             .identity-card span,
             .section-title span,
             .search-box label,
-            .role-summary span,
             .member-card dt,
             .app-modal header span,
             .app-modal label {
@@ -881,22 +870,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                 color: #64748b;
             }
 
-            .role-summary {
-                display: grid;
-                grid-template-columns: repeat(6, minmax(0, 1fr));
-                gap: 0.85rem;
-            }
-
-            .role-summary article {
-                display: grid;
-                gap: 0.2rem;
-            }
-
-            .role-summary strong {
-                color: #111827;
-                font-size: 1.35rem;
-            }
-
             .role-badge {
                 display: inline-flex;
                 align-items: center;
@@ -1117,7 +1090,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                 }
 
-                .role-summary,
                 .catechisti-grid {
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                 }
@@ -1143,7 +1115,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                 }
 
                 .member-form,
-                .role-summary,
                 .catechisti-grid,
                 .permission-request-form {
                     grid-template-columns: 1fr;
