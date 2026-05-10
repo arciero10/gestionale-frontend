@@ -8,6 +8,7 @@ import { TagModule } from 'primeng/tag';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo/demo.mock';
 import { COMUNITA_ATTIVA_MOCK } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 import { getCurrentCommunity, hasSelectedCommunity, updateSelectedCommunityTappa } from '../gestionaleCN/data/community-selection.storage';
+import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../gestionaleCN/data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 
 interface DashboardModule {
@@ -472,8 +473,9 @@ export class Dashboard {
     private readonly currentCommunity = getCurrentCommunity();
     private readonly tappaStorageKey = 'eventiComunita.tappaCammino';
 
-    readonly currentUserRole: 'Responsabile' | 'Corresponsabile' | 'Fratello' = 'Responsabile';
-    readonly currentUserCanEditCommunity = this.currentUserRole === 'Responsabile';
+    readonly currentUserCarismi = this.leggiCarismiUtente();
+    readonly currentUserPermessi = getPermessiByCarismi(this.currentUserCarismi);
+    readonly currentUserCanEditCommunity = this.currentUserPermessi.includes('EDIT_COMUNITA');
     tappeOptions = [...TAPPE_CAMMINO];
     tappaCammino: TappaCammino = 'Precatecumenato';
     tappaInBozza: TappaCammino = 'Precatecumenato';
@@ -588,5 +590,32 @@ export class Dashboard {
     private leggiTappaSalvata(): TappaCammino {
         const saved = this.currentCommunity.tappaCammino ?? localStorage.getItem(this.tappaStorageKey) ?? localStorage.getItem('eventiComunità.tappaCammino') ?? '';
         return saved ? normalizeTappaCammino(saved) : normalizeTappaCammino(this.comunitaAttiva.tappaCammino);
+    }
+
+    private leggiCarismiUtente(): Carisma[] {
+        const raw = localStorage.getItem('onboardingUserProfile');
+
+        if (!raw) {
+            return ['responsabile'];
+        }
+
+        try {
+            const profile = JSON.parse(raw) as { carismi?: string[]; ruoloComunitario?: string; isCatechista?: boolean };
+            const carismi = new Set<Carisma>();
+
+            if (Array.isArray(profile.carismi)) {
+                profile.carismi.forEach((carisma) => carismi.add(normalizeCarismaForPermissions(carisma)));
+            } else {
+                carismi.add(normalizeCarismaForPermissions(profile.ruoloComunitario));
+            }
+
+            if (profile.isCatechista === true) {
+                carismi.add('catechista');
+            }
+
+            return Array.from(carismi);
+        } catch {
+            return ['responsabile'];
+        }
     }
 }

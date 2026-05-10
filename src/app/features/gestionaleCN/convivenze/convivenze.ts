@@ -9,6 +9,7 @@ import { DialogModule } from 'primeng/dialog';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
 import { EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
 import { ComunitaFigliaAssociata, getCurrentCommunity } from '../data/community-selection.storage';
+import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import {
     CategoriaConvivenza,
     SoggettoOrganizzatoreConvivenza,
@@ -517,14 +518,12 @@ export class Convivenze {
         value: `${comunita.numeroComunita}ª Comunità – ${comunita.parrocchiaNome}`
     }));
 
-    readonly currentUserRoles: Array<'Responsabile' | 'Corresponsabile' | 'Catechista' | 'Capo equipe'> = this.currentCommunity.isCatechista
-        ? ['Responsabile', 'Catechista']
-        : ['Responsabile'];
-
-    readonly currentUserHasCatechistEquipe = this.currentCommunity.isCatechista === true;
+    readonly currentUserCarismi = this.leggiCarismiUtente();
+    readonly currentUserPermessi = getPermessiByCarismi(this.currentUserCarismi);
+    readonly currentUserHasCatechistEquipe = this.currentUserPermessi.includes('VIEW_COMUNITA_FIGLIE');
     readonly currentUserHasChildCommunities = this.comunitaFiglieAssociate.length > 0;
-    readonly currentUserCanCreateCommunityConvivenza = this.currentUserRoles.includes('Responsabile') || this.currentUserRoles.includes('Corresponsabile');
-    readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserHasCatechistEquipe && this.currentUserHasChildCommunities;
+    readonly currentUserCanCreateCommunityConvivenza = this.currentUserPermessi.includes('CREATE_CONVIVENZA');
+    readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserPermessi.includes('CREATE_CONVIVENZA_FIGLIA') && this.currentUserHasChildCommunities;
     readonly currentUserIsEquipe = this.currentUserHasCatechistEquipe;
 
     tipoFiltro: TipoConvivenza | null = null;
@@ -1009,5 +1008,32 @@ Pace.`;
 
     private aggregatiVuoti(): Convivenza['aggregati'] {
         return { adulti: 0, bambini: 0, famiglieConBambini: 0, pastiSpeciali: 0, esigenzeAlloggio: 0, documentiRicevuti: 0, documentiRichiesti: 0, consensiMancanti: 0, consensiRaccolti: 0, consensiDaVerificare: 0, consensiNegatiRevocati: 0 };
+    }
+
+    private leggiCarismiUtente(): Carisma[] {
+        const raw = localStorage.getItem('onboardingUserProfile');
+
+        if (!raw) {
+            return ['responsabile'];
+        }
+
+        try {
+            const profile = JSON.parse(raw) as { carismi?: string[]; ruoloComunitario?: string; isCatechista?: boolean };
+            const carismi = new Set<Carisma>();
+
+            if (Array.isArray(profile.carismi)) {
+                profile.carismi.forEach((carisma) => carismi.add(normalizeCarismaForPermissions(carisma)));
+            } else {
+                carismi.add(normalizeCarismaForPermissions(profile.ruoloComunitario));
+            }
+
+            if (profile.isCatechista === true) {
+                carismi.add('catechista');
+            }
+
+            return Array.from(carismi);
+        } catch {
+            return ['responsabile'];
+        }
     }
 }

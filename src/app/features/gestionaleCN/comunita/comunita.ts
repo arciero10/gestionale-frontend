@@ -25,6 +25,7 @@ import {
 import { DEMO_COMUNITA, DEMO_MEMBRI } from '../../demo/demo.mock';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { NUMERI_COMUNITA, PARROCCHIE_MOCK } from '../data/anagrafica-ecclesiale.mock';
+import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-comunita/censimento-comunita.storage';
@@ -1236,7 +1237,7 @@ export class Comunita {
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
 
-    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Presbitero', 'Diacono', 'Lettore', 'Ostiario', 'Didascalo/a'];
+    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Presbitero', 'Diacono', 'Lettore', 'Ostiario', 'Didascalo/a'];
     carismiForm = [{ label: 'Nessun carisma', value: '' as MembroComunitaPilota['ruolo'] }, ...this.ruoliOperativi.map((value) => ({ label: value, value }))];
     carismiFiltro = this.ruoliOperativi.map((value) => ({ label: value, value }));
     ruoliFiltro: RuoloOperativoComunita[] = this.ruoliOperativi;
@@ -1320,8 +1321,7 @@ export class Comunita {
     }
 
     get puoGestireRichiestePermessi() {
-        const carisma = this.currentUserCarisma();
-        return carisma === 'Responsabile' || carisma === 'Corresponsabile';
+        return this.currentUserPermessi().includes('APPROVE_REQUESTS');
     }
 
     get richiestePermessiInAttesa() {
@@ -1826,11 +1826,31 @@ export class Comunita {
         return onboardingCarisma || (this.currentCommunity.isPilot ? 'Responsabile' : '');
     }
 
+    private currentUserPermessi() {
+        const profile = this.leggiProfiloOnboarding();
+        const carismi = new Set<Carisma>();
+
+        if (Array.isArray(profile?.['carismi'])) {
+            profile?.['carismi'].forEach((carisma: string) => carismi.add(normalizeCarismaForPermissions(carisma)));
+        } else {
+            carismi.add(normalizeCarismaForPermissions(profile?.['ruoloComunitario']));
+        }
+
+        if (profile?.['isCatechista'] === true) {
+            carismi.add('catechista');
+        }
+
+        if (!profile && this.currentCommunity.isPilot) {
+            carismi.add('responsabile');
+        }
+
+        return getPermessiByCarismi(Array.from(carismi));
+    }
+
     private mapOnboardingCarisma(value: unknown): MembroComunitaPilota['ruolo'] {
         const map: Record<string, MembroComunitaPilota['ruolo']> = {
             responsabile: 'Responsabile',
             corresponsabile: 'Corresponsabile',
-            catechista: 'Catechista',
             cantore: 'Cantore',
             presbitero: 'Presbitero',
             diacono: 'Diacono',

@@ -8,11 +8,12 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DIOCESI_MOCK, NUMERI_COMUNITA, PARROCCHIE_MOCK, SETTORI_MOCK, Parrocchia, creaNomeComunitaVisualizzato, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
 import { ComunitaFigliaAssociata, saveSelectedCommunity } from '../data/community-selection.storage';
+import { Carisma, PermessoOperativo, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
-type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' | 'cantore' | 'presbitero' | 'diacono' | 'lettore' | 'ostiario' | 'didascalo';
+type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'cantore' | 'presbitero' | 'diacono' | 'lettore' | 'ostiario' | 'didascalo';
 type FeedbackType = 'success' | 'error' | null;
 
 interface OnboardingPayload {
@@ -31,6 +32,8 @@ interface OnboardingPayload {
     indirizzo: string;
     tappaCammino: TappaCammino;
     ruoloComunitario: RuoloComunitario;
+    carismi: Carisma[];
+    permessiOperativi: PermessoOperativo[];
     isCatechista: boolean | null;
     comunitaFiglieAssociate: ComunitaFigliaAssociata[];
     previewComunita: string;
@@ -72,7 +75,7 @@ interface OnboardingPayload {
                     <button type="button" [class.active]="modalita === 'ricerca'" (click)="modalita = 'ricerca'">Cerca parrocchia</button>
                 </div>
 
-                <form class="community-form" (ngSubmit)="conferma()">
+                <form class="community-form" (ngSubmit)="isPreview ? simulaConferma() : confermaComunita()">
                     @if (modalita === 'guidata') {
                         <div class="guided-grid">
                             <div class="field">
@@ -179,7 +182,6 @@ interface OnboardingPayload {
                             ></p-select>
                         </div>
 
-                        <small>I permessi operativi si richiedono dopo l'accesso e devono essere approvati dal responsabile.</small>
                     </section>
 
                     <section class="catechist-box">
@@ -244,7 +246,7 @@ interface OnboardingPayload {
                     @if (isPreview) {
                         <button pButton type="button" label="Simula conferma" icon="pi pi-check" (click)="simulaConferma()"></button>
                     } @else {
-                        <button pButton type="submit" label="Conferma comunità" icon="pi pi-check"></button>
+                        <button pButton type="button" label="Conferma comunità" icon="pi pi-check" (click)="confermaComunita()"></button>
                     }
                 </form>
             </section>
@@ -659,7 +661,6 @@ export class OnboardingComunita {
         { label: 'Nessun carisma', value: '' },
         { label: 'Responsabile', value: 'responsabile' },
         { label: 'Corresponsabile', value: 'corresponsabile' },
-        { label: 'Catechista', value: 'catechista' },
         { label: 'Cantore', value: 'cantore' },
         { label: 'Presbitero', value: 'presbitero' },
         { label: 'Diacono', value: 'diacono' },
@@ -766,7 +767,8 @@ export class OnboardingComunita {
         this.messaggio = '';
 
         if (value) {
-            this.ruoloComunitario = 'catechista';
+            this.feedbackMessage = null;
+            this.feedbackType = null;
         }
 
         if (!value) {
@@ -881,7 +883,67 @@ export class OnboardingComunita {
         }, 600);
     }
 
+    confermaComunita(): void {
+        this.submitAttempted = true;
+
+        const payload = this.buildOnboardingPayload();
+        const errors = this.validateOnboardingPayload(payload);
+
+        if (errors.length) {
+            this.feedbackType = 'error';
+            this.feedbackMessage = 'Compila i campi obbligatori prima di confermare.';
+            this.messaggio = '';
+            return;
+        }
+
+        localStorage.setItem('onboarding_comunita_payload', JSON.stringify(payload));
+        localStorage.setItem('onboarding_comunita_completed', 'true');
+
+        saveSelectedCommunity({
+            communitySelected: true,
+            numeroComunita: payload.numeroComunita,
+            nomeComunita: payload.nomeComunita,
+            parrocchiaId: payload.parrocchiaId,
+            parrocchiaNome: payload.parrocchiaNome,
+            settoreId: payload.settoreId,
+            settoreNome: payload.settoreNome,
+            diocesiId: payload.diocesiId,
+            diocesiNome: payload.diocesiNome,
+            parrocchiaManuale: payload.parrocchiaManuale,
+            statoVerifica: payload.statoVerifica,
+            dataSelezione: payload.dataSelezione,
+            comune: payload.comune,
+            indirizzo: payload.indirizzo,
+            tappaCammino: payload.tappaCammino,
+            isCatechista: payload.isCatechista === true,
+            comunitaFiglieAssociate: payload.comunitaFiglieAssociate
+        });
+
+        localStorage.setItem('onboardingUserProfile', JSON.stringify({
+            ruoloComunitario: payload.ruoloComunitario,
+            carismi: payload.carismi,
+            collaboraOrganizzazione: false,
+            ambitiOperativi: [],
+            permessiOperativi: payload.permessiOperativi,
+            isCatechista: payload.isCatechista === true,
+            communityPreview: payload.previewComunita,
+            savedAt: payload.dataSelezione
+        }));
+
+        localStorage.setItem('onboardingCompleted', 'true');
+
+        this.feedbackType = 'success';
+        this.feedbackMessage = 'Comunità confermata correttamente.';
+        this.messaggio = '';
+
+        window.setTimeout(() => {
+            this.router.navigate(['/gestionale-cn/dashboard']);
+        }, 600);
+    }
+
     private buildOnboardingPayload(): OnboardingPayload {
+        const carismi = this.getCarismiSelezionati();
+
         return {
             numeroComunita: this.numeroComunita,
             nomeComunita: generaNomeComunita(this.numeroComunita),
@@ -898,6 +960,8 @@ export class OnboardingComunita {
             indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo,
             tappaCammino: this.tappaCammino,
             ruoloComunitario: this.ruoloComunitario,
+            carismi,
+            permessiOperativi: getPermessiByCarismi(carismi),
             isCatechista: this.isCatechista,
             comunitaFiglieAssociate: this.isCatechista === true ? this.comunitaFiglieAssociate : [],
             previewComunita: this.previewComunita
@@ -934,64 +998,23 @@ export class OnboardingComunita {
         return errors;
     }
 
+    private getCarismiSelezionati(): Carisma[] {
+        const carismi = new Set<Carisma>();
+        carismi.add(normalizeCarismaForPermissions(this.ruoloComunitario));
+
+        if (this.isCatechista === true) {
+            carismi.add('catechista');
+        }
+
+        return Array.from(carismi);
+    }
+
     conferma() {
-        if (this.parrocchiaManualeAttiva && !this.parrocchiaNome) {
-            this.messaggio = 'Inserisci il nome della parrocchia';
-            return;
-        }
-
-        if (this.parrocchiaManualeAttiva && !this.comuneManuale.trim()) {
-            this.messaggio = 'Inserisci il comune della parrocchia';
-            return;
-        }
-
-        if (this.isCatechista === null) {
-            this.messaggio = 'Indica se sei catechista di qualche comunità';
-            return;
-        }
-
-        if (this.isCatechista === true && this.comunitaFiglieAssociate.length === 0) {
-            this.messaggio = 'Aggiungi almeno una comunità figlia oppure seleziona No.';
-            return;
-        }
-
         if (this.isPreview) {
-            this.messaggio = 'Simulazione completata';
+            this.simulaConferma();
             return;
         }
 
-        saveSelectedCommunity({
-            communitySelected: true,
-            numeroComunita: this.numeroComunita,
-            nomeComunita: generaNomeComunita(this.numeroComunita),
-            parrocchiaId: this.parrocchiaManualeAttiva ? PARROCCHIA_MANUALE_ID : this.parrocchia.id,
-            parrocchiaNome: this.parrocchiaNome,
-            settoreId: this.parrocchiaManualeAttiva ? 7 : this.parrocchia.settoreId,
-            settoreNome: this.settoreNome,
-            diocesiId: this.parrocchiaManualeAttiva ? this.diocesiManualeId : this.parrocchia.diocesiId,
-            diocesiNome: this.diocesiNome,
-            parrocchiaManuale: this.parrocchiaManualeAttiva,
-            statoVerifica: this.parrocchiaManualeAttiva ? 'Inserita manualmente' : this.parrocchia.statoVerifica,
-            dataSelezione: new Date().toISOString(),
-            comune: this.parrocchiaManualeAttiva ? this.comuneManuale.trim() : this.parrocchia.comune,
-            indirizzo: this.parrocchiaManualeAttiva ? this.indirizzoManuale.trim() : this.parrocchia.indirizzo,
-            tappaCammino: this.tappaCammino,
-            isCatechista: this.isCatechista === true,
-            comunitaFiglieAssociate: this.isCatechista === true ? this.comunitaFiglieAssociate : []
-        });
-
-        localStorage.setItem('onboardingUserProfile', JSON.stringify({
-            ruoloComunitario: this.ruoloComunitario,
-            collaboraOrganizzazione: false,
-            ambitiOperativi: [],
-            permessiOperativi: [],
-            isCatechista: this.isCatechista === true,
-            communityPreview: this.previewComunita,
-            savedAt: new Date().toISOString()
-        }));
-
-        localStorage.setItem('onboardingCompleted', 'true');
-
-        this.router.navigateByUrl('/gestionale-cn/dashboard', { replaceUrl: true });
+        this.confermaComunita();
     }
 }
