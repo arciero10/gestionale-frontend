@@ -113,60 +113,6 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                     }
                 </section>
 
-                <section class="operative-permissions-card">
-                    <div class="section-title">
-                        <div>
-                            <span>Permessi operativi</span>
-                            <h2>Richiedi collaborazione operativa</h2>
-                            <p>I permessi operativi non sono carismi: vengono richiesti e approvati dal responsabile.</p>
-                        </div>
-                    </div>
-                    <div class="permission-request-form">
-                        <div>
-                            <label for="permessoRichiesto">Permesso richiesto</label>
-                            <p-select inputId="permessoRichiesto" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="permessiOperativiRichiedibili" [(ngModel)]="permessoRichiesto"></p-select>
-                        </div>
-                        <div>
-                            <label for="motivazionePermesso">Motivazione opzionale</label>
-                            <textarea id="motivazionePermesso" pTextarea rows="2" [(ngModel)]="motivazionePermesso"></textarea>
-                        </div>
-                        <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="inviaRichiestaPermesso()"></button>
-                    </div>
-                </section>
-
-                @if (puoGestireRichiestePermessi) {
-                    <section class="operative-permissions-card">
-                        <div class="section-title">
-                            <div>
-                                <span>Responsabile</span>
-                                <h2>Richieste permessi operative</h2>
-                                <p>Mock locale per approvare o rifiutare richieste successive all'onboarding.</p>
-                            </div>
-                            <strong>{{ richiestePermessiInAttesa.length }}</strong>
-                        </div>
-                        @if (richiestePermessiInAttesa.length) {
-                            <div class="permission-requests-list">
-                                @for (richiesta of richiestePermessiInAttesa; track richiesta.id) {
-                                    <article>
-                                        <div>
-                                            <strong>{{ richiesta.nome }} {{ richiesta.cognome }}</strong>
-                                            <span>{{ richiesta.permessoRichiesto }}</span>
-                                            @if (richiesta.motivazione) {
-                                                <small>{{ richiesta.motivazione }}</small>
-                                            }
-                                        </div>
-                                        <div class="unit-actions">
-                                            <button pButton type="button" label="Approva" icon="pi pi-check" severity="success" outlined (click)="approvaRichiestaPermesso(richiesta)"></button>
-                                            <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined (click)="rifiutaRichiestaPermesso(richiesta)"></button>
-                                        </div>
-                                    </article>
-                                }
-                            </div>
-                        } @else {
-                            <p class="empty-copy">Nessuna richiesta in attesa.</p>
-                        }
-                    </section>
-                }
             }
 
             @if (messaggio) {

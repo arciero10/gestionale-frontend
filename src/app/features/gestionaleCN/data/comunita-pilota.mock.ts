@@ -291,8 +291,8 @@ function creaUnitaComunita(): UnitaMembroComunita[] {
 export const UNITA_MEMBRI_COMUNITA_PILOTA: UnitaMembroComunita[] = creaUnitaComunita();
 
 export const CATECHISTI_COMUNITA_PILOTA: CatechistaComunita[] = [
-    catechista(1, 'Paolo', 'Bencetti'),
-    catechista(2, 'Angela', 'Bencetti'),
+    catechista(1, 'Giovanni', 'Greco'),
+    catechista(2, 'Maria', 'Rossi'),
     catechista(3, 'Franco', 'Meloni'),
     catechista(4, 'Annamaria', 'Meloni'),
     catechista(5, 'Danilo', 'Greco'),
@@ -304,10 +304,10 @@ export const EQUIPE_CATECHISTI_UNITA_PILOTA: EquipeCatechistiUnita[] = [
     {
         id: 1,
         tipoUnita: 'Coppia',
-        nomeVisualizzato: 'Paolo e Angela Bencetti',
+        nomeVisualizzato: 'Giovanni Greco e Maria Rossi',
         membri: [
-            { id: 1, nome: 'Paolo', cognome: 'Bencetti', genere: 'Fratello', telefono: '', email: '', capoEquipe: false },
-            { id: 2, nome: 'Angela', cognome: 'Bencetti', genere: 'Sorella', telefono: '', email: '', capoEquipe: false }
+            { id: 1, nome: 'Giovanni', cognome: 'Greco', genere: 'Fratello', telefono: '', email: '', capoEquipe: false },
+            { id: 2, nome: 'Maria', cognome: 'Rossi', genere: 'Sorella', telefono: '', email: '', capoEquipe: false }
         ],
         capoEquipe: false,
         telefono: '',
@@ -354,7 +354,7 @@ export const EQUIPE_CATECHISTI_UNITA_PILOTA: EquipeCatechistiUnita[] = [
 
 export const EQUIPE_CATECHISTI_PILOTA: EquipeCatechisti = {
     id: 1,
-    nomeEquipe: 'Equipe di Paolo e Angela Bencetti',
+    nomeEquipe: 'Equipe catechisti Settore Ovest',
     capoEquipeId: null,
     membriEquipe: EQUIPE_CATECHISTI_UNITA_PILOTA,
     comunitaFiglie: [

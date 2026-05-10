@@ -7,7 +7,6 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
-import { EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
 import { ComunitaFigliaAssociata, getCurrentCommunity } from '../data/community-selection.storage';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import {
@@ -28,9 +27,13 @@ interface Convivenza {
     categoriaConvivenza: CategoriaConvivenza;
     tipoConvivenza: TipoConvivenza;
     soggettoOrganizzatore: SoggettoOrganizzatoreConvivenza;
-    equipeOrganizzatriceId: number | null;
+    equipeOrganizzatriceId: string | number | null;
     equipeOrganizzatriceNome: string;
-    comunitaDestinatariaId: number | null;
+    capoEquipeId?: string;
+    capoEquipeNome?: string;
+    membriEquipeIds?: string[];
+    membriEquipeNomi?: string[];
+    comunitaDestinatariaId: string | number | null;
     comunitaDestinatariaNome: string;
     strutturaId: number | null;
     dataInizio: string;
@@ -57,6 +60,20 @@ interface Convivenza {
     };
 }
 
+export interface EquipeCatechisti {
+    id: string;
+    nome: string;
+    capoEquipeId: string;
+    capoEquipeNome: string;
+    membri: {
+        id: string;
+        nome: string;
+        ruolo: 'capo_equipe' | 'catechista' | 'presbitero' | 'collaboratore';
+    }[];
+    comunitaFiglieIds: string[];
+    attiva: boolean;
+}
+
 interface PostoSintesi {
     id: number;
     nome: string;
@@ -67,6 +84,7 @@ interface PostoSintesi {
 interface ComunitaFigliaOption {
     label: string;
     value: string;
+    id?: string;
 }
 
 @Component({
@@ -172,9 +190,25 @@ interface ComunitaFigliaOption {
                             <p-select inputId="tipoCatechistico" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiCatechisticiWizard" [(ngModel)]="nuovoTipoCatechistico"></p-select>
                         </div>
 
-                        <div>
-                            <label>Equipe organizzatrice</label>
-                            <div class="readonly-field">{{ equipeOrganizzatriceNome }}</div>
+                        <div data-wizard-field="equipe" [class.field-error]="hasWizardFieldError('equipe')">
+                            <label for="equipeOrganizzatrice">Equipe organizzatrice</label>
+                            @if (equipeOptions.length) {
+                                <p-select
+                                    inputId="equipeOrganizzatrice"
+                                    appendTo="body"
+                                    panelStyleClass="modal-dropdown-panel"
+                                    [options]="equipeOptions"
+                                    optionLabel="nome"
+                                    optionValue="id"
+                                    [(ngModel)]="nuovaEquipeOrganizzatriceId"
+                                    (ngModelChange)="wizardValidationMessage = ''; wizardFieldErrors.delete('equipe')">
+                                </p-select>
+                                @if (hasWizardFieldError('equipe')) {
+                                    <small class="field-error-message">Seleziona l'equipe che organizzerÃ  questa convivenza.</small>
+                                }
+                            } @else {
+                                <div class="availability-note">Nessuna equipe catechisti associata. Contatta il responsabile o la segreteria.</div>
+                            }
                         </div>
 
                         <div>
@@ -205,6 +239,12 @@ interface ComunitaFigliaOption {
                             <input id="partecipantiFiglie" type="number" min="0" [(ngModel)]="nuoviPartecipanti" />
                         </div>
 
+                        @if (wizardValidationMessage) {
+                            <div class="form-full validation-message">
+                                {{ wizardValidationMessage }}
+                            </div>
+                        }
+
                         <div class="form-full">
                             <label for="noteFiglie">Note</label>
                             <textarea id="noteFiglie" rows="3" [(ngModel)]="nuoveNote"></textarea>
@@ -213,7 +253,9 @@ interface ComunitaFigliaOption {
                         <section class="form-full wizard-summary">
                             <h3>{{ nuovoTipoCatechistico }}</h3>
                             <p>Organizzata dai catechisti</p>
-                            <div><span>Equipe organizzatrice: </span><strong>{{ equipeOrganizzatriceNome }}</strong></div>
+                            <div><span>Organizzata dall'equipe: </span><strong>{{ equipeOrganizzatriceNome || 'Da selezionare' }}</strong></div>
+                            <div><span>Capo equipe: </span><strong>{{ equipeSelezionata?.capoEquipeNome || 'Da indicare' }}</strong></div>
+                            <div><span>Membri: </span><strong>{{ membriEquipePreview || 'Da indicare' }}</strong></div>
                             <div><span>Comunità destinataria: </span><strong>{{ nuovaComunitaFigliaDestinataria }}</strong></div>
                         </section>
 
@@ -323,6 +365,8 @@ interface ComunitaFigliaOption {
                                     @if (selected.categoriaConvivenza === 'Catechistica') {
                                         <div><span>Organizzazione</span><strong>Organizzata dai catechisti</strong></div>
                                         <div><span>Equipe organizzatrice</span><strong>{{ selected.equipeOrganizzatriceNome }}</strong></div>
+                                        <div><span>Capo equipe</span><strong>{{ selected.capoEquipeNome || 'Da indicare' }}</strong></div>
+                                        <div><span>Membri equipe</span><strong>{{ selected.membriEquipeNomi?.join(', ') || 'Da indicare' }}</strong></div>
                                         <div><span>Comunità destinataria</span><strong>{{ selected.comunitaDestinatariaNome }}</strong></div>
                                     } @else {
                                         <div><span>Categoria</span><strong>{{ selected.categoriaConvivenza }}</strong></div>
@@ -472,6 +516,18 @@ interface ComunitaFigliaOption {
             .new-convivenza-box textarea { resize: vertical; }
             .field-help { display: block; margin-top: .35rem; color: #64748b; font-size: .82rem; line-height: 1.35; }
             .validation-message { padding: .75rem 1rem; border-radius: 12px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; font-weight: 800; }
+            .field-error .p-select,
+            .field-error .readonly-field {
+                border-color: #dc2626 !important;
+                background: #fff1f2 !important;
+            }
+            .field-error-message {
+                display: block;
+                margin-top: .35rem;
+                color: #991b1b;
+                font-weight: 800;
+                line-height: 1.35;
+            }
 
             @media (max-width: 1024px) { .workspace, .detail-panel, .new-convivenza-box, .team-grid, .places-grid { grid-template-columns: 1fr; } .detail-grid, .needs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
             @media (max-width: 767px) { .page-head, .section-title { flex-direction: column; align-items: stretch; } .toolbar { flex-direction: column; align-items: stretch; } .filter-group { max-width: 100%; } .toolbar button, .actions button, .new-convivenza-box footer button { min-height: 44px; width: 100%; } .detail-grid, .needs-grid, .privacy-stats { grid-template-columns: 1fr; } .actions { flex-direction: column; } }
@@ -525,6 +581,8 @@ export class Convivenze {
     readonly currentUserCanCreateCommunityConvivenza = this.currentUserPermessi.includes('CREATE_CONVIVENZA');
     readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserPermessi.includes('CREATE_CONVIVENZA_FIGLIA') && this.currentUserHasChildCommunities;
     readonly currentUserIsEquipe = this.currentUserHasCatechistEquipe;
+    readonly equipeAssociateUtente: EquipeCatechisti[] = this.creaEquipeAssociateUtente();
+    readonly equipeOptions = this.equipeAssociateUtente.filter((equipe) => equipe.attiva);
 
     tipoFiltro: TipoConvivenza | null = null;
     nuovaCategoria: CategoriaConvivenza = 'Annuale';
@@ -545,6 +603,8 @@ export class Convivenze {
     oggettoEmailRichiesta = '';
     corpoEmailRichiesta = '';
     nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0]?.value ?? '';
+    nuovaEquipeOrganizzatriceId = this.equipeOptions[0]?.id ?? '';
+    wizardFieldErrors = new Set<string>();
     private convivenzaWizardId: number | null = null;
 
     get isDemo() {
@@ -553,7 +613,15 @@ export class Convivenze {
     }
 
     get equipeOrganizzatriceNome() {
-        return this.isDemo ? 'Equipe demo' : EQUIPE_CATECHISTI_PILOTA.nomeEquipe;
+        return this.equipeSelezionata?.nome ?? (this.isDemo ? 'Equipe demo' : '');
+    }
+
+    get equipeSelezionata() {
+        return this.equipeOptions.find((equipe) => equipe.id === this.nuovaEquipeOrganizzatriceId) ?? null;
+    }
+
+    get membriEquipePreview() {
+        return this.equipeSelezionata?.membri.map((membro) => membro.nome).join(', ') ?? '';
     }
 
     get comunitaDestinatariaNome() {
@@ -628,6 +696,8 @@ export class Convivenze {
         this.corpoEmailRichiesta = '';
         this.convivenzaWizardId = null;
         this.nuovaComunitaFigliaDestinataria = this.comunitaFiglieOptions[0]?.value ?? '';
+        this.nuovaEquipeOrganizzatriceId = this.equipeOptions[0]?.id ?? '';
+        this.wizardFieldErrors.clear();
 
         if (!this.currentUserCanCreateChildCommunityConvivenza) {
             this.tipoFlussoNuova = 'comunita';
@@ -660,6 +730,7 @@ export class Convivenze {
         this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
         this.nuovoTipoAnnuale = this.tipiComunitaNuova[0];
         this.wizardValidationMessage = '';
+        this.wizardFieldErrors.clear();
         this.wizardStep = 2;
 
         if (tipo === 'comunita' && this.nuovoTipoAnnuale === 'Convivenza domenicale') {
@@ -745,8 +816,18 @@ export class Convivenze {
         }
 
         const isCatechistica = this.tipoFlussoNuova === 'figlie';
+        const equipe = isCatechistica ? this.equipeSelezionata : null;
+
+        if (isCatechistica && !equipe) {
+            this.wizardFieldErrors.add('equipe');
+            this.wizardValidationMessage = 'Seleziona l\'equipe che organizzerÃ  questa convivenza.';
+            this.scrollToWizardField('equipe');
+            return;
+        }
+
         const tipo = isCatechistica ? this.nuovoTipoCatechistico : this.nuovoTipoAnnuale;
         const titolo = isCatechistica ? `${tipo}` : `Convivenza ${tipo}`;
+        const comunitaFiglia = this.comunitaFiglieOptions.find((comunita) => comunita.value === this.nuovaComunitaFigliaDestinataria);
 
         const nuova: Convivenza = {
             id: this.convivenzaWizardId ?? Math.max(0, ...this.convivenze.map((convivenza) => convivenza.id)) + 1,
@@ -754,9 +835,13 @@ export class Convivenze {
             categoriaConvivenza: isCatechistica ? 'Catechistica' : 'Annuale',
             tipoConvivenza: tipo,
             soggettoOrganizzatore: isCatechistica ? 'Equipe dei catechisti' : 'Comunità',
-            equipeOrganizzatriceId: isCatechistica ? 1 : null,
-            equipeOrganizzatriceNome: isCatechistica ? this.equipeOrganizzatriceNome : '',
-            comunitaDestinatariaId: 1,
+            equipeOrganizzatriceId: equipe?.id ?? null,
+            equipeOrganizzatriceNome: equipe?.nome ?? '',
+            capoEquipeId: equipe?.capoEquipeId,
+            capoEquipeNome: equipe?.capoEquipeNome,
+            membriEquipeIds: equipe?.membri.map((membro) => membro.id) ?? [],
+            membriEquipeNomi: equipe?.membri.map((membro) => membro.nome) ?? [],
+            comunitaDestinatariaId: isCatechistica ? comunitaFiglia?.id ?? this.nuovaComunitaFigliaDestinataria : 1,
             comunitaDestinatariaNome: isCatechistica ? this.nuovaComunitaFigliaDestinataria : this.comunitaDestinatariaNome,
             strutturaId: this.selected?.id === this.convivenzaWizardId ? this.selected.strutturaId : null,
             dataInizio: this.nuovaDataInizio,
@@ -783,6 +868,17 @@ export class Convivenze {
         this.selected = nuova;
 
         localStorage.setItem(`bozza-convivenza-${nuova.id}`, JSON.stringify(nuova));
+        localStorage.setItem(`payload-convivenza-${nuova.id}`, JSON.stringify({
+            equipeId: nuova.equipeOrganizzatriceId,
+            capoEquipeId: nuova.capoEquipeId,
+            membriEquipeIds: nuova.membriEquipeIds ?? [],
+            comunitaDestinatariaId: nuova.comunitaDestinatariaId,
+            passaggio: nuova.tipoConvivenza,
+            dataInizio: nuova.dataInizio,
+            dataFine: nuova.dataFine,
+            numeroPartecipanti: nuova.partecipantiPrevisti,
+            note: nuova.note
+        }));
 
         this.formNuovaConvivenzaVisibile = false;
         const basePath = this.isDemo ? '/demo' : '/gestionale-cn';
@@ -912,6 +1008,16 @@ Pace.`;
         return convivenza.soggettoOrganizzatore === 'Equipe dei catechisti' ? 'Organizzata dai catechisti' : `Organizzata da: ${convivenza.soggettoOrganizzatore}`;
     }
 
+    hasWizardFieldError(field: string) {
+        return this.wizardFieldErrors.has(field);
+    }
+
+    private scrollToWizardField(field: string) {
+        setTimeout(() => {
+            document.querySelector(`[data-wizard-field="${field}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }
+
     formatDateIt(value: string) {
         const [year, month, day] = value.split('-');
 
@@ -923,11 +1029,17 @@ Pace.`;
     }
 
     private creaConvivenzePilota(): Convivenza[] {
+        const equipe = this.equipeOptions[0];
+
         return [
             {
                 ...this.baseConvivenza(1, 'Passaggio 2° Scrutinio', 'Catechistica', '2° Scrutinio', 'Equipe dei catechisti', 'In attesa approvazione'),
-                equipeOrganizzatriceId: 1,
-                equipeOrganizzatriceNome: EQUIPE_CATECHISTI_PILOTA.nomeEquipe,
+                equipeOrganizzatriceId: equipe?.id ?? null,
+                equipeOrganizzatriceNome: equipe?.nome ?? '',
+                capoEquipeId: equipe?.capoEquipeId,
+                capoEquipeNome: equipe?.capoEquipeNome,
+                membriEquipeIds: equipe?.membri.map((membro) => membro.id) ?? [],
+                membriEquipeNomi: equipe?.membri.map((membro) => membro.nome) ?? [],
                 strutturaId: null,
                 dataInizio: '2027-03-12',
                 dataFine: '2027-03-14',
@@ -982,14 +1094,20 @@ Pace.`;
     }
 
     private baseConvivenza(id: number, titolo: string, categoriaConvivenza: CategoriaConvivenza, tipoConvivenza: TipoConvivenza, soggettoOrganizzatore: SoggettoOrganizzatoreConvivenza, stato: StatoConvivenza): Convivenza {
+        const equipe = soggettoOrganizzatore === 'Equipe dei catechisti' ? this.equipeOptions[0] : null;
+
         return {
             id,
             titolo,
             categoriaConvivenza,
             tipoConvivenza,
             soggettoOrganizzatore,
-            equipeOrganizzatriceId: soggettoOrganizzatore === 'Equipe dei catechisti' ? 1 : null,
-            equipeOrganizzatriceNome: soggettoOrganizzatore === 'Equipe dei catechisti' ? this.equipeOrganizzatriceNome : '',
+            equipeOrganizzatriceId: equipe?.id ?? null,
+            equipeOrganizzatriceNome: equipe?.nome ?? '',
+            capoEquipeId: equipe?.capoEquipeId,
+            capoEquipeNome: equipe?.capoEquipeNome,
+            membriEquipeIds: equipe?.membri.map((membro) => membro.id) ?? [],
+            membriEquipeNomi: equipe?.membri.map((membro) => membro.nome) ?? [],
             comunitaDestinatariaId: 1,
             comunitaDestinatariaNome: this.comunitaDestinatariaNome,
             strutturaId: null,
@@ -1008,6 +1126,43 @@ Pace.`;
 
     private aggregatiVuoti(): Convivenza['aggregati'] {
         return { adulti: 0, bambini: 0, famiglieConBambini: 0, pastiSpeciali: 0, esigenzeAlloggio: 0, documentiRicevuti: 0, documentiRichiesti: 0, consensiMancanti: 0, consensiRaccolti: 0, consensiDaVerificare: 0, consensiNegatiRevocati: 0 };
+    }
+
+    private creaEquipeAssociateUtente(): EquipeCatechisti[] {
+        const comunitaFiglieIds = this.comunitaFiglieOptions.map((comunita) => comunita.id ?? comunita.value);
+
+        if (this.isDemo) {
+            return [{
+                id: 'equipe-demo',
+                nome: 'Equipe demo',
+                capoEquipeId: 'demo-capo-equipe',
+                capoEquipeNome: 'Referente demo',
+                membri: [
+                    { id: 'demo-capo-equipe', nome: 'Referente demo', ruolo: 'capo_equipe' },
+                    { id: 'demo-catechista', nome: 'Catechista demo', ruolo: 'catechista' }
+                ],
+                comunitaFiglieIds,
+                attiva: true
+            }];
+        }
+
+        if (!this.currentUserHasCatechistEquipe) {
+            return [];
+        }
+
+        return [{
+            id: 'equipe-catechisti-settore-ovest',
+            nome: 'Equipe catechisti Settore Ovest',
+            capoEquipeId: 'catechista-giovanni-greco',
+            capoEquipeNome: 'Giovanni Greco',
+            membri: [
+                { id: 'catechista-giovanni-greco', nome: 'Giovanni Greco', ruolo: 'capo_equipe' },
+                { id: 'catechista-maria-rossi', nome: 'Maria Rossi', ruolo: 'catechista' },
+                { id: 'catechista-luca-bianchi', nome: 'Luca Bianchi', ruolo: 'catechista' }
+            ],
+            comunitaFiglieIds,
+            attiva: comunitaFiglieIds.length > 0
+        }];
     }
 
     private leggiCarismiUtente(): Carisma[] {

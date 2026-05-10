@@ -21,9 +21,9 @@ p-treetable {
 }
 
 .layout-container.layout-immersive:not(.layout-demo) {
-    --glass-panel-bg: rgba(255, 255, 255, 0.9);
-    --glass-panel-strong-bg: rgba(255, 255, 255, 0.94);
-    --glass-panel-soft-bg: rgba(255, 255, 255, 0.86);
+    --glass-panel-bg: rgba(255, 255, 255, 0.92);
+    --glass-panel-strong-bg: rgba(255, 255, 255, 0.96);
+    --glass-panel-soft-bg: rgba(255, 255, 255, 0.9);
     --glass-border: rgba(255, 255, 255, 0.42);
     --glass-shadow: 0 18px 45px rgba(9, 22, 38, 0.18);
     min-height: 100vh;
@@ -52,9 +52,23 @@ p-treetable {
     background: transparent;
 }
 
+.layout-container.layout-immersive:not(.layout-demo) h1,
+.layout-container.layout-immersive:not(.layout-demo) h2,
+.layout-container.layout-immersive:not(.layout-demo) h3,
+.layout-container.layout-immersive:not(.layout-demo) h4,
+.layout-container.layout-immersive:not(.layout-demo) h5,
+.layout-container.layout-immersive:not(.layout-demo) h6,
+.layout-container.layout-immersive:not(.layout-demo) strong {
+    color: #0f172a;
+}
+
+.layout-container.layout-immersive:not(.layout-demo) label,
+.layout-container.layout-immersive:not(.layout-demo) dt {
+    color: #334155 !important;
+}
+
 .layout-container.layout-immersive:not(.layout-demo) p,
 .layout-container.layout-immersive:not(.layout-demo) small,
-.layout-container.layout-immersive:not(.layout-demo) dt,
 .layout-container.layout-immersive:not(.layout-demo) .field-help,
 .layout-container.layout-immersive:not(.layout-demo) .empty-state {
     color: #475569 !important;

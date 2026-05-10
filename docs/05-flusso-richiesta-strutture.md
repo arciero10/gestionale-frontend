@@ -41,7 +41,7 @@ Esempio:
 2° Scrutinio
 
 Organizzata dai catechisti
-Equipe organizzatrice: Equipe di Paolo e Angela Bencetti
+Equipe organizzatrice: Equipe catechisti Settore Ovest
 Comunità destinataria: 3ª Comunità – S. Maria delle Grazie alle Fornaci
 ```
 

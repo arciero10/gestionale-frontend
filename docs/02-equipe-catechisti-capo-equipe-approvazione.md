@@ -19,15 +19,15 @@ I dati personali e i consensi restano sempre individuali per ciascuna persona.
 Il capo equipe deve essere modellato come **unità**, non solo come singola persona.
 
 Esempio:
-> Capo equipe unità: Paolo e Angela Bencetti
+> Capo equipe unità: Giovanni Greco e Maria Rossi
 
 Se il capo equipe è una coppia, la coppia rappresenta l'unità capo equipe.
 
 Però deve esistere anche un **referente approvatore finale**, cioè una persona specifica dell'unità capo equipe.
 
 Esempio:
-> Capo equipe unità: Paolo e Angela Bencetti
-> Referente approvazione finale: Paolo Bencetti
+> Capo equipe unità: Giovanni Greco e Maria Rossi
+> Referente approvazione finale: Giovanni Greco
 
 ---
 
@@ -62,16 +62,16 @@ Esempio:
 ```
 Convivenza: 2° Scrutinio
 
-Creata da: Angela Bencetti
+Creata da: Maria Rossi
 Organizzata dai catechisti
-Equipe organizzatrice: Equipe di Paolo e Angela Bencetti
+Equipe organizzatrice: Equipe catechisti Settore Ovest
 Comunità destinataria: 3ª Comunità – S. Maria delle Grazie alle Fornaci
-In attesa approvazione: Paolo Bencetti
+In attesa approvazione: Giovanni Greco
 ```
 
 Dopo approvazione:
 ```
-Approvata da: Paolo Bencetti
+Approvata da: Giovanni Greco
 ```
 
 ---
@@ -161,7 +161,7 @@ Solo dopo stato **Approvata** la convivenza può proseguire verso:
 2° Scrutinio
 
 Organizzata dai catechisti
-Equipe organizzatrice: Equipe di Paolo e Angela Bencetti
+Equipe organizzatrice: Equipe catechisti Settore Ovest
 Comunità destinataria: 3ª Comunità – S. Maria delle Grazie alle Fornaci
-In attesa approvazione: Paolo Bencetti
+In attesa approvazione: Giovanni Greco
 ```
