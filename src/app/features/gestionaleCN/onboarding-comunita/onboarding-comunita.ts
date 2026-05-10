@@ -13,7 +13,7 @@ import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
-type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'cantore' | 'presbitero' | 'diacono' | 'lettore' | 'ostiario' | 'didascalo';
+type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' | 'cantore' | 'presbitero' | 'diacono' | 'lettore' | 'ostiario' | 'didascalo';
 type FeedbackType = 'success' | 'error' | null;
 
 interface OnboardingPayload {
@@ -661,6 +661,7 @@ export class OnboardingComunita {
         { label: 'Nessun carisma', value: '' },
         { label: 'Responsabile', value: 'responsabile' },
         { label: 'Corresponsabile', value: 'corresponsabile' },
+        { label: 'Catechista', value: 'catechista' },
         { label: 'Cantore', value: 'cantore' },
         { label: 'Presbitero', value: 'presbitero' },
         { label: 'Diacono', value: 'diacono' },
@@ -767,6 +768,7 @@ export class OnboardingComunita {
         this.messaggio = '';
 
         if (value) {
+            this.ruoloComunitario = 'catechista';
             this.feedbackMessage = null;
             this.feedbackType = null;
         }

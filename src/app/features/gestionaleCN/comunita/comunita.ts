@@ -1237,7 +1237,7 @@ export class Comunita {
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
 
-    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Cantore', 'Presbitero', 'Diacono', 'Lettore', 'Ostiario', 'Didascalo/a'];
+    ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Presbitero', 'Diacono', 'Lettore', 'Ostiario', 'Didascalo/a'];
     carismiForm = [{ label: 'Nessun carisma', value: '' as MembroComunitaPilota['ruolo'] }, ...this.ruoliOperativi.map((value) => ({ label: value, value }))];
     carismiFiltro = this.ruoliOperativi.map((value) => ({ label: value, value }));
     ruoliFiltro: RuoloOperativoComunita[] = this.ruoliOperativi;
@@ -1851,6 +1851,7 @@ export class Comunita {
         const map: Record<string, MembroComunitaPilota['ruolo']> = {
             responsabile: 'Responsabile',
             corresponsabile: 'Corresponsabile',
+            catechista: 'Catechista',
             cantore: 'Cantore',
             presbitero: 'Presbitero',
             diacono: 'Diacono',
@@ -2073,7 +2074,7 @@ export class Comunita {
             nome: membro.nome,
             cognome: membro.cognome,
             nomeCompleto: `${membro.nome} ${membro.cognome}`,
-            ruolo: membro.ruolo === 'Catechista' ? '' : (membro.ruolo as MembroComunitaPilota['ruolo']),
+            ruolo: membro.ruolo as MembroComunitaPilota['ruolo'],
             accessoApp: membro.accessoApp as AccessoApp,
             statoMembro: membro.stato as StatoMembro,
             consensoPrivacyStato: membro.privacy as ConsensoPrivacyPilota,
