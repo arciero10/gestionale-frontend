@@ -16,6 +16,12 @@ type ModalitaOnboarding = 'guidata' | 'ricerca';
 type RuoloComunitario = '' | 'responsabile' | 'corresponsabile' | 'catechista' | 'cantore' | 'presbitero' | 'diacono' | 'lettore' | 'ostiario' | 'didascalo';
 type FeedbackType = 'success' | 'error' | null;
 
+interface ValidationError {
+    field: string;
+    label: string;
+    message: string;
+}
+
 interface OnboardingPayload {
     numeroComunita: number;
     nomeComunita: string;
@@ -78,23 +84,32 @@ interface OnboardingPayload {
                 <form class="community-form" (ngSubmit)="isPreview ? simulaConferma() : confermaComunita()">
                     @if (modalita === 'guidata') {
                         <div class="guided-grid">
-                            <div class="field">
+                            <div class="field" [class.field-error]="hasFieldError('diocesi')" data-validation-field="diocesi">
                                 <label for="diocesi">Diocesi</label>
                                 <p-select inputId="diocesi" name="diocesi" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="diocesiOptions" optionLabel="nome" optionValue="id" [(ngModel)]="diocesiId" (ngModelChange)="onDiocesiChange()"></p-select>
+                                @if (getFieldErrorMessage('diocesi')) {
+                                    <small class="field-error-message">{{ getFieldErrorMessage('diocesi') }}</small>
+                                }
                             </div>
 
-                            <div class="field">
+                            <div class="field" [class.field-error]="hasFieldError('settore')" data-validation-field="settore">
                                 <label for="settore">Settore</label>
                                 <p-select inputId="settore" name="settore" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="settoriFiltrati" optionLabel="nome" optionValue="id" [(ngModel)]="settoreId" (ngModelChange)="onSettoreChange()"></p-select>
+                                @if (getFieldErrorMessage('settore')) {
+                                    <small class="field-error-message">{{ getFieldErrorMessage('settore') }}</small>
+                                }
                             </div>
 
-                            <div class="field form-full">
+                            <div class="field form-full" [class.field-error]="hasFieldError('parrocchia')" data-validation-field="parrocchia">
                                 <label for="parrocchiaGuidata">Parrocchia</label>
                                 <p-select inputId="parrocchiaGuidata" name="parrocchiaGuidata" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="parrocchieGuidate" optionLabel="nome" optionValue="id" [(ngModel)]="parrocchiaId" (ngModelChange)="onParrocchiaGuidataChange()"></p-select>
+                                @if (getFieldErrorMessage('parrocchia')) {
+                                    <small class="field-error-message">{{ getFieldErrorMessage('parrocchia') }}</small>
+                                }
                             </div>
                         </div>
                     } @else {
-                        <div class="field">
+                        <div class="field" [class.field-error]="hasFieldError('parrocchia')" data-validation-field="parrocchia">
                             <label for="parrocchiaRicerca">Cerca parrocchia</label>
                             <p-autocomplete
                                 inputId="parrocchiaRicerca"
@@ -110,30 +125,45 @@ interface OnboardingPayload {
                                 (onSelect)="selezionaParrocchiaDaRicerca($event.value)"
                             ></p-autocomplete>
                             <small>Cerca per nome, comune o indirizzo.</small>
+                            @if (getFieldErrorMessage('parrocchia')) {
+                                <small class="field-error-message">{{ getFieldErrorMessage('parrocchia') }}</small>
+                            }
                         </div>
                     }
 
                     @if (parrocchiaManualeAttiva) {
                         <section class="manual-box">
-                            <div class="field">
+                            <div class="field" [class.field-error]="hasFieldError('parrocchia')" data-validation-field="parrocchia">
                                 <label for="parrocchiaManuale">Nome parrocchia</label>
                                 <input id="parrocchiaManuale" name="parrocchiaManuale" pInputText [(ngModel)]="parrocchiaManuale" required />
+                                @if (getFieldErrorMessage('parrocchia')) {
+                                    <small class="field-error-message">{{ getFieldErrorMessage('parrocchia') }}</small>
+                                }
                             </div>
 
                             <div class="guided-grid">
-                                <div class="field">
+                                <div class="field" [class.field-error]="hasFieldError('diocesi')" data-validation-field="diocesi">
                                     <label for="diocesiManuale">Diocesi</label>
                                     <p-select inputId="diocesiManuale" name="diocesiManuale" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="diocesiOptions" optionLabel="nome" optionValue="id" [(ngModel)]="diocesiManualeId"></p-select>
+                                    @if (getFieldErrorMessage('diocesi')) {
+                                        <small class="field-error-message">{{ getFieldErrorMessage('diocesi') }}</small>
+                                    }
                                 </div>
 
-                                <div class="field">
+                                <div class="field" [class.field-error]="hasFieldError('settore')" data-validation-field="settore">
                                     <label for="settoreManuale">Settore</label>
                                     <p-select inputId="settoreManuale" name="settoreManuale" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="settoriManuali" [(ngModel)]="settoreManuale"></p-select>
+                                    @if (getFieldErrorMessage('settore')) {
+                                        <small class="field-error-message">{{ getFieldErrorMessage('settore') }}</small>
+                                    }
                                 </div>
 
-                                <div class="field">
+                                <div class="field" [class.field-error]="hasFieldError('comune')" data-validation-field="comune">
                                     <label for="comuneManuale">Comune</label>
                                     <input id="comuneManuale" name="comuneManuale" pInputText [(ngModel)]="comuneManuale" required />
+                                    @if (getFieldErrorMessage('comune')) {
+                                        <small class="field-error-message">{{ getFieldErrorMessage('comune') }}</small>
+                                    }
                                 </div>
 
                                 <div class="field">
@@ -157,18 +187,24 @@ interface OnboardingPayload {
                         </div>
                     }
 
-                    <div class="field">
+                    <div class="field" [class.field-error]="hasFieldError('numeroComunita')" data-validation-field="numeroComunita">
                         <label for="numero">Numero comunità</label>
                         <p-select inputId="numero" name="numero" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
+                        @if (getFieldErrorMessage('numeroComunita')) {
+                            <small class="field-error-message">{{ getFieldErrorMessage('numeroComunita') }}</small>
+                        }
                     </div>
 
-                    <div class="field">
+                    <div class="field" [class.field-error]="hasFieldError('tappaCammino')" data-validation-field="tappaCammino">
                         <label for="tappaCammino">Tappa del Cammino</label>
                         <p-select inputId="tappaCammino" name="tappaCammino" appendTo="body" panelStyleClass="onboarding-dropdown-panel" [options]="tappeCammino" [(ngModel)]="tappaCammino"></p-select>
+                        @if (getFieldErrorMessage('tappaCammino')) {
+                            <small class="field-error-message">{{ getFieldErrorMessage('tappaCammino') }}</small>
+                        }
                     </div>
 
                     <section class="role-box">
-                        <div class="field">
+                        <div class="field" [class.field-error]="hasFieldError('carisma')" data-validation-field="carisma">
                             <label for="ruoloComunitario">Carisma nella comunità</label>
                             <p-select
                                 inputId="ruoloComunitario"
@@ -180,11 +216,14 @@ interface OnboardingPayload {
                                 optionValue="value"
                                 [(ngModel)]="ruoloComunitario"
                             ></p-select>
+                            @if (getFieldErrorMessage('carisma')) {
+                                <small class="field-error-message">{{ getFieldErrorMessage('carisma') }}</small>
+                            }
                         </div>
 
                     </section>
 
-                    <section class="catechist-box">
+                    <section class="catechist-box" [class.field-error]="hasFieldError('isCatechista') || hasFieldError('comunitaFiglia')" data-validation-field="isCatechista">
                         <div class="catechist-head">
                             <div>
                                 <strong>Sei catechista di qualche comunità?</strong>
@@ -196,9 +235,12 @@ interface OnboardingPayload {
                                 <button type="button" [class.active]="isCatechista === false" (click)="setCatechista(false)">No</button>
                             </div>
                         </div>
+                        @if (getFieldErrorMessage('isCatechista')) {
+                            <small class="field-error-message">{{ getFieldErrorMessage('isCatechista') }}</small>
+                        }
 
                         @if (isCatechista === true) {
-                            <aside class="child-community-panel">
+                            <aside class="child-community-panel" data-validation-field="comunitaFiglia">
                                 <h3>Comunità figlie associate</h3>
                                 <p>Indica una o più comunità che segui come catechista. Potrai usarle nelle convivenze catechistiche.</p>
 
@@ -230,6 +272,9 @@ interface OnboardingPayload {
                                             </li>
                                         }
                                     </ul>
+                                }
+                                @if (getFieldErrorMessage('comunitaFiglia')) {
+                                    <small class="field-error-message">{{ getFieldErrorMessage('comunitaFiglia') }}</small>
                                 }
                             </aside>
                         }
@@ -368,6 +413,31 @@ interface OnboardingPayload {
 
             .form-full {
                 grid-column: 1 / -1;
+            }
+
+            .field-error {
+                border-radius: 14px;
+                outline: 2px solid rgba(220, 38, 38, .75);
+                outline-offset: 3px;
+                background: rgba(254, 242, 242, .84);
+            }
+
+            .field.field-error {
+                padding: .45rem;
+            }
+
+            .field-error-message {
+                color: #991b1b !important;
+                font-weight: 800;
+                line-height: 1.4;
+            }
+
+            :host ::ng-deep .field-error .p-select,
+            :host ::ng-deep .field-error .p-autocomplete,
+            :host ::ng-deep .field-error .p-inputtext,
+            .field-error input {
+                border-color: #dc2626 !important;
+                background: #fff1f2 !important;
             }
 
             .manual-box {
@@ -692,6 +762,7 @@ export class OnboardingComunita {
     feedbackMessage: string | null = null;
     feedbackType: FeedbackType = null;
     submitAttempted = false;
+    validationErrors: ValidationError[] = [];
 
     ruoloComunitario: RuoloComunitario = '';
 
@@ -772,6 +843,7 @@ export class OnboardingComunita {
             this.feedbackMessage = null;
             this.feedbackType = null;
         }
+        this.validationErrors = this.validationErrors.filter((error) => error.field !== 'isCatechista' && error.field !== 'comunitaFiglia');
 
         if (!value) {
             this.parrocchiaFigliaId = 24;
@@ -810,6 +882,7 @@ export class OnboardingComunita {
         }
 
         this.comunitaFiglieAssociate = [...this.comunitaFiglieAssociate, nuova];
+        this.validationErrors = this.validationErrors.filter((error) => error.field !== 'comunitaFiglia');
         this.messaggio = '';
     }
 
@@ -865,16 +938,19 @@ export class OnboardingComunita {
 
         const payload = this.buildOnboardingPayload();
         const validationErrors = this.validateOnboardingPayload(payload);
+        this.validationErrors = validationErrors;
 
         if (validationErrors.length > 0) {
-            this.feedbackMessage = 'Compila i campi obbligatori prima di confermare.';
+            this.feedbackMessage = this.buildValidationFeedback(validationErrors);
             this.feedbackType = 'error';
             this.messaggio = '';
+            this.scrollToFirstError();
             return;
         }
 
         localStorage.setItem('onboarding_comunita_payload', JSON.stringify(payload));
         localStorage.setItem('onboarding_comunita_completed', 'true');
+        this.validationErrors = [];
 
         this.feedbackMessage = 'Conferma simulata correttamente. La comunità è stata salvata localmente.';
         this.feedbackType = 'success';
@@ -890,16 +966,19 @@ export class OnboardingComunita {
 
         const payload = this.buildOnboardingPayload();
         const errors = this.validateOnboardingPayload(payload);
+        this.validationErrors = errors;
 
         if (errors.length) {
             this.feedbackType = 'error';
-            this.feedbackMessage = 'Compila i campi obbligatori prima di confermare.';
+            this.feedbackMessage = this.buildValidationFeedback(errors);
             this.messaggio = '';
+            this.scrollToFirstError();
             return;
         }
 
         localStorage.setItem('onboarding_comunita_payload', JSON.stringify(payload));
         localStorage.setItem('onboarding_comunita_completed', 'true');
+        this.validationErrors = [];
 
         saveSelectedCommunity({
             communitySelected: true,
@@ -970,34 +1049,108 @@ export class OnboardingComunita {
         };
     }
 
-    private validateOnboardingPayload(payload: OnboardingPayload): string[] {
-        const errors: string[] = [];
+    hasFieldError(field: string): boolean {
+        return this.validationErrors.some((error) => error.field === field);
+    }
+
+    getFieldErrorMessage(field: string): string {
+        return this.validationErrors.find((error) => error.field === field)?.message ?? '';
+    }
+
+    private validateOnboardingPayload(payload: OnboardingPayload): ValidationError[] {
+        const errors: ValidationError[] = [];
+
+        if (!payload.diocesiNome.trim()) {
+            errors.push({
+                field: 'diocesi',
+                label: 'Diocesi',
+                message: 'Seleziona la diocesi.'
+            });
+        }
+
+        if (!payload.settoreNome.trim()) {
+            errors.push({
+                field: 'settore',
+                label: 'Settore',
+                message: 'Seleziona il settore.'
+            });
+        }
 
         if (!payload.parrocchiaNome.trim()) {
-            errors.push('parrocchia');
+            errors.push({
+                field: 'parrocchia',
+                label: 'Parrocchia',
+                message: 'Seleziona o inserisci la parrocchia.'
+            });
         }
 
         if (!payload.numeroComunita) {
-            errors.push('numeroComunita');
+            errors.push({
+                field: 'numeroComunita',
+                label: 'Numero comunità',
+                message: 'Seleziona il numero della comunità.'
+            });
         }
 
         if (!payload.tappaCammino) {
-            errors.push('tappaCammino');
+            errors.push({
+                field: 'tappaCammino',
+                label: 'Tappa del Cammino',
+                message: 'Seleziona la tappa del Cammino.'
+            });
+        }
+
+        if (!payload.ruoloComunitario) {
+            errors.push({
+                field: 'carisma',
+                label: 'Carisma nella comunità',
+                message: 'Seleziona il carisma nella comunità.'
+            });
         }
 
         if (payload.parrocchiaManuale && !payload.comune.trim()) {
-            errors.push('comuneManuale');
+            errors.push({
+                field: 'comune',
+                label: 'Comune',
+                message: 'Inserisci il comune della parrocchia.'
+            });
         }
 
         if (payload.isCatechista === null) {
-            errors.push('isCatechista');
+            errors.push({
+                field: 'isCatechista',
+                label: 'Sei catechista di qualche comunità?',
+                message: 'Indica se sei catechista di qualche comunità.'
+            });
         }
 
         if (payload.isCatechista === true && payload.comunitaFiglieAssociate.length === 0) {
-            errors.push('comunitaFiglieAssociate');
+            errors.push({
+                field: 'comunitaFiglia',
+                label: 'Comunità figlia associata',
+                message: 'Aggiungi almeno una comunità figlia associata.'
+            });
         }
 
         return errors;
+    }
+
+    private buildValidationFeedback(errors: ValidationError[]): string {
+        const labels = errors.map((error) => error.label);
+        return labels.length === 1
+            ? `Controlla il campo: ${labels[0]}`
+            : `Controlla i campi: ${labels.join(', ')}`;
+    }
+
+    private scrollToFirstError(): void {
+        window.setTimeout(() => {
+            const firstError = this.validationErrors[0];
+            const target = firstError
+                ? document.querySelector<HTMLElement>(`[data-validation-field="${firstError.field}"]`)
+                : document.querySelector<HTMLElement>('.field-error');
+
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
     }
 
     private getCarismiSelezionati(): Carisma[] {
