@@ -1100,14 +1100,6 @@ export class OnboardingComunita {
             });
         }
 
-        if (!payload.ruoloComunitario) {
-            errors.push({
-                field: 'carisma',
-                label: 'Carisma nella comunità',
-                message: 'Seleziona il carisma nella comunità.'
-            });
-        }
-
         if (payload.parrocchiaManuale && !payload.comune.trim()) {
             errors.push({
                 field: 'comune',

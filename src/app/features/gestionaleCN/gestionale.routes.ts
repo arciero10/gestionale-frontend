@@ -99,6 +99,16 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         data: { breadcrumb: 'Area Catechista' }
     },
         {
+        path: 'responsabile/dashboard',
+        loadComponent: () => import('./responsabile/responsabile-dashboard').then((c) => c.ResponsabileDashboard),
+        data: { breadcrumb: 'Area Responsabile' }
+    },
+        {
+        path: 'convivenze/storico',
+        loadComponent: () => import('./convivenze/storico-convivenze').then((c) => c.StoricoConvivenze),
+        data: { breadcrumb: 'Storico convivenze' }
+    },
+        {
         path: 'convivenze',
         component: Convivenze,
         data: { breadcrumb: 'Convivenze' }

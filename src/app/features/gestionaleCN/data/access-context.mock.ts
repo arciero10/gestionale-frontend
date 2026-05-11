@@ -15,27 +15,29 @@ export const SELECTED_ACCESS_CONTEXT_KEY = 'eventiComunità.selectedAccessContex
 export function getAccessContexts(): AccessContextOption[] {
     const carismi = readUserCarismi();
     const permissions = getPermessiByCarismi(carismi);
-    const contexts: AccessContextOption[] = [
-        {
-            id: 'comunita',
-            label: 'La mia comunità',
-            description: 'Accedi alla dashboard e ai dati della tua comunità.',
-            icon: 'pi pi-users',
-            route: '/gestionale-cn/dashboard'
-        }
-    ];
+    const isResponsabile = carismi.includes('responsabile');
+    const isCatechista = carismi.includes('catechista') && permissions.includes('VIEW_COMUNITA_FIGLIE');
+    const contexts: AccessContextOption[] = [];
 
-    if (carismi.includes('responsabile')) {
+    if (isResponsabile) {
         contexts.push({
             id: 'responsabile',
             label: 'Area Responsabile',
             description: 'Gestisci censimento, tappa del Cammino e attività della comunità.',
             icon: 'pi pi-id-card',
-            route: '/gestionale-cn/comunita'
+            route: '/gestionale-cn/responsabile/dashboard'
+        });
+    } else {
+        contexts.push({
+            id: 'comunita',
+            label: 'La mia comunità',
+            description: 'Accedi alla dashboard e ai dati della tua comunità.',
+            icon: 'pi pi-users',
+            route: '/gestionale-cn/dashboard'
         });
     }
 
-    if (carismi.includes('catechista') && permissions.includes('VIEW_COMUNITA_FIGLIE')) {
+    if (isCatechista) {
         contexts.push({
             id: 'catechista',
             label: 'Area Catechista',
@@ -45,7 +47,7 @@ export function getAccessContexts(): AccessContextOption[] {
         });
     }
 
-    if (hasCollaboratoreConvivenze()) {
+    if (!isResponsabile && !isCatechista && hasCollaboratoreConvivenze()) {
         contexts.push({
             id: 'collaboratore_convivenze',
             label: 'Collaboratore convivenze',

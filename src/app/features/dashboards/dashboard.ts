@@ -497,7 +497,12 @@ export class Dashboard {
                 return;
             }
 
-            ensureAccessContext();
+            const context = ensureAccessContext();
+
+            if (context.id !== 'comunita' && normalizedUrl === '/gestionale-cn/dashboard') {
+                this.router.navigateByUrl(context.route, { replaceUrl: true });
+                return;
+            }
         }
 
         this.tappaCammino = this.isDemo ? normalizeTappaCammino(DEMO_COMUNITA.tappaCammino) : this.leggiTappaSalvata();

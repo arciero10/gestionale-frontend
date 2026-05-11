@@ -71,7 +71,8 @@ p-treetable {
 .layout-container.layout-immersive:not(.layout-demo) small,
 .layout-container.layout-immersive:not(.layout-demo) .field-help,
 .layout-container.layout-immersive:not(.layout-demo) .empty-state {
-    color: #475569 !important;
+    color: #334155 !important;
+    font-weight: 600;
 }
 
 .layout-container.layout-immersive:not(.layout-demo) .layout-topbar {

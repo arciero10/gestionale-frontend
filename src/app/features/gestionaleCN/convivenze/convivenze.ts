@@ -641,7 +641,8 @@ export class Convivenze {
     selected: Convivenza | null = this.convivenze.find(c => c.soggettoOrganizzatore === 'Comunità') ?? this.convivenze[0] ?? null;
 
     get convivenzeFiltrate() {
-        return this.tipoFiltro ? this.convivenze.filter((convivenza) => convivenza.tipoConvivenza === this.tipoFiltro) : this.convivenze;
+        const attive = this.convivenze.filter((convivenza) => !this.isConvivenzaConclusa(convivenza));
+        return this.tipoFiltro ? attive.filter((convivenza) => convivenza.tipoConvivenza === this.tipoFiltro) : attive;
     }
 
     get convivenzeDellaComunita() {
@@ -1006,6 +1007,12 @@ Pace.`;
 
     getOrganizzazioneLabel(convivenza: Convivenza) {
         return convivenza.soggettoOrganizzatore === 'Equipe dei catechisti' ? 'Organizzata dai catechisti' : `Organizzata da: ${convivenza.soggettoOrganizzatore}`;
+    }
+
+    private isConvivenzaConclusa(convivenza: Convivenza) {
+        const [year, month, day] = convivenza.dataFine.split('-').map(Number);
+        const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+        return endDate.getTime() < Date.now();
     }
 
     hasWizardFieldError(field: string) {

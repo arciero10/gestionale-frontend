@@ -21,6 +21,7 @@ export class AppMenu {
     el = inject(ElementRef);
     authService = inject(AuthService);
     platformAdminAccess = inject(PlatformAdminAccess);
+    hasResponsibleContext = getAccessContexts().some((context) => context.id === 'responsabile');
     hasCatechistContext = getAccessContexts().some((context) => context.id === 'catechista');
 
     @ViewChild('menuContainer') menuContainer!: ElementRef;
@@ -41,9 +42,16 @@ export class AppMenu {
                     routerLink: ['/gestionale-cn/comunita']
                 },
                 {
+                    label: 'Area Responsabile',
+                    icon: 'pi pi-fw pi-id-card',
+                    routerLink: ['/gestionale-cn/responsabile/dashboard'],
+                    visible: this.hasResponsibleContext
+                },
+                {
                     label: 'Censimento comunità',
                     icon: 'pi pi-fw pi-user-plus',
-                    routerLink: ['/gestionale-cn/censimento-comunita']
+                    routerLink: ['/gestionale-cn/censimento-comunita'],
+                    visible: this.hasResponsibleContext
                 },
                 {
                     label: 'Area Catechista',
@@ -52,9 +60,14 @@ export class AppMenu {
                     visible: this.hasCatechistContext
                 },
                 {
-                    label: 'Convivenze',
+                    label: 'Convivenze attive',
                     icon: 'pi pi-fw pi-calendar',
                     routerLink: ['/gestionale-cn/convivenze']
+                },
+                {
+                    label: 'Storico convivenze',
+                    icon: 'pi pi-fw pi-history',
+                    routerLink: ['/gestionale-cn/convivenze/storico']
                 },
                 {
                     label: 'Posti di Convivenza',
