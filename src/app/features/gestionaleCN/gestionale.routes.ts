@@ -28,11 +28,6 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         data: { breadcrumb: 'Anteprima primo accesso', preview: true }
     },
         {
-        path: 'scelta-contesto',
-        loadComponent: () => import('./access-context/access-context').then((c) => c.AccessContext),
-        data: { breadcrumb: 'Scelta contesto' }
-    },
-        {
         path: 'faq',
         loadComponent: () => import('../faq/faq').then((c) => c.Faq),
         data: { breadcrumb: 'Aiuto / FAQ', visibilita: 'interna' }

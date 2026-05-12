@@ -50,7 +50,7 @@ export function getAccessContexts(): AccessContextOption[] {
     if (!isResponsabile && !isCatechista && hasCollaboratoreConvivenze()) {
         contexts.push({
             id: 'collaboratore_convivenze',
-            label: 'Collaboratore convivenze',
+            label: 'Convivenze autorizzate',
             description: 'Collabora alla gestione operativa delle convivenze autorizzate.',
             icon: 'pi pi-calendar-plus',
             route: '/gestionale-cn/convivenze'
@@ -58,10 +58,6 @@ export function getAccessContexts(): AccessContextOption[] {
     }
 
     return contexts;
-}
-
-export function shouldChooseAccessContext(): boolean {
-    return getAccessContexts().length > 1 && !getSelectedAccessContext();
 }
 
 export function ensureAccessContext(): AccessContextOption {
