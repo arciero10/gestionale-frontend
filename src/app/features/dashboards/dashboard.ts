@@ -9,6 +9,7 @@ import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_MEMBRI, DEMO_POSTI } from '../demo
 import { COMUNITA_ATTIVA_MOCK } from '../gestionaleCN/data/anagrafica-ecclesiale.mock';
 import { getCurrentCommunity, hasSelectedCommunity, updateSelectedCommunityTappa } from '../gestionaleCN/data/community-selection.storage';
 import { ensureAccessContext } from '../gestionaleCN/data/access-context.mock';
+import { canSeeMenuItem, getUserAccessContext } from '../gestionaleCN/data/access-policy.mock';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../gestionaleCN/data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 
@@ -476,6 +477,7 @@ export class Dashboard {
 
     readonly currentUserCarismi = this.leggiCarismiUtente();
     readonly currentUserPermessi = getPermessiByCarismi(this.currentUserCarismi);
+    readonly userAccessContext = getUserAccessContext();
     readonly currentUserCanEditCommunity = this.currentUserPermessi.includes('EDIT_COMUNITA');
     tappeOptions = [...TAPPE_CAMMINO];
     tappaCammino: TappaCammino = 'Precatecumenato';
@@ -542,7 +544,7 @@ export class Dashboard {
     }
 
     get modules(): DashboardModule[] {
-        return [
+        const modules: DashboardModule[] = [
             {
                 title: 'La tua Comunità',
                 icon: 'pi-users',
@@ -576,6 +578,14 @@ export class Dashboard {
                 cta: 'Apri'
             }
         ];
+
+        return modules.filter((module) => {
+            if (module.route.endsWith('/posti-convivenza')) {
+                return canSeeMenuItem('posti-convivenza', this.userAccessContext);
+            }
+
+            return true;
+        });
     }
 
     modificaTappa() {

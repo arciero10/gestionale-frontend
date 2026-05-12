@@ -6,6 +6,7 @@ import { AuthService } from '@/auth/auth.service';
 import { PlatformAdminAccess } from '@/features/gestionaleCN/admin/platform-admin.mock';
 import { AccessContextId, ensureAccessContext, getAccessContexts, saveSelectedAccessContext } from '@/features/gestionaleCN/data/access-context.mock';
 import { getCurrentCommunity } from '@/features/gestionaleCN/data/community-selection.storage';
+import { canPerformAction, canSeeMenuItem, getUserAccessContext } from '@/features/gestionaleCN/data/access-policy.mock';
 
 @Component({
     selector: '[app-menu]',
@@ -43,8 +44,8 @@ import { getCurrentCommunity } from '@/features/gestionaleCN/data/community-sele
                 gap: 0.35rem;
                 border-radius: 14px;
                 color: #f8fafc;
-                background: rgba(15, 23, 42, 0.72);
-                border: 1px solid rgba(255, 255, 255, 0.16);
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.18);
                 box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22);
             }
 
@@ -58,13 +59,13 @@ import { getCurrentCommunity } from '@/features/gestionaleCN/data/community-sele
             }
 
             .menu-context-panel strong {
-                color: #ffffff;
+                color: #f8fafc;
                 font-size: 0.98rem;
                 line-height: 1.2;
             }
 
             .menu-context-panel small {
-                color: #e2e8f0;
+                color: #cbd5e1;
                 font-size: 0.78rem;
                 line-height: 1.25;
             }
@@ -91,8 +92,13 @@ export class AppMenu {
     contexts = getAccessContexts();
     selectedContext: AccessContextId = ensureAccessContext().id;
     currentCommunity = getCurrentCommunity();
+    userContext = getUserAccessContext();
     hasResponsibleContext = this.contexts.some((context) => context.id === 'responsabile');
     hasCatechistContext = this.contexts.some((context) => context.id === 'catechista');
+    hasQuickActions =
+        canPerformAction('aggiungi-membro', this.userContext) ||
+        canPerformAction('nuova-convivenza', this.userContext) ||
+        canPerformAction('nuovo-posto', this.userContext);
 
     @ViewChild('menuContainer') menuContainer!: ElementRef;
 
@@ -104,76 +110,87 @@ export class AppMenu {
                 {
                     label: 'Dashboard',
                     icon: 'pi pi-fw pi-home',
-                    routerLink: ['/gestionale-cn/dashboard']
+                    routerLink: ['/gestionale-cn/dashboard'],
+                    visible: canSeeMenuItem('dashboard', this.userContext)
                 },
                 {
                     label: 'La tua Comunità',
                     icon: 'pi pi-fw pi-users',
-                    routerLink: ['/gestionale-cn/comunita']
+                    routerLink: ['/gestionale-cn/comunita'],
+                    visible: canSeeMenuItem('comunita', this.userContext)
                 },
                 {
                     label: 'Area Responsabile',
                     icon: 'pi pi-fw pi-id-card',
                     routerLink: ['/gestionale-cn/responsabile/dashboard'],
-                    visible: this.hasResponsibleContext
+                    visible: canSeeMenuItem('area-responsabile', this.userContext)
                 },
                 {
                     label: 'Censimento comunità',
                     icon: 'pi pi-fw pi-user-plus',
                     routerLink: ['/gestionale-cn/censimento-comunita'],
-                    visible: this.hasResponsibleContext
+                    visible: canSeeMenuItem('censimento-comunita', this.userContext)
                 },
                 {
                     label: 'Area Catechista',
                     icon: 'pi pi-fw pi-sitemap',
                     routerLink: ['/gestionale-cn/catechista/dashboard'],
-                    visible: this.hasCatechistContext
+                    visible: canSeeMenuItem('area-catechista', this.userContext)
                 },
                 {
                     label: 'Convivenze attive',
                     icon: 'pi pi-fw pi-calendar',
-                    routerLink: ['/gestionale-cn/convivenze']
+                    routerLink: ['/gestionale-cn/convivenze'],
+                    visible: canSeeMenuItem('convivenze', this.userContext)
                 },
                 {
                     label: 'Storico convivenze',
                     icon: 'pi pi-fw pi-history',
-                    routerLink: ['/gestionale-cn/convivenze/storico']
+                    routerLink: ['/gestionale-cn/convivenze/storico'],
+                    visible: canSeeMenuItem('storico-convivenze', this.userContext)
                 },
                 {
                     label: 'Posti di Convivenza',
                     icon: 'pi pi-fw pi-building',
-                    routerLink: ['/gestionale-cn/posti-convivenza']
+                    routerLink: ['/gestionale-cn/posti-convivenza'],
+                    visible: canSeeMenuItem('posti-convivenza', this.userContext)
                 },
                 {
                     label: 'Richieste strutture',
                     icon: 'pi pi-fw pi-send',
-                    routerLink: ['/gestionale-cn/richieste-strutture']
+                    routerLink: ['/gestionale-cn/richieste-strutture'],
+                    visible: canSeeMenuItem('richieste-strutture', this.userContext)
                 },
                 {
                     label: 'Viaggi / Pellegrinaggi',
                     icon: 'pi pi-fw pi-send',
-                    routerLink: ['/gestionale-cn/viaggi']
+                    routerLink: ['/gestionale-cn/viaggi'],
+                    visible: canSeeMenuItem('viaggi', this.userContext)
                 }
             ]
         },
         {
             label: 'Azioni rapide',
             icon: 'pi pi-fw pi-plus-circle',
+            visible: this.hasQuickActions,
             items: [
                 {
                     label: 'Aggiungi membro',
                     icon: 'pi pi-fw pi-user-plus',
-                    routerLink: ['/gestionale-cn/comunita']
+                    routerLink: ['/gestionale-cn/comunita'],
+                    visible: canPerformAction('aggiungi-membro', this.userContext)
                 },
                 {
                     label: 'Nuova convivenza',
                     icon: 'pi pi-fw pi-calendar-plus',
-                    routerLink: ['/gestionale-cn/convivenze']
+                    routerLink: ['/gestionale-cn/convivenze'],
+                    visible: canPerformAction('nuova-convivenza', this.userContext)
                 },
                 {
                     label: 'Nuovo posto',
                     icon: 'pi pi-fw pi-plus',
-                    routerLink: ['/gestionale-cn/posti-convivenza']
+                    routerLink: ['/gestionale-cn/posti-convivenza'],
+                    visible: canPerformAction('nuovo-posto', this.userContext)
                 }
             ]
         },

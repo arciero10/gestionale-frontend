@@ -29,6 +29,7 @@ import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '.
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-comunita/censimento-comunita.storage';
+import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
@@ -64,10 +65,14 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                 </div>
                 <div class="heading-actions">
                     @if (!isDemo) {
-                        <a pButton routerLink="/gestionale-cn/censimento-comunita" icon="pi pi-list-check" label="Censisci comunità" severity="secondary" outlined></a>
+                        @if (canCensireComunita) {
+                            <a pButton routerLink="/gestionale-cn/censimento-comunita" icon="pi pi-list-check" label="Censisci comunità" severity="secondary" outlined></a>
+                        }
                         <a class="preview-link" routerLink="/gestionale-cn/onboarding-comunita-preview">Anteprima primo accesso utente</a>
                     }
-                    <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
+                    @if (canAddMember) {
+                        <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
+                    }
                 </div>
             </header>
 
@@ -98,17 +103,21 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                                     <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
                                     <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
                                 </dl>
-                                <div class="unit-actions">
-                                    <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
-                                    <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
-                                </div>
+                                @if (canEditMembers) {
+                                    <div class="unit-actions">
+                                        <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
+                                        <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
+                                    </div>
+                                }
                             </article>
                             }
                         </div>
                     } @else {
                         <div class="empty-community-state">
                             <span>Equipe dei catechisti da associare.</span>
-                            <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
+                            @if (canEditMembers) {
+                                <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
+                            }
                         </div>
                     }
                 </section>
@@ -242,7 +251,9 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                     <label for="filtroRuolo">Filtra carisma</label>
                     <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiFiltro" optionLabel="label" optionValue="value" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i carismi"></p-select>
                 </div>
-                <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
+                @if (canManagePrivacy) {
+                    <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
+                }
                 <div class="totals">
                     <strong>{{ membriFiltrati.length }}</strong>
                     <span>membri visualizzati su {{ membri.length }}</span>
@@ -271,7 +282,9 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                             <th>Accesso app</th>
                             <th>Privacy</th>
                             <th>Stato</th>
-                            <th class="text-right">Azioni</th>
+                            @if (canEditMembers || canManagePrivacy) {
+                                <th class="text-right">Azioni</th>
+                            }
                         </tr>
                     </ng-template>
                     <ng-template #body let-membro>
@@ -291,21 +304,27 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                             <td><p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" /></td>
                             <td><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
-                            <td>
-                                <div class="row-actions">
-                                    <button pButton type="button" label="Modifica carisma" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
-                                    <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" text (click)="apriModificaContattiMembro(membro)"></button>
-                                    <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
-                                    <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
-                                    <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-trash" severity="danger" text ariaLabel="Elimina" (click)="eliminaMembro(membro.id)"></button>
-                                </div>
-                            </td>
+                            @if (canEditMembers || canManagePrivacy) {
+                                <td>
+                                    <div class="row-actions">
+                                        @if (canEditMembers) {
+                                            <button pButton type="button" label="Modifica carisma" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
+                                            <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" text (click)="apriModificaContattiMembro(membro)"></button>
+                                            <button pButton type="button" icon="pi pi-trash" severity="danger" text ariaLabel="Elimina" (click)="eliminaMembro(membro.id)"></button>
+                                        }
+                                        @if (canManagePrivacy) {
+                                            <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
+                                            <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
+                                            <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
+                                        }
+                                    </div>
+                                </td>
+                            }
                         </tr>
                     </ng-template>
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="10">Nessun membro trovato con i filtri attuali.</td>
+                            <td [attr.colspan]="canEditMembers || canManagePrivacy ? 10 : 9">Nessun membro trovato con i filtri attuali.</td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -332,13 +351,19 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                             <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'SÃ¬' : 'No' }}</dd></div>
                             <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'SÃ¬' : 'No' }}</dd></div>
                         </dl>
-                        <div class="card-actions">
-                            <button pButton type="button" icon="pi pi-user-edit" label="Modifica carisma" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
-                            <button pButton type="button" icon="pi pi-address-book" label="Contatti" severity="secondary" outlined (click)="apriModificaContattiMembro(membro)"></button>
-                            <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
-                            <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
-                            <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="apriInvioPrivacy(membro)"></button>
-                        </div>
+                        @if (canEditMembers || canManagePrivacy) {
+                            <div class="card-actions">
+                                @if (canEditMembers) {
+                                    <button pButton type="button" icon="pi pi-user-edit" label="Modifica carisma" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-address-book" label="Contatti" severity="secondary" outlined (click)="apriModificaContattiMembro(membro)"></button>
+                                }
+                                @if (canManagePrivacy) {
+                                    <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="apriInvioPrivacy(membro)"></button>
+                                }
+                            </div>
+                        }
                     </article>
                 }
             </section>
@@ -1153,6 +1178,11 @@ export class Comunita {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
+    readonly userAccessContext = getUserAccessContext();
+    readonly canAddMember = canPerformAction('aggiungi-membro', this.userAccessContext);
+    readonly canEditMembers = canPerformAction('modifica-membro', this.userAccessContext);
+    readonly canManagePrivacy = canPerformAction('gestione-privacy', this.userAccessContext);
+    readonly canCensireComunita = canPerformAction('censimento-comunita', this.userAccessContext);
 
     ruoliOperativi: RuoloOperativoComunita[] = ['Responsabile', 'Corresponsabile', 'Catechista', 'Cantore', 'Presbitero', 'Diacono', 'Lettore', 'Ostiario', 'Didascalo/a'];
     carismiForm = [{ label: 'Nessun carisma', value: '' as MembroComunitaPilota['ruolo'] }, ...this.ruoliOperativi.map((value) => ({ label: value, value }))];

@@ -9,6 +9,7 @@ import { DialogModule } from 'primeng/dialog';
 import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock';
 import { ComunitaFigliaAssociata, getCurrentCommunity } from '../data/community-selection.storage';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
+import { canPerformAction, canSeeConvivenza, getUserAccessContext } from '../data/access-policy.mock';
 import {
     CategoriaConvivenza,
     SoggettoOrganizzatoreConvivenza,
@@ -321,7 +322,9 @@ interface ComunitaFigliaOption {
                     <label for="tipoConvivenzaFiltro">Filtra per tipo convivenza / evento</label>
                     <p-select inputId="tipoConvivenzaFiltro" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="tipiConvivenza" [(ngModel)]="tipoFiltro" [showClear]="true" placeholder="Tutti i tipi"></p-select>
                 </div>
-                <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="apriNuovaConvivenza()"></button>
+                @if (canCreateConvivenza) {
+                    <button pButton type="button" icon="pi pi-plus" label="Nuova convivenza" (click)="apriNuovaConvivenza()"></button>
+                }
             </div>
 
             <section class="section-block">
@@ -376,9 +379,12 @@ interface ComunitaFigliaOption {
                                     <div><span>Periodo</span><strong>{{ formatDateIt(selected.dataInizio) }} - {{ formatDateIt(selected.dataFine) }}</strong></div>
                                     <div><span>Posto assegnato</span><strong>{{ getPostoNome(selected) }}</strong></div>
                                     <div><span>Partecipanti</span><strong>{{ selected.partecipantiConfermati }}/{{ selected.partecipantiPrevisti }}</strong></div>
-                                    <div><span>Richiesta struttura</span><strong>{{ selected.statoRichiestaStruttura }}</strong></div>
+                                    @if (canViewOperationalConvivenza) {
+                                        <div><span>Richiesta struttura</span><strong>{{ selected.statoRichiestaStruttura }}</strong></div>
+                                    }
                                 </div>
 
+                                @if (canViewOperationalConvivenza) {
                                 <section class="needs-box">
                                     <h3>Partecipanti e necessità</h3>
                                     <div class="needs-grid">
@@ -405,8 +411,11 @@ interface ComunitaFigliaOption {
                                 <div class="actions">
                                     <button pButton type="button" label="Modifica" icon="pi pi-pencil" outlined></button>
                                     <button pButton type="button" label="Assegna posto" icon="pi pi-building" outlined></button>
-                                    <button pButton type="button" label="Prepara richiesta struttura" icon="pi pi-send" (click)="apriPreparazioneRichiestaDaConvivenza()"></button>
+                                    @if (canPrepareStructureRequest) {
+                                        <button pButton type="button" label="Prepara richiesta struttura" icon="pi pi-send" (click)="apriPreparazioneRichiestaDaConvivenza()"></button>
+                                    }
                                 </div>
+                                }
                             </div>
 
                             <aside class="map-card">
@@ -422,8 +431,8 @@ interface ComunitaFigliaOption {
                 } @else {
                     <main class="detail-panel">
                         <div class="detail-card empty-state">
-                            <h2>Nessuna convivenza ancora programmata</h2>
-                            <p>Questa comunità non ha ancora convivenze associate. Puoi crearne una dal form “Nuova convivenza”.</p>
+                            <h2>Seleziona una convivenza</h2>
+                            <p>Quando ci sono convivenze visibili per il tuo profilo, compariranno nell'elenco a sinistra.</p>
                         </div>
                     </main>
                 }
@@ -538,6 +547,7 @@ export class Convivenze {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly currentCommunity = getCurrentCommunity();
+    readonly userAccessContext = getUserAccessContext();
 
     readonly categorieForm: CategoriaConvivenza[] = ['Catechistica', 'Annuale', 'Comunitaria', 'Organizzativa'];
     readonly tipiCatechistici = [...TIPI_CONVIVENZA_CATECHISTICA];
@@ -578,9 +588,12 @@ export class Convivenze {
     readonly currentUserPermessi = getPermessiByCarismi(this.currentUserCarismi);
     readonly currentUserHasCatechistEquipe = this.currentUserPermessi.includes('VIEW_COMUNITA_FIGLIE');
     readonly currentUserHasChildCommunities = this.comunitaFiglieAssociate.length > 0;
-    readonly currentUserCanCreateCommunityConvivenza = this.currentUserPermessi.includes('CREATE_CONVIVENZA');
+    readonly currentUserCanCreateCommunityConvivenza = canPerformAction('nuova-convivenza', this.userAccessContext);
     readonly currentUserCanCreateChildCommunityConvivenza = this.currentUserPermessi.includes('CREATE_CONVIVENZA_FIGLIA') && this.currentUserHasChildCommunities;
     readonly currentUserIsEquipe = this.currentUserHasCatechistEquipe;
+    readonly canCreateConvivenza = this.currentUserCanCreateCommunityConvivenza || this.currentUserCanCreateChildCommunityConvivenza;
+    readonly canPrepareStructureRequest = canPerformAction('invia-richiesta-struttura', this.userAccessContext) || this.currentUserCanCreateChildCommunityConvivenza;
+    readonly canViewOperationalConvivenza = !this.userAccessContext.isFratelloSemplice;
     readonly equipeAssociateUtente: EquipeCatechisti[] = this.creaEquipeAssociateUtente();
     readonly equipeOptions = this.equipeAssociateUtente.filter((equipe) => equipe.attiva);
 
@@ -638,10 +651,10 @@ export class Convivenze {
     ];
 
     convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : this.currentCommunity.isPilot ? this.creaConvivenzePilota() : [];
-    selected: Convivenza | null = this.convivenze.find(c => c.soggettoOrganizzatore === 'Comunità') ?? this.convivenze[0] ?? null;
+    selected: Convivenza | null = this.convivenze.find((c) => canSeeConvivenza(c, this.userAccessContext) && c.soggettoOrganizzatore === 'Comunità') ?? this.convivenze.find((c) => canSeeConvivenza(c, this.userAccessContext)) ?? null;
 
     get convivenzeFiltrate() {
-        const attive = this.convivenze.filter((convivenza) => !this.isConvivenzaConclusa(convivenza));
+        const attive = this.convivenze.filter((convivenza) => !this.isConvivenzaConclusa(convivenza) && canSeeConvivenza(convivenza, this.userAccessContext));
         return this.tipoFiltro ? attive.filter((convivenza) => convivenza.tipoConvivenza === this.tipoFiltro) : attive;
     }
 
@@ -681,6 +694,10 @@ export class Convivenze {
     }
 
     apriNuovaConvivenza() {
+        if (!this.canCreateConvivenza) {
+            return;
+        }
+
         this.tipoFlussoNuova = null;
         this.nuovaCategoria = 'Annuale';
         this.nuovoTipoCatechistico = this.tipiCatechisticiWizard[2];
@@ -1199,3 +1216,4 @@ Pace.`;
         }
     }
 }
+

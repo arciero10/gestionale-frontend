@@ -22,6 +22,7 @@ import { formatDateIt } from '../richieste-strutture/richieste-strutture.models'
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { AuthService } from '@/auth/auth.service';
 import { TIPI_CONVIVENZA_ANNUALE, TAPPE_UFFICIALI_CAMMINO } from '../data/tappe-cammino.mock';
+import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
 import {
     CensimentoStrutturaMock,
     SAN_GAETANO_CENSIMENTO_LINK,
@@ -71,11 +72,13 @@ type PostoConCensimento = PostoConvivenza & {
                 </div>
                 <div class="head-actions">
                     <a pButton [routerLink]="mappaRoute" icon="pi pi-map" label="Vista mappa futura" outlined></a>
-                    <button pButton type="button" icon="pi pi-plus" label="Segnala struttura" (click)="toggleSegnalaForm()"></button>
+                    @if (canCreatePosto) {
+                        <button pButton type="button" icon="pi pi-plus" label="Segnala struttura" (click)="toggleSegnalaForm()"></button>
+                    }
                 </div>
             </header>
 
-            @if (showSegnalaForm) {
+            @if (showSegnalaForm && canCreatePosto) {
                 <section class="signal-card">
                     <div class="signal-head">
                         <span>Proposta struttura</span>
@@ -112,7 +115,7 @@ type PostoConCensimento = PostoConvivenza & {
                             <span>{{ convivenzaBozza.comunitaDestinatariaNome }} · {{ formatDateIt(convivenzaBozza.dataInizio) }} – {{ formatDateIt(convivenzaBozza.dataFine) }}</span>
                         </div>
                     </div>
-                    @if (postoPerRichiesta) {
+                    @if (postoPerRichiesta && canSendStructureRequest) {
                         <div class="ctx-cta">
                             <span><i class="pi pi-building"></i> <strong>{{ postoPerRichiesta.nome }}</strong> selezionato</span>
                             <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="inviaRichiestaMock()"></button>
@@ -121,7 +124,7 @@ type PostoConCensimento = PostoConvivenza & {
                 </div>
             }
 
-            @if (showFormConvivenza && !convivenzaBozza) {
+            @if (showFormConvivenza && !convivenzaBozza && canSendStructureRequest) {
                 <section class="form-convivenza-inline">
                     <div class="fci-header">
                         <div class="fci-eyebrow"><i class="pi pi-calendar-plus"></i> Dati convivenza</div>
@@ -250,7 +253,7 @@ type PostoConCensimento = PostoConvivenza & {
                                         <span class="local-badge census-check">{{ posto.statoVerifica }}</span>
                                     }
                                 </span>
-                                @if (convivenzaBozza) {
+                                @if (convivenzaBozza && canSendStructureRequest) {
                                     <button type="button" class="seleziona-btn"
                                         [class.selezionato]="postoPerRichiesta?.id === posto.id"
                                         [disabled]="!isPostoOperativo(posto)"
@@ -356,10 +359,10 @@ type PostoConCensimento = PostoConvivenza & {
 
                         <div class="actions">
                             <button pButton type="button" label="Dettaglio" icon="pi pi-info-circle" outlined></button>
-                            @if (convivenzaBozza) {
+                            @if (convivenzaBozza && canSendStructureRequest) {
                                 <button pButton type="button" label="Seleziona e invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)"
                                     (click)="selezionaPerRichiesta(selected); inviaRichiestaMock()"></button>
-                            } @else {
+                            } @else if (canSendStructureRequest) {
                                 <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)" (click)="apriNuovaRichiesta(selected)"></button>
                             }
                             @if (selected.googleMapsUrl) {
@@ -675,6 +678,9 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     private readonly router = inject(Router);
     private readonly richiesteService = inject(RichiesteStruttureService);
     private readonly authService = inject(AuthService);
+    readonly userAccessContext = getUserAccessContext();
+    readonly canCreatePosto = canPerformAction('nuovo-posto', this.userAccessContext);
+    readonly canSendStructureRequest = canPerformAction('invia-richiesta-struttura', this.userAccessContext);
 
     @ViewChild('mapContainer') private mapContainer?: ElementRef<HTMLDivElement>;
 
@@ -776,6 +782,10 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     }
 
     apriNuovaRichiesta(posto: PostoConCensimento) {
+        if (!this.canSendStructureRequest) {
+            return;
+        }
+
         if (!this.isPostoOperativo(posto)) {
             return;
         }
@@ -853,6 +863,10 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     }
 
     inviaRichiestaMock() {
+        if (!this.canSendStructureRequest) {
+            return;
+        }
+
         if (!this.convivenzaBozza || !this.postoPerRichiesta) {
             return;
         }
@@ -952,6 +966,10 @@ ${this.comunitaNome}`;
     }
 
     toggleSegnalaForm(force?: boolean) {
+        if (!this.canCreatePosto) {
+            return;
+        }
+
         this.showSegnalaForm = force ?? !this.showSegnalaForm;
         this.segnalazioneErrore = '';
         if (!this.showSegnalaForm) {
@@ -960,6 +978,10 @@ ${this.comunitaNome}`;
     }
 
     salvaSegnalazione() {
+        if (!this.canCreatePosto) {
+            return;
+        }
+
         const nome = this.segnalazioneForm.nomeStruttura.trim();
         if (!nome) {
             this.segnalazioneErrore = 'Inserisci almeno il nome della struttura.';

@@ -6,6 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SelectModule } from 'primeng/select';
 import { getCurrentCommunity } from '../data/community-selection.storage';
+import { canSeeConvivenza, getUserAccessContext } from '../data/access-policy.mock';
 
 type StoricoConvivenza = {
     id: string | number;
@@ -211,6 +212,7 @@ type StoricoConvivenza = {
 })
 export class StoricoConvivenze {
     private readonly community = getCurrentCommunity();
+    private readonly userAccessContext = getUserAccessContext();
     search = '';
     categoriaFiltro: string | null = null;
     readonly categorie = ['Catechistica', 'Annuale', 'Comunitaria'];
@@ -235,7 +237,7 @@ export class StoricoConvivenze {
     }
 
     private loadStorico(): StoricoConvivenza[] {
-        return [...this.defaultStorico(), ...this.localStorageConvivenze()].filter((convivenza) => this.isConclusa(convivenza.dataFine));
+        return [...this.defaultStorico(), ...this.localStorageConvivenze()].filter((convivenza) => this.isConclusa(convivenza.dataFine) && canSeeConvivenza(convivenza, this.userAccessContext));
     }
 
     private defaultStorico(): StoricoConvivenza[] {
