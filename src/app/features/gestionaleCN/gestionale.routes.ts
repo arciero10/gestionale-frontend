@@ -63,6 +63,11 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         data: { breadcrumb: 'Posti di Convivenza' }
     },
         {
+        path: 'catalogo-strutture',
+        loadComponent: () => import('./catalogo-strutture/catalogo-strutture').then((c) => c.CatalogoStrutture),
+        data: { breadcrumb: 'Catalogo strutture' }
+    },
+        {
         path: 'admin',
         canMatch: [platformAdminGuard],
         children: [

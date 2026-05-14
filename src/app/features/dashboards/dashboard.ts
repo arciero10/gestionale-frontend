@@ -562,10 +562,10 @@ export class Dashboard {
                 cta: 'Entra'
             },
             {
-                title: 'Posti di Convivenza',
+                title: 'Catalogo strutture',
                 icon: 'pi-building',
                 status: 'In sviluppo',
-                route: `${this.basePath}/posti-convivenza`,
+                route: `${this.basePath}/catalogo-strutture`,
                 tone: 'posti',
                 cta: 'Vai al modulo'
             },
@@ -580,7 +580,7 @@ export class Dashboard {
         ];
 
         return modules.filter((module) => {
-            if (module.route.endsWith('/posti-convivenza')) {
+            if (module.route.endsWith('/catalogo-strutture')) {
                 return canSeeMenuItem('posti-convivenza', this.userAccessContext);
             }
 

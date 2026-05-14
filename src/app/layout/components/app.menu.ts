@@ -150,9 +150,9 @@ export class AppMenu {
                     visible: canSeeMenuItem('storico-convivenze', this.userContext)
                 },
                 {
-                    label: 'Posti di Convivenza',
+                    label: 'Catalogo strutture',
                     icon: 'pi pi-fw pi-building',
-                    routerLink: ['/gestionale-cn/posti-convivenza'],
+                    routerLink: ['/gestionale-cn/catalogo-strutture'],
                     visible: canSeeMenuItem('posti-convivenza', this.userContext)
                 },
                 {

@@ -900,7 +900,7 @@ export class Convivenze {
 
         this.formNuovaConvivenzaVisibile = false;
         const basePath = this.isDemo ? '/demo' : '/gestionale-cn';
-        this.router.navigate([`${basePath}/posti-convivenza`], { queryParams: { convivenzaId: nuova.id } });
+        this.router.navigate([`${basePath}/catalogo-strutture`], { queryParams: { convivenzaId: nuova.id } });
     }
 
     selezionaPosto(postoId: number) {

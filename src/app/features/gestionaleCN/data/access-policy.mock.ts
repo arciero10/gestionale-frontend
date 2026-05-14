@@ -109,7 +109,7 @@ export function canPerformAction(actionKey: ActionKey, userContext: UserAccessCo
         case 'nuova-convivenza':
             return userContext.isResponsabile || userContext.isCollaboratoreConvivenze || userContext.permessi.includes('CREATE_CONVIVENZA');
         case 'nuovo-posto':
-            return userContext.isResponsabile || userContext.isOstiario || userContext.isCollaboratoreConvivenze;
+            return false;
         case 'invia-richiesta-struttura':
             return userContext.isResponsabile;
     }
