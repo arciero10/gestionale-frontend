@@ -64,8 +64,8 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
     },
         {
         path: 'catalogo-strutture',
-        loadComponent: () => import('./catalogo-strutture/catalogo-strutture').then((c) => c.CatalogoStrutture),
-        data: { breadcrumb: 'Catalogo strutture' }
+        redirectTo: 'posti-convivenza',
+        pathMatch: 'full'
     },
         {
         path: 'admin',

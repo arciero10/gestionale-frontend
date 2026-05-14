@@ -32,3 +32,200 @@ body {
 .onboarding-dropdown-panel {
       z-index: 12000 !important;
 }
+
+app-posti-convivenza .mock-map {
+      position: relative;
+      min-height: 650px;
+      height: 650px;
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(226, 232, 240, .92), rgba(241, 245, 249, .98)), radial-gradient(circle at 20% 25%, rgba(147, 197, 253, .35), transparent 22%), radial-gradient(circle at 70% 65%, rgba(187, 247, 208, .45), transparent 24%);
+      border: 1px solid #dbe3ee;
+}
+
+app-posti-convivenza .map-toolbar,
+app-posti-convivenza .map-popup {
+      position: absolute;
+      z-index: 4;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .95);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, .15);
+}
+
+app-posti-convivenza .map-toolbar {
+      left: 1rem;
+      top: 1rem;
+      display: grid;
+      gap: .15rem;
+      padding: .7rem .85rem;
+}
+
+app-posti-convivenza .map-toolbar span,
+app-posti-convivenza .map-popup span {
+      color: #2563eb;
+      font-size: .75rem;
+      font-weight: 900;
+      text-transform: uppercase;
+}
+
+app-posti-convivenza .map-toolbar strong,
+app-posti-convivenza .map-popup strong {
+      color: #0f172a;
+}
+
+app-posti-convivenza .map-grid-line,
+app-posti-convivenza .map-district {
+      position: absolute;
+      pointer-events: none;
+}
+
+app-posti-convivenza .map-grid-line {
+      height: 3px;
+      width: 120%;
+      left: -10%;
+      border-radius: 999px;
+      background: rgba(100, 116, 139, .26);
+      transform: rotate(-14deg);
+}
+
+app-posti-convivenza .line-a { top: 35%; }
+app-posti-convivenza .line-b { top: 62%; transform: rotate(18deg); }
+
+app-posti-convivenza .map-district {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, .35);
+      background: rgba(255, 255, 255, .26);
+}
+
+app-posti-convivenza .district-a { width: 32%; height: 28%; left: 12%; top: 18%; }
+app-posti-convivenza .district-b { width: 38%; height: 32%; right: 11%; top: 38%; }
+app-posti-convivenza .district-c { width: 28%; height: 24%; left: 28%; bottom: 12%; }
+
+app-posti-convivenza .map-marker {
+      position: absolute;
+      z-index: 3;
+      width: 34px;
+      height: 34px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      border: 3px solid #fff;
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .28);
+      cursor: pointer;
+      font-weight: 900;
+}
+
+app-posti-convivenza .map-marker.active {
+      background: #b86f35;
+      transform: translate(-50%, -50%) scale(1.18);
+}
+
+app-posti-convivenza .map-marker span { font-size: .72rem; line-height: 1; }
+
+app-posti-convivenza .map-popup {
+      right: 1rem;
+      bottom: 1rem;
+      width: min(320px, calc(100% - 2rem));
+      display: grid;
+      gap: .25rem;
+      padding: .9rem;
+}
+
+app-posti-convivenza .map-popup small {
+      color: #475569;
+      font-weight: 700;
+      line-height: 1.35;
+}
+
+app-posti-convivenza .map-popup button {
+      justify-self: start;
+      min-height: 34px;
+      margin-top: .35rem;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      padding: .35rem .7rem;
+      font-weight: 850;
+      cursor: pointer;
+}
+
+app-posti-convivenza .street-card {
+      display: grid;
+      grid-template-columns: minmax(18rem, .8fr) minmax(0, 1fr);
+      gap: 1rem;
+      padding: .9rem;
+}
+
+app-posti-convivenza .street-preview {
+      min-height: 190px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, .18), rgba(15, 23, 42, .58)), url('/images/backgrounds/posti-convivenza-bg.jpg') center center / cover no-repeat;
+      display: flex;
+      align-items: flex-end;
+      padding: 1rem;
+      overflow: hidden;
+}
+
+app-posti-convivenza .street-preview div {
+      display: grid;
+      gap: .2rem;
+      padding: .75rem;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, .68);
+      color: #fff;
+      backdrop-filter: blur(6px);
+}
+
+app-posti-convivenza .street-preview span {
+      color: #bfdbfe;
+      font-size: .75rem;
+      font-weight: 900;
+      text-transform: uppercase;
+}
+
+app-posti-convivenza .street-preview small {
+      color: #e2e8f0;
+}
+
+app-posti-convivenza .street-card dl {
+      display: grid;
+      gap: .65rem;
+      margin: 0;
+      min-width: 0;
+}
+
+app-posti-convivenza .street-card dl div {
+      min-width: 0;
+      padding: .75rem;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+}
+
+app-posti-convivenza .street-card dt {
+      color: #475569;
+      font-size: .78rem;
+      font-weight: 850;
+}
+
+app-posti-convivenza .street-card dd {
+      margin: .25rem 0 0;
+      color: #0f172a;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+      app-posti-convivenza .mock-map {
+            min-height: 360px;
+            height: 420px;
+      }
+
+      app-posti-convivenza .street-card {
+            grid-template-columns: 1fr;
+      }
+}

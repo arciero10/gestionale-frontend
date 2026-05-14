@@ -90,9 +90,9 @@ export function canSeeMenuItem(itemKey: MenuItemKey, userContext: UserAccessCont
         case 'censimento-comunita':
             return userContext.isResponsabile;
         case 'posti-convivenza':
-            return userContext.isResponsabile || userContext.isOstiario || userContext.isCollaboratoreConvivenze;
+            return userContext.isResponsabile || userContext.isOstiario || userContext.isCatechista || userContext.isCollaboratoreConvivenze;
         case 'richieste-strutture':
-            return userContext.isResponsabile;
+            return userContext.isResponsabile || userContext.isCatechista || userContext.isOstiario || userContext.isCollaboratoreConvivenze;
         case 'admin':
             return false;
     }
@@ -109,9 +109,9 @@ export function canPerformAction(actionKey: ActionKey, userContext: UserAccessCo
         case 'nuova-convivenza':
             return userContext.isResponsabile || userContext.isCollaboratoreConvivenze || userContext.permessi.includes('CREATE_CONVIVENZA');
         case 'nuovo-posto':
-            return false;
-        case 'invia-richiesta-struttura':
             return userContext.isResponsabile;
+        case 'invia-richiesta-struttura':
+            return userContext.isResponsabile || userContext.isCatechista || userContext.isOstiario || userContext.isCollaboratoreConvivenze;
     }
 }
 

@@ -1,12 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
-import L from 'leaflet';
 import {
     POSTI_CONVIVENZA_MOCK,
     PostoConvivenza,
@@ -73,7 +72,7 @@ type PostoConCensimento = PostoConvivenza & {
                 <div class="head-actions">
                     <a pButton [routerLink]="mappaRoute" icon="pi pi-map" label="Vista mappa futura" outlined></a>
                     @if (canCreatePosto) {
-                        <button pButton type="button" icon="pi pi-plus" label="Segnala struttura" (click)="toggleSegnalaForm()"></button>
+                        <button pButton type="button" icon="pi pi-plus" label="Nuovo posto" (click)="toggleSegnalaForm()"></button>
                     }
                 </div>
             </header>
@@ -82,7 +81,7 @@ type PostoConCensimento = PostoConvivenza & {
                 <section class="signal-card">
                     <div class="signal-head">
                         <span>Proposta struttura</span>
-                        <h2>Segnala struttura</h2>
+                        <h2>Nuovo posto</h2>
                         <p>La segnalazione resta interna: il link di censimento verrà inviato solo dall'admin piattaforma.</p>
                     </div>
                     <div class="signal-grid">
@@ -127,7 +126,7 @@ type PostoConCensimento = PostoConvivenza & {
             @if (showFormConvivenza && !convivenzaBozza && canSendStructureRequest) {
                 <section class="form-convivenza-inline">
                     <div class="fci-header">
-                        <div class="fci-eyebrow"><i class="pi pi-calendar-plus"></i> Dati convivenza</div>
+                                <div class="fci-eyebrow"><i class="pi pi-calendar-plus"></i> Dati convivenza</div>
                         <p>Stai per inviare una richiesta a <strong>{{ postoPerRichiesta?.nome }}</strong>. Compila i dati della convivenza per procedere.</p>
                     </div>
                     <div class="fci-grid">
@@ -276,10 +275,55 @@ type PostoConCensimento = PostoConvivenza & {
 
                 <main class="map-panel">
                     <div class="map-shell">
-                        <div #mapContainer class="interactive-map" aria-label="Mappa strutture censite"></div>
+                        <div #mapContainer class="mock-map" aria-label="Mappa mock strutture censite">
+                            <div class="map-toolbar">
+                                <span>Mock mappa strutture</span>
+                                <strong>Google Maps ready</strong>
+                            </div>
+                            <div class="map-grid-line line-a"></div>
+                            <div class="map-grid-line line-b"></div>
+                            <div class="map-district district-a"></div>
+                            <div class="map-district district-b"></div>
+                            <div class="map-district district-c"></div>
+
+                            @for (marker of markersMock(); track marker.posto.id) {
+                                <button
+                                    type="button"
+                                    class="map-marker"
+                                    [class.active]="marker.posto.id === selected.id"
+                                    [style.left.%]="marker.left"
+                                    [style.top.%]="marker.top"
+                                    [attr.aria-label]="'Seleziona ' + marker.posto.nome"
+                                    (click)="select(marker.posto, true)">
+                                    <span>{{ marker.posto.capienza ?? '?' }}</span>
+                                </button>
+                            }
+
+                            <article class="map-popup">
+                                <span>{{ selected.tipo }}</span>
+                                <strong>{{ selected.nome }}</strong>
+                                <small>{{ selected.citta }} · {{ selected.indirizzo || 'Indirizzo da completare' }}</small>
+                                <button type="button" (click)="scrollToDetail()">Dettagli</button>
+                            </article>
+                        </div>
                     </div>
 
-                    <section class="detail-card">
+                    <section class="street-card">
+                        <div class="street-preview">
+                            <div>
+                                <span>Street View mock</span>
+                                <strong>{{ selected.nome }}</strong>
+                                <small>Anteprima luogo pronta per futura integrazione Google Maps.</small>
+                            </div>
+                        </div>
+                        <dl>
+                            <div><dt>Lat/Lng</dt><dd>{{ selected.lat }}, {{ selected.lng }}</dd></div>
+                            <div><dt>Google Maps URL</dt><dd>{{ selected.googleMapsUrl || googleMapsUrl(selected) }}</dd></div>
+                            <div><dt>Street View URL</dt><dd>{{ streetViewUrl(selected) }}</dd></div>
+                        </dl>
+                    </section>
+
+                    <section class="detail-card" id="posto-detail">
                         <div class="detail-head">
                             <div>
                                 <span class="eyebrow">{{ selected.tipo }}</span>
@@ -376,10 +420,25 @@ type PostoConCensimento = PostoConvivenza & {
     `,
     styles: [
         `
-            .posti-page { display: grid; gap: 1.25rem; }
-            .page-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+            .posti-page {
+                display: grid;
+                gap: 1.25rem;
+                padding: .15rem;
+                color: #0f172a;
+            }
+            .page-head {
+                display: flex;
+                justify-content: space-between;
+                gap: 1rem;
+                align-items: center;
+                padding: 1.15rem 1.25rem;
+                border: 1px solid #e2e8f0;
+                border-radius: 18px;
+                background: rgba(255,255,255,.96);
+                box-shadow: 0 12px 30px rgba(15,23,42,.08);
+            }
             .page-head h1 { margin: 0 0 .35rem; font-size: 2rem; color: #111827; }
-            .page-head p { margin: 0; color: #64748b; }
+            .page-head p { margin: 0; color: #475569; font-weight: 650; }
             .head-actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: flex-end; }
             .head-actions a,
             .head-actions button { min-height: 44px; }
@@ -388,11 +447,12 @@ type PostoConCensimento = PostoConvivenza & {
             .filters,
             .list-panel,
             .map-shell,
+            .street-card,
             .detail-card {
-                background: #fff;
-                border: 1px solid #e5e7eb;
-                border-radius: 14px;
-                box-shadow: 0 10px 26px rgba(15,23,42,.06);
+                background: rgba(255,255,255,.96);
+                border: 1px solid #e2e8f0;
+                border-radius: 18px;
+                box-shadow: 0 12px 30px rgba(15,23,42,.08);
             }
             .stats div { padding: .9rem; }
             .stats span { display: block; color: #64748b; font-size: .82rem; }
@@ -418,7 +478,15 @@ type PostoConCensimento = PostoConvivenza & {
                 line-height: 1.2;
             }
             .service-filter button.active { background: #e0f2fe; border-color: #7dd3fc; color: #075985; }
-            .list-panel { padding: .75rem; display: grid; gap: .75rem; align-content: start; max-height: 650px; overflow: auto; }
+            .list-panel {
+                padding: .75rem;
+                display: grid;
+                gap: .75rem;
+                align-content: start;
+                max-height: 650px;
+                overflow: auto;
+                background: rgba(255,255,255,.98);
+            }
             .result-count { color: #64748b; font-weight: 800; padding: .25rem .25rem .4rem; }
             .posto-item {
                 min-height: 128px;
@@ -468,24 +536,6 @@ type PostoConCensimento = PostoConvivenza & {
             }
             .map-panel { display: grid; gap: 1rem; min-width: 0; }
             .map-shell { padding: .75rem; }
-            .interactive-map {
-                min-height: 650px;
-                height: 650px;
-                width: 100%;
-                border-radius: 12px;
-                overflow: hidden;
-                background: #eef2f7;
-            }
-            :host ::ng-deep .leaflet-container { font-family: inherit; }
-            :host ::ng-deep .structure-marker {
-                width: 30px;
-                height: 30px;
-                border-radius: 999px;
-                border: 3px solid #fff;
-                background: #315f8f;
-                box-shadow: 0 8px 20px rgba(15, 23, 42, .25);
-            }
-            :host ::ng-deep .structure-marker.selected { background: #b86f35; transform: scale(1.15); }
             .detail-card { padding: 1.1rem; }
             .detail-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
             .eyebrow { color: #64748b; font-weight: 800; font-size: .85rem; }
@@ -666,14 +716,15 @@ type PostoConCensimento = PostoConvivenza & {
                 .stats,
                 .detail-grid { grid-template-columns: 1fr; }
                 .service-filter button { flex: 1 1 100%; justify-content: center; }
-                .interactive-map { min-height: 360px; height: 420px; }
+                .mock-map { min-height: 360px; height: 420px; }
+                .street-card { grid-template-columns: 1fr; }
                 .posto-item { min-height: auto; padding: 1rem; }
                 .detail-head { flex-direction: column; }
             }
         `
     ]
 })
-export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
+export class PostiConvivenza implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly richiesteService = inject(RichiesteStruttureService);
@@ -740,9 +791,6 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
     segnalazioneErrore = '';
     segnalazioneForm = this.createEmptySegnalazioneForm();
 
-    private map: L.Map | null = null;
-    private markerLayer: L.LayerGroup | null = null;
-
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];
         return this.route.snapshot.data['demo'] === true || url === '/demo' || url.startsWith('/demo/');
@@ -765,15 +813,6 @@ export class PostiConvivenza implements AfterViewInit, OnDestroy, OnInit {
                 }
             }
         }
-    }
-
-    ngAfterViewInit() {
-        this.initMap();
-    }
-
-    ngOnDestroy() {
-        this.map?.remove();
-        this.map = null;
     }
 
     select(posto: PostoConCensimento, centerMap = false) {
@@ -1057,52 +1096,44 @@ ${this.comunitaNome}`;
     }
 
     aggiornaMappa(centerSelected = false) {
-        if (!this.map || !this.markerLayer) {
-            return;
-        }
-
-        this.markerLayer.clearLayers();
         const filtrati = this.postiFiltrati();
-
-        filtrati.forEach((posto) => {
-            const marker = L.marker([posto.lat, posto.lng], { icon: this.markerIcon(posto.id === this.selected.id) })
-                .bindTooltip(posto.nome, { direction: 'top' })
-                .on('click', () => this.select(posto, false));
-            marker.addTo(this.markerLayer!);
-        });
-
-        if (centerSelected) {
-            this.map.setView([this.selected.lat, this.selected.lng], 14);
-            return;
-        }
-
-        if (filtrati.length) {
-            const bounds = L.latLngBounds(filtrati.map((posto) => [posto.lat, posto.lng] as [number, number]));
-            this.map.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
+        if (!centerSelected && filtrati.length && !filtrati.some((posto) => posto.id === this.selected.id)) {
+            this.selected = filtrati[0];
         }
     }
 
-    private initMap() {
-        if (!this.mapContainer || this.map) {
-            return;
+    markersMock() {
+        const posti = this.postiFiltrati();
+        if (!posti.length) {
+            return [];
         }
 
-        this.map = L.map(this.mapContainer.nativeElement, { zoomControl: true }).setView([this.selected.lat, this.selected.lng], 11);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(this.map);
-        this.markerLayer = L.layerGroup().addTo(this.map);
-        this.aggiornaMappa(true);
-        setTimeout(() => this.map?.invalidateSize(), 0);
+        const lats = posti.map((posto) => posto.lat);
+        const lngs = posti.map((posto) => posto.lng);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        const latRange = maxLat - minLat || 1;
+        const lngRange = maxLng - minLng || 1;
+
+        return posti.map((posto) => ({
+            posto,
+            left: 10 + ((posto.lng - minLng) / lngRange) * 80,
+            top: 86 - ((posto.lat - minLat) / latRange) * 72
+        }));
     }
 
-    private markerIcon(selected: boolean) {
-        return L.divIcon({
-            className: `structure-marker${selected ? ' selected' : ''}`,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-        });
+    scrollToDetail() {
+        document.querySelector('#posto-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    googleMapsUrl(posto: PostoConCensimento) {
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${posto.nome}, ${posto.indirizzo}, ${posto.citta}`)}`;
+    }
+
+    streetViewUrl(posto: PostoConCensimento) {
+        return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${posto.lat},${posto.lng}`;
     }
 
     private creaPostiConCensimento(): PostoConCensimento[] {
