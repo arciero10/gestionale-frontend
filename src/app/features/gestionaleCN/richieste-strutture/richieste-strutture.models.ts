@@ -27,6 +27,7 @@ export interface RichiestaStruttura {
     comunitaDestinatariaNome?: string;
     stato: StatoRichiestaStruttura;
     esitoRisposta?: EsitoRispostaStruttura;
+    checkInAccess?: CheckInConvivenzaAccess;
     dataCreazione: string;
     dataInvio: string | null;
     dataUltimaRisposta: string | null;
@@ -69,6 +70,38 @@ export interface RichiestaStrutturaOption {
     soggettoOrganizzatore?: string;
     equipeOrganizzatriceNome?: string;
     comunitaDestinatariaNome?: string;
+    checkInToken?: string;
+    checkInUrl?: string;
+    qrCodeValue?: string;
+    checkInAbilitato?: boolean;
+    confermataDaStrutturaIl?: string;
+    strutturaConfermataId?: string;
+}
+
+export interface CheckInConvivenzaAccess {
+    convivenzaId: string;
+    token: string;
+    url: string;
+    qrCodeValue: string;
+    generatoIl: string;
+    generatoPerUserId: string;
+    attivo: boolean;
+}
+
+export interface MailMockConvivenza {
+    id: string;
+    to: string;
+    subject: string;
+    body: string;
+    createdAt: string;
+    type: 'check_in_convivenza';
+    relatedConvivenzaId: string;
+}
+
+export interface CheckInPartecipanteMock {
+    id: string;
+    nome: string;
+    stato: 'atteso' | 'arrivato' | 'assente';
 }
 
 export const CODICE_RICHIESTA_REGEX = /\[(EC-\d{4}-\d{6})\]/;

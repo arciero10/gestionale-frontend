@@ -244,6 +244,20 @@ import {
                                     [disabled]="selected.stato !== 'Bozza'"
                                     (click)="inviaRichiesta()"
                                 ></button>
+
+                                <button
+                                    pButton
+                                    type="button"
+                                    label="Conferma disponibilità struttura"
+                                    icon="pi pi-qrcode"
+                                    severity="success"
+                                    [disabled]="selected.stato === 'Confermata' || selected.stato === 'Annullata'"
+                                    (click)="confermaDisponibilitaStruttura()"
+                                ></button>
+
+                                @if (selected.checkInAccess) {
+                                    <button pButton type="button" label="Apri check-in" icon="pi pi-external-link" severity="secondary" outlined (click)="apriCheckIn()"></button>
+                                }
                             </div>
                         </section>
 
@@ -675,7 +689,7 @@ export class RichiesteStrutture implements OnInit {
     }
 
     get ricevute(): RichiestaStruttura[] {
-        return this.richieste.filter((r) => r.stato === 'Risposta ricevuta');
+        return this.richieste.filter((r) => r.stato === 'Risposta ricevuta' || r.stato === 'Confermata' || r.stato === 'Annullata');
     }
 
     get richiesteFiltrate(): RichiestaStruttura[] {
@@ -814,6 +828,31 @@ export class RichiesteStrutture implements OnInit {
         this.refresh(aggiornata.id);
         this.messaggioUtente = "Richiesta segnata come inviata. L'invio reale tramite Microsoft Graph sarà collegato al backend.";
         this.impostaSezione('Inviate');
+    }
+
+    confermaDisponibilitaStruttura() {
+        const auth = this.authService.state();
+        const userId = auth.email ?? auth.userId ?? 'mock-organizzatore';
+        const aggiornata = this.service.confermaDisponibilitaStruttura(this.selected.id, userId);
+
+        if (!aggiornata) {
+            this.messaggioUtente = 'Impossibile confermare la struttura per questa richiesta.';
+            return;
+        }
+
+        this.refresh(aggiornata.id);
+        this.sezioneAttiva = this.statoToSezione(aggiornata.stato);
+        this.messaggioUtente = 'Struttura confermata. QR check-in generato e inviato all’organizzatore.';
+    }
+
+    apriCheckIn() {
+        const token = this.selected.checkInAccess?.token;
+        if (!token) {
+            this.messaggioUtente = 'Link check-in non ancora disponibile.';
+            return;
+        }
+
+        this.router.navigate(['/gestionale-cn/check-in', this.selected.convivenzaId], { queryParams: { token } });
     }
 
     private nomeRichiedente(): string {

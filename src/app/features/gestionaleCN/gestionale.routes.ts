@@ -123,6 +123,11 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         loadComponent: () => import('./richieste-strutture/richieste-strutture').then((c) => c.RichiesteStrutture),
         data: { breadcrumb: 'Richieste strutture' }
     },
+        {
+        path: 'check-in/:convivenzaId',
+        loadComponent: () => import('./check-in/check-in-convivenza').then((c) => c.CheckInConvivenza),
+        data: { breadcrumb: 'Check-in convivenza' }
+    },
          {
         path: 'convivenze/:type',
         loadComponent: () => import('./kanban').then((c) => c.Kanban),

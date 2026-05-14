@@ -2,7 +2,10 @@ import { Injectable } from '@angular/core';
 import { COMUNITA_PILOTA, EQUIPE_CATECHISTI_PILOTA } from '../data/comunita-pilota.mock';
 import { POSTI_CONVIVENZA_MOCK } from '../data/posti-convivenza.mock';
 import {
+    CheckInConvivenzaAccess,
+    CheckInPartecipanteMock,
     CreaRichiestaStrutturaPayload,
+    MailMockConvivenza,
     MessaggioRichiestaStruttura,
     RichiestaStruttura,
     RichiestaStrutturaOption,
@@ -14,6 +17,9 @@ import { GRAPH_SENDER_MAILBOX_PLACEHOLDER } from './graph-email.placeholder';
 
 @Injectable({ providedIn: 'root' })
 export class RichiesteStruttureService {
+    private readonly checkInAccessKey = 'eventiComunità.checkInConvivenze';
+    private readonly mailMockKey = 'eventiComunità.mailMockConvivenze';
+    private readonly partecipantiCheckInKey = 'eventiComunità.checkInPartecipanti';
     private readonly comunitaDestinatariaNome = `${COMUNITA_PILOTA.nomeVisualizzato} – ${COMUNITA_PILOTA.parrocchia}`;
 
     private readonly convivenze: RichiestaStrutturaOption[] = [
@@ -168,16 +174,16 @@ export class RichiesteStruttureService {
         };
 
         this.richieste = [richiesta, ...this.richieste];
-        return { ...richiesta, comunitaCoinvolte: [...richiesta.comunitaCoinvolte] };
+        return this.cloneRichiesta(richiesta);
     }
 
     getRichieste(): RichiestaStruttura[] {
-        return this.richieste.map((richiesta) => ({ ...richiesta, comunitaCoinvolte: [...richiesta.comunitaCoinvolte] }));
+        return this.richieste.map((richiesta) => this.cloneRichiesta(richiesta));
     }
 
     getRichiestaById(id: number): RichiestaStruttura | undefined {
         const richiesta = this.richieste.find((item) => item.id === id);
-        return richiesta ? { ...richiesta, comunitaCoinvolte: [...richiesta.comunitaCoinvolte] } : undefined;
+        return richiesta ? this.cloneRichiesta(richiesta) : undefined;
     }
 
     inviaRichiesta(id: number): RichiestaStruttura | undefined {
@@ -209,7 +215,82 @@ export class RichiesteStruttureService {
             ];
         }
 
-        return { ...richiesta, comunitaCoinvolte: [...richiesta.comunitaCoinvolte] };
+        return this.cloneRichiesta(richiesta);
+    }
+
+    confermaDisponibilitaStruttura(id: number, generatoPerUserId = 'mock-organizzatore'): RichiestaStruttura | undefined {
+        const richiesta = this.richieste.find((item) => item.id === id);
+        const convivenza = richiesta ? this.convivenze.find((item) => item.id === richiesta.convivenzaId) : undefined;
+
+        if (!richiesta || !convivenza) {
+            return undefined;
+        }
+
+        const generatoIl = new Date().toISOString();
+        const token = richiesta.checkInAccess?.token ?? this.generaCheckInToken(richiesta.convivenzaId);
+        const checkInUrl = `/gestionale-cn/check-in/${richiesta.convivenzaId}?token=${encodeURIComponent(token)}`;
+        const access: CheckInConvivenzaAccess = {
+            convivenzaId: String(richiesta.convivenzaId),
+            token,
+            url: checkInUrl,
+            qrCodeValue: `CHECK-IN-CONVIVENZA:${richiesta.convivenzaId}:${token}`,
+            generatoIl,
+            generatoPerUserId,
+            attivo: true
+        };
+
+        richiesta.stato = 'Confermata';
+        richiesta.esitoRisposta = 'Disponibile';
+        richiesta.dataUltimaRisposta = this.oggiIso();
+        richiesta.checkInAccess = access;
+
+        convivenza.checkInToken = access.token;
+        convivenza.checkInUrl = access.url;
+        convivenza.qrCodeValue = access.qrCodeValue;
+        convivenza.checkInAbilitato = true;
+        convivenza.confermataDaStrutturaIl = access.generatoIl;
+        convivenza.strutturaConfermataId = String(richiesta.strutturaId);
+
+        this.salvaCheckInAccess(access);
+        this.salvaConvivenzaConfermata(richiesta, convivenza, access);
+        this.salvaMailMockConvivenza(richiesta, convivenza, access, generatoPerUserId);
+        this.aggiungiMessaggioConfermaStruttura(richiesta, access);
+
+        return this.cloneRichiesta(richiesta);
+    }
+
+    getCheckInAccess(convivenzaId: string | number, token: string | null | undefined): CheckInConvivenzaAccess | null {
+        if (!token) {
+            return null;
+        }
+
+        const access = this.leggiCheckInAccess().find((item) => item.convivenzaId === String(convivenzaId) && item.token === token && item.attivo);
+        return access ? { ...access } : null;
+    }
+
+    getMailMockConvivenze(): MailMockConvivenza[] {
+        return this.leggiLocalStorage<MailMockConvivenza[]>(this.mailMockKey, []);
+    }
+
+    getPartecipantiCheckIn(convivenzaId: string | number): CheckInPartecipanteMock[] {
+        const store = this.leggiLocalStorage<Record<string, CheckInPartecipanteMock[]>>(this.partecipantiCheckInKey, {});
+        const key = String(convivenzaId);
+
+        if (!store[key]) {
+            store[key] = this.creaPartecipantiMock();
+            this.scriviLocalStorage(this.partecipantiCheckInKey, store);
+        }
+
+        return store[key].map((partecipante) => ({ ...partecipante }));
+    }
+
+    aggiornaStatoPartecipanteCheckIn(convivenzaId: string | number, partecipanteId: string, stato: CheckInPartecipanteMock['stato']): CheckInPartecipanteMock[] {
+        const store = this.leggiLocalStorage<Record<string, CheckInPartecipanteMock[]>>(this.partecipantiCheckInKey, {});
+        const key = String(convivenzaId);
+        const partecipanti = store[key] ?? this.creaPartecipantiMock();
+        store[key] = partecipanti.map((partecipante) => (partecipante.id === partecipanteId ? { ...partecipante, stato } : partecipante));
+        this.scriviLocalStorage(this.partecipantiCheckInKey, store);
+        return store[key].map((partecipante) => ({ ...partecipante }));
     }
 
     getMessaggi(id: number): MessaggioRichiestaStruttura[] {
@@ -282,6 +363,126 @@ Vi chiediamo cortesemente di indicarci la disponibilità della struttura per le 
 Cordiali saluti
 ${nome}
 ${comunita}`;
+    }
+
+    private cloneRichiesta(richiesta: RichiestaStruttura): RichiestaStruttura {
+        return {
+            ...richiesta,
+            comunitaCoinvolte: [...richiesta.comunitaCoinvolte],
+            checkInAccess: richiesta.checkInAccess ? { ...richiesta.checkInAccess } : undefined
+        };
+    }
+
+    private generaCheckInToken(convivenzaId: number): string {
+        return `checkin-${convivenzaId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    private leggiCheckInAccess(): CheckInConvivenzaAccess[] {
+        return this.leggiLocalStorage<CheckInConvivenzaAccess[]>(this.checkInAccessKey, []);
+    }
+
+    private salvaCheckInAccess(access: CheckInConvivenzaAccess): void {
+        const accessi = this.leggiCheckInAccess().filter((item) => item.convivenzaId !== access.convivenzaId);
+        this.scriviLocalStorage(this.checkInAccessKey, [access, ...accessi]);
+    }
+
+    private salvaConvivenzaConfermata(richiesta: RichiestaStruttura, convivenza: RichiestaStrutturaOption, access: CheckInConvivenzaAccess): void {
+        const payload = {
+            ...convivenza,
+            stato: 'Confermata',
+            strutturaConfermataId: String(richiesta.strutturaId),
+            strutturaConfermataNome: this.getStrutturaLabel(richiesta.strutturaId),
+            checkInToken: access.token,
+            checkInUrl: access.url,
+            qrCodeValue: access.qrCodeValue,
+            checkInAbilitato: true,
+            confermataDaStrutturaIl: access.generatoIl
+        };
+
+        this.scriviLocalStorage(`eventiComunità.convivenzaConfermata.${richiesta.convivenzaId}`, payload);
+    }
+
+    private salvaMailMockConvivenza(richiesta: RichiestaStruttura, convivenza: RichiestaStrutturaOption, access: CheckInConvivenzaAccess, userId: string): void {
+        const struttura = this.getStrutturaLabel(richiesta.strutturaId);
+        const mail: MailMockConvivenza = {
+            id: `mail-check-in-${richiesta.convivenzaId}-${Date.now()}`,
+            to: userId.includes('@') ? userId : 'organizzatore@eventidicomunita.test',
+            subject: `Conferma struttura e QR check-in — Convivenza ${convivenza.label}`,
+            body: `La struttura ha confermato la disponibilità.
+
+Convivenza:
+${convivenza.label}
+
+Struttura:
+${struttura}
+
+Date:
+dal ${formatDateIt(convivenza.dataInizio) || 'Da completare'} al ${formatDateIt(convivenza.dataFine) || 'Da completare'}
+
+Puoi avviare il check-in da questo link:
+${access.url}
+
+QR check-in:
+${access.qrCodeValue}`,
+            createdAt: access.generatoIl,
+            type: 'check_in_convivenza',
+            relatedConvivenzaId: access.convivenzaId
+        };
+
+        this.scriviLocalStorage(this.mailMockKey, [mail, ...this.getMailMockConvivenze()]);
+    }
+
+    private aggiungiMessaggioConfermaStruttura(richiesta: RichiestaStruttura, access: CheckInConvivenzaAccess): void {
+        const messageIdGraph = `mock-confirm-${richiesta.codiceRichiesta.toLowerCase()}`;
+        if (this.messaggi.some((messaggio) => messaggio.messageIdGraph === messageIdGraph)) {
+            return;
+        }
+
+        this.messaggi = [
+            ...this.messaggi,
+            {
+                id: this.prossimoIdMessaggio(),
+                richiestaStrutturaId: richiesta.id,
+                mittente: this.getStrutturaEmail(richiesta.strutturaId),
+                destinatario: GRAPH_SENDER_MAILBOX_PLACEHOLDER,
+                oggetto: `Re: ${richiesta.oggettoCompleto}`,
+                corpo: `Confermiamo la disponibilità della struttura. Il sistema ha generato il link check-in: ${access.url}`,
+                dataMessaggio: this.oggiIso(),
+                messageIdGraph,
+                tipo: 'Ricevuto'
+            }
+        ];
+    }
+
+    private creaPartecipantiMock(): CheckInPartecipanteMock[] {
+        return [
+            { id: 'p-1', nome: 'Partecipante 1', stato: 'atteso' },
+            { id: 'p-2', nome: 'Partecipante 2', stato: 'atteso' },
+            { id: 'p-3', nome: 'Partecipante 3', stato: 'atteso' },
+            { id: 'p-4', nome: 'Partecipante 4', stato: 'atteso' },
+            { id: 'p-5', nome: 'Partecipante 5', stato: 'atteso' }
+        ];
+    }
+
+    private leggiLocalStorage<T>(key: string, fallback: T): T {
+        if (typeof localStorage === 'undefined') {
+            return fallback;
+        }
+
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? (JSON.parse(raw) as T) : fallback;
+        } catch {
+            return fallback;
+        }
+    }
+
+    private scriviLocalStorage<T>(key: string, value: T): void {
+        if (typeof localStorage === 'undefined') {
+            return;
+        }
+
+        localStorage.setItem(key, JSON.stringify(value));
     }
 
     private prossimoIdRichiesta(): number {
