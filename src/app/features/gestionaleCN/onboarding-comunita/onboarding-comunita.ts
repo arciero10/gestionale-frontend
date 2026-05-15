@@ -7,6 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DIOCESI_MOCK, NUMERI_COMUNITA, PARROCCHIE_MOCK, SETTORI_MOCK, Parrocchia, creaNomeComunitaVisualizzato, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
+import { saveAppUserProfile } from '../data/app-user-profile.storage';
 import { ComunitaFigliaAssociata, saveSelectedCommunity } from '../data/community-selection.storage';
 import { Carisma, PermessoOperativo, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
@@ -40,6 +41,8 @@ interface OnboardingPayload {
     ruoloComunitario: RuoloComunitario;
     carismi: Carisma[];
     permessiOperativi: PermessoOperativo[];
+    telefono: string;
+    privacyConsenso: boolean;
     isCatechista: boolean | null;
     comunitaFiglieAssociate: ComunitaFigliaAssociata[];
     previewComunita: string;
@@ -56,8 +59,8 @@ interface OnboardingPayload {
                     @if (isPreview) {
                         <span class="preview-badge">Anteprima responsabile</span>
                     }
-                    <h1>Associa la tua comunità</h1>
-                    <p>Seleziona la comunità di appartenenza per accedere al gestionale corretto.</p>
+                    <h1>Richiesta accesso comunità</h1>
+                    <p>Completa il profilo comunitario. Dopo l'invio la richiesta sarà verificata prima dell'accesso operativo.</p>
                     @if (isPreview) {
                         <small>Questa è una simulazione del primo accesso utente. Nessuna scelta viene salvata per utenti reali.</small>
                     }
@@ -223,6 +226,11 @@ interface OnboardingPayload {
 
                     </section>
 
+                    <div class="field">
+                        <label for="telefono">Telefono opzionale</label>
+                        <input id="telefono" name="telefono" pInputText [(ngModel)]="telefono" autocomplete="tel" />
+                    </div>
+
                     <section class="catechist-box" [class.field-error]="hasFieldError('isCatechista') || hasFieldError('comunitaFiglia')" data-validation-field="isCatechista">
                         <div class="catechist-head">
                             <div>
@@ -277,6 +285,16 @@ interface OnboardingPayload {
                                     <small class="field-error-message">{{ getFieldErrorMessage('comunitaFiglia') }}</small>
                                 }
                             </aside>
+                        }
+                    </section>
+
+                    <section class="privacy-consent" [class.field-error]="hasFieldError('privacyConsenso')" data-validation-field="privacyConsenso">
+                        <label class="checkbox-line">
+                            <input type="checkbox" name="privacyConsenso" [(ngModel)]="privacyConsenso" />
+                            <span>Dichiaro di aver letto l'informativa privacy e autorizzo il trattamento dei dati necessari alla richiesta di accesso comunità.</span>
+                        </label>
+                        @if (getFieldErrorMessage('privacyConsenso')) {
+                            <small class="field-error-message">{{ getFieldErrorMessage('privacyConsenso') }}</small>
                         }
                     </section>
 
@@ -513,7 +531,8 @@ interface OnboardingPayload {
             }
 
             .role-box,
-            .catechist-box {
+            .catechist-box,
+            .privacy-consent {
                 display: grid;
                 gap: .85rem;
                 padding: 1rem;
@@ -526,6 +545,26 @@ interface OnboardingPayload {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 background: rgba(255, 255, 255, .92);
                 border-color: #dbeafe;
+            }
+
+            .privacy-consent {
+                background: #f8fafc;
+                border-color: #e2e8f0;
+            }
+
+            .checkbox-line {
+                display: flex;
+                align-items: flex-start;
+                gap: .65rem;
+                color: #334155;
+                line-height: 1.5;
+            }
+
+            .checkbox-line input {
+                width: 18px;
+                height: 18px;
+                margin-top: .1rem;
+                flex: 0 0 auto;
             }
 
             .ambiti-grid {
@@ -765,6 +804,8 @@ export class OnboardingComunita {
     validationErrors: ValidationError[] = [];
 
     ruoloComunitario: RuoloComunitario = '';
+    telefono = '';
+    privacyConsenso = false;
 
     isCatechista: boolean | null = null;
     parrocchiaFigliaId = 24;
@@ -1008,13 +1049,32 @@ export class OnboardingComunita {
             permessiOperativi: payload.permessiOperativi,
             isCatechista: payload.isCatechista === true,
             communityPreview: payload.previewComunita,
+            telefono: payload.telefono,
+            privacyConsenso: payload.privacyConsenso,
             savedAt: payload.dataSelezione
         }));
 
         localStorage.setItem('onboardingCompleted', 'true');
+        saveAppUserProfile({
+            communitySelected: true,
+            numeroComunita: payload.numeroComunita,
+            nomeComunita: payload.nomeComunita,
+            parrocchiaNome: payload.parrocchiaNome,
+            diocesiNome: payload.diocesiNome,
+            settoreNome: payload.settoreNome,
+            tappaCammino: payload.tappaCammino,
+            carisma: payload.ruoloComunitario || 'Nessun carisma',
+            carismi: payload.carismi,
+            telefono: payload.telefono,
+            privacyConsenso: payload.privacyConsenso,
+            isCatechista: payload.isCatechista === true,
+            comunitaFiglieAssociate: payload.comunitaFiglieAssociate,
+            createdAt: payload.dataSelezione,
+            updatedAt: payload.dataSelezione
+        }, 'pending');
 
         this.feedbackType = 'success';
-        this.feedbackMessage = 'Comunità confermata correttamente.';
+        this.feedbackMessage = 'Richiesta accesso comunità inviata. Attendi l’approvazione del responsabile.';
         this.messaggio = '';
 
         window.setTimeout(() => {
@@ -1043,6 +1103,8 @@ export class OnboardingComunita {
             ruoloComunitario: this.ruoloComunitario,
             carismi,
             permessiOperativi: getPermessiByCarismi(carismi),
+            telefono: this.telefono.trim(),
+            privacyConsenso: this.privacyConsenso,
             isCatechista: this.isCatechista,
             comunitaFiglieAssociate: this.isCatechista === true ? this.comunitaFiglieAssociate : [],
             previewComunita: this.previewComunita
@@ -1121,6 +1183,14 @@ export class OnboardingComunita {
                 field: 'comunitaFiglia',
                 label: 'Comunità figlia associata',
                 message: 'Aggiungi almeno una comunità figlia associata.'
+            });
+        }
+
+        if (!payload.privacyConsenso) {
+            errors.push({
+                field: 'privacyConsenso',
+                label: 'Privacy e consenso',
+                message: 'Conferma il consenso privacy per inviare la richiesta.'
             });
         }
 
