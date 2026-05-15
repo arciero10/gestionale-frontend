@@ -17,7 +17,7 @@ export const FAQ_MOCK: FaqItem[] = [
         id: 1,
         categoria: 'Accesso',
         domanda: 'Come accedo al gestionale?',
-        risposta: 'Puoi accedere usando la tua email tramite Microsoft Entra External ID. Riceverai un codice temporaneo per completare l’accesso.',
+        risposta: 'Puoi accedere usando la tua email tramite Microsoft Entra ID. Gli utenti invitati come guest B2B possono ricevere un codice temporaneo Microsoft per completare l’accesso.',
         visibilita: 'pubblica',
         ordine: 1,
         tag: ['accesso', 'email', 'entra']

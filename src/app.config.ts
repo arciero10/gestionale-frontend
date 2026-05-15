@@ -7,12 +7,13 @@ import {
 } from '@angular/core';
 
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 
-import { PublicClientApplication, InteractionType } from '@azure/msal-browser';
+import { BrowserCacheLocation, InteractionType, PublicClientApplication } from '@azure/msal-browser';
 import {
+  MsalInterceptor,
   MsalService,
   MsalBroadcastService,
   MSAL_INSTANCE,
@@ -25,28 +26,25 @@ import {
 import { routes } from './app.routes';
 import MyPreset from './mypreset';
 
-export const MSAL_AUTHORITY = 'https://eventidicomunita.ciamlogin.com/069bb457-b363-4340-8086-d7dd3b60a2b5';
-export const MSAL_KNOWN_AUTHORITIES = ['eventidicomunita.ciamlogin.com'];
+export const MSAL_CLIENT_ID = '22d9f8b9-a94f-432d-a9d7-c74b44ba86e4';
+export const MSAL_TENANT_ID = '3534f20c-fe93-4978-899c-e62fb8ea712d';
+export const MSAL_AUTHORITY = `https://login.microsoftonline.com/${MSAL_TENANT_ID}`;
 
 export function MSALInstanceFactory() {
   const origin = window.location.origin;
 
   return new PublicClientApplication({
     auth: {
-      // Redirect URI da registrare in Entra:
+      // Redirect URI da registrare nella SPA Entra ID:
       // - https://test.eventidicomunita.it
-      // - https://kind-dune-0a539c310.7.azurestaticapps.net
       // - http://localhost:4200
-      // Produzione futura:
-      // - https://www.eventidicomunita.it
-      clientId: '21ee1eae-67e3-4c7c-86ab-db78994d8666',
+      clientId: MSAL_CLIENT_ID,
       authority: MSAL_AUTHORITY,
-      knownAuthorities: MSAL_KNOWN_AUTHORITIES,
       redirectUri: origin,
       postLogoutRedirectUri: origin
     },
     cache: {
-      cacheLocation: 'localStorage'
+      cacheLocation: BrowserCacheLocation.LocalStorage
     }
   });
 }
@@ -67,7 +65,7 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptorsFromDi()),
 
     {
       provide: MSAL_INSTANCE,
@@ -80,6 +78,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: MSAL_INTERCEPTOR_CONFIG,
       useFactory: MSALInterceptorConfigFactory
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: MsalInterceptor,
+      multi: true
     },
     MsalService,
     MsalBroadcastService,

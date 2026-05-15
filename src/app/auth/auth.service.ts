@@ -1,4 +1,5 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { MsalService } from '@azure/msal-angular';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -12,6 +13,7 @@ export interface AuthState {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly msalService = inject(MsalService);
   private _state = signal<AuthState>(this.buildStateFromToken());
 
   state = computed(() => this._state());
@@ -20,10 +22,12 @@ export class AuthService {
   permissions = computed(() => this._state().permissions);
 
   login(): void {
-    const redirectUri = encodeURIComponent(window.location.origin);
-
-    window.location.href =
-      `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/authorize?p=signup-signin&client_id=21ee1eae-67e3-4c7c-86ab-db78994d8666&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20profile%20email&nonce=defaultNonce`;
+    sessionStorage.setItem('eventiComunità.authIntent', 'login');
+    this.msalService.loginRedirect({
+      scopes: ['openid', 'profile', 'email']
+    }).subscribe({
+      error: (error) => console.error('[AUTH] errore loginRedirect:', error)
+    });
   }
 
   logout(): void {
@@ -32,10 +36,10 @@ export class AuthService {
 
     this.resetState();
 
-    const postLogoutRedirectUri = encodeURIComponent(window.location.origin);
-
-    window.location.href =
-      `https://eventidicomunita.ciamlogin.com/eventidicomunita.onmicrosoft.com/oauth2/v2.0/logout?p=signup-signin&post_logout_redirect_uri=${postLogoutRedirectUri}`;
+    this.msalService.initialize().subscribe({
+      next: () => this.msalService.logoutRedirect(),
+      error: (error) => console.error('[AUTH] errore logoutRedirect:', error)
+    });
   }
 
   refreshState(): void {
@@ -63,10 +67,10 @@ export class AuthService {
       isAuthenticated: true,
       firstName: payload.given_name ?? null,
       lastName: payload.family_name ?? payload.surname ?? null,
-      email: payload.email ?? payload.emails?.[0] ?? payload.preferred_username ?? null,
+      email: payload.email ?? payload.emails?.[0] ?? payload.preferred_username ?? payload.upn ?? null,
       roles: payload.roles ?? payload.realm_access?.roles ?? ['USER'],
       permissions: payload.permissions ?? [],
-      userId: payload.sub ?? null
+      userId: payload.oid ?? payload.sub ?? null
     };
   }
 

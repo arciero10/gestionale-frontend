@@ -78,7 +78,7 @@ export const PRIVACY_CONFIG: PrivacyConfig = {
         noDiffusione: 'I dati non saranno diffusi pubblicamente.'
     },
     responsabiliEsterni: {
-        elenco: ['Microsoft Azure, infrastruttura cloud e hosting', 'Microsoft Entra External ID, gestione autenticazione utenti', 'Servizi email per comunicazioni operative'],
+        elenco: ['Microsoft Azure, infrastruttura cloud e hosting', 'Microsoft Entra ID, gestione autenticazione utenti e accessi guest B2B', 'Servizi email per comunicazioni operative'],
         nota: 'L’elenco aggiornato dei responsabili è disponibile su richiesta.'
     },
     dirittiInteressato: {
