@@ -375,6 +375,7 @@ export class App {
   private readonly authenticated = signal(false);
   private readonly msalReady = signal(false);
   protected readonly authErrorMessage = signal<string | null>(null);
+  private readonly startedFromAuthCallback = this.isAuthCallbackUrl();
   private msalInitPromise: Promise<void> | null = null;
   private postLoginRouteResolved = false;
 
@@ -413,9 +414,11 @@ export class App {
         )
       );
 
+      console.log('[AUTH] redirect handled', result ? 'with result' : 'without result');
+
       if (result?.account) {
         this.msalService.instance.setActiveAccount(result.account);
-        console.log('[MSAL] active account set', result.account.username ?? result.account.homeAccountId);
+        console.log('[AUTH] active account set', result.account.username ?? result.account.homeAccountId);
 
         if (result.idToken && this.isValidToken(result.idToken)) {
           localStorage.setItem('id_token', result.idToken);
@@ -428,7 +431,7 @@ export class App {
       if (activeAccount) {
         this.authErrorMessage.set(null);
         this.authenticated.set(true);
-        this.resolvePostLoginRoute();
+        await this.resolvePostLoginRoute();
       } else {
         this.clearAuthState();
         this.authenticated.set(false);
@@ -569,19 +572,31 @@ export class App {
     this.authenticated.set(false);
   }
 
-  private resolvePostLoginRoute(): void {
+  private async resolvePostLoginRoute(): Promise<void> {
     const selected = hasSelectedCommunity();
     const hasProfile = hasAppUserProfile();
     const userStatus = getAppUserStatus();
     const hasApplicationProfile = hasProfile && Boolean(userStatus);
     const targetRoute = selected || hasApplicationProfile ? DASHBOARD_URL : ONBOARDING_URL;
-    this.postLoginRouteResolved = true;
-    console.log('[POST LOGIN] hasSelectedCommunity result', selected);
-    console.log('[POST LOGIN] app_user_profile result', hasProfile);
-    console.log('[POST LOGIN] app_user_status result', userStatus ?? 'missing');
-    console.log('[POST LOGIN] post-login route selected', targetRoute);
+    console.log('[AUTH] selected community?', selected);
+    console.log('[AUTH] app_user_profile?', hasProfile);
+    console.log('[AUTH] app_user_status?', userStatus ?? 'missing');
+    console.log('[AUTH] navigating to', targetRoute === ONBOARDING_URL ? 'onboarding' : 'dashboard');
 
-    this.router.navigateByUrl(targetRoute, { replaceUrl: true });
+    try {
+      const navigated = await this.router.navigateByUrl(targetRoute, { replaceUrl: true });
+      this.postLoginRouteResolved = navigated;
+
+      if (!navigated && targetRoute !== ONBOARDING_URL) {
+        console.warn('[AUTH] dashboard navigation was not completed, fallback to onboarding');
+        await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
+        this.postLoginRouteResolved = true;
+      }
+    } catch (error) {
+      console.warn('[AUTH] post-login navigation failed, fallback to onboarding', error);
+      await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
+      this.postLoginRouteResolved = true;
+    }
   }
 
   private async resolveStalledPostLoginRoute(): Promise<void> {
@@ -593,34 +608,44 @@ export class App {
       await this.ensureMsalInitialized();
       const activeAccount = this.getOrSetActiveAccount('watchdog');
 
-      if (!activeAccount || this.postLoginRouteResolved) {
+      if (this.postLoginRouteResolved) {
         return;
       }
 
-      console.warn('[POST LOGIN] watchdog fallback: account presente ma rotta non risolta, forzo routing applicativo');
-      this.authErrorMessage.set(null);
-      this.authenticated.set(true);
-      this.msalReady.set(true);
-      this.resolvePostLoginRoute();
+      if (activeAccount) {
+        console.warn('[AUTH] watchdog fallback: account presente ma rotta non risolta');
+        this.authErrorMessage.set(null);
+        this.authenticated.set(true);
+        this.msalReady.set(true);
+        await this.resolvePostLoginRoute();
+        return;
+      }
+
+      if (this.startedFromAuthCallback) {
+        console.warn('[AUTH] watchdog fallback: callback rilevato senza route, forzo onboarding');
+        this.msalReady.set(true);
+        await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
+        this.postLoginRouteResolved = true;
+      }
     } catch (error) {
-      console.warn('[POST LOGIN] watchdog fallback non riuscito', error);
+      console.warn('[AUTH] watchdog fallback non riuscito', error);
     }
   }
 
   private getOrSetActiveAccount(source: 'redirect' | 'watchdog'): AccountInfo | null {
     const accounts = this.msalService.instance.getAllAccounts();
-    console.log(`[MSAL] accounts found (${source})`, accounts.length);
+    console.log('[AUTH] accounts found', accounts.length, source);
 
     const activeAccount = this.msalService.instance.getActiveAccount();
 
     if (activeAccount) {
-      console.log(`[MSAL] active account already set (${source})`, activeAccount.username ?? activeAccount.homeAccountId);
+      console.log('[AUTH] active account set', activeAccount.username ?? activeAccount.homeAccountId, source);
       return activeAccount;
     }
 
     if (accounts.length > 0) {
       this.msalService.instance.setActiveAccount(accounts[0]);
-      console.log(`[MSAL] active account set (${source})`, accounts[0].username ?? accounts[0].homeAccountId);
+      console.log('[AUTH] active account set', accounts[0].username ?? accounts[0].homeAccountId, source);
       return accounts[0];
     }
 
@@ -633,6 +658,12 @@ export class App {
     }
 
     return this.msalInitPromise;
+  }
+
+  private isAuthCallbackUrl(): boolean {
+    const search = window.location.search.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    return search.includes('code=') || search.includes('state=') || search.includes('error=') || hash.includes('code=') || hash.includes('state=') || hash.includes('error=');
   }
 
   private isValidToken(token: string | null | undefined): token is string {
