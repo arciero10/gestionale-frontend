@@ -26,16 +26,17 @@ import {
 import { routes } from './app.routes';
 import MyPreset from './mypreset';
 
-export const MSAL_CLIENT_ID = '22d9f8b9-a94f-432d-a9d7-c74b44ba86e4';
-export const MSAL_TENANT_ID = '3534f20c-fe93-4978-899c-e62fb8ea712d';
-export const MSAL_AUTHORITY = `https://login.microsoftonline.com/${MSAL_TENANT_ID}`;
+export const MSAL_CLIENT_ID = 'INSERIRE_CLIENT_ID_APP_REGISTRATION_EXTERNAL_ID';
+export const MSAL_TENANT_ID = 'INSERIRE_TENANT_ID_EXTERNAL_ID';
+export const MSAL_EXTERNAL_TENANT_NAME = 'INSERIRE_NOME_TENANT_EXTERNAL_ID';
+export const MSAL_AUTHORITY = `https://${MSAL_EXTERNAL_TENANT_NAME}.ciamlogin.com/${MSAL_TENANT_ID}`;
 
 export function MSALInstanceFactory() {
   const origin = window.location.origin;
 
   return new PublicClientApplication({
     auth: {
-      // Redirect URI da registrare nella SPA Entra ID:
+      // Redirect URI da registrare nella SPA del tenant Microsoft Entra External ID:
       // - https://test.eventidicomunita.it
       // - http://localhost:4200
       clientId: MSAL_CLIENT_ID,

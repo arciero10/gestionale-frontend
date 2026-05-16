@@ -4,7 +4,7 @@ import { AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
-import { AppUserStatus, getAppUserStatus, hasAppUserProfile } from './app/features/gestionaleCN/data/app-user-profile.storage';
+import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
 import { filter, firstValueFrom } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
@@ -47,20 +47,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
     }
 
     @if (!showLoading() && !showLogin()) {
-      @if (showAppAccessStatus()) {
-        <main class="app-access-page">
-          <section class="app-access-card" [class.blocked]="appAccessStatus() !== 'pending'">
-            <span class="app-access-badge">{{ appAccessBadge() }}</span>
-            <h1>{{ appAccessTitle() }}</h1>
-            <p>{{ appAccessMessage() }}</p>
-            @if (appAccessStatus() === 'pending') {
-              <small>Il login Microsoft è completato. L’abilitazione al gestionale dipende dall’approvazione applicativa della comunità.</small>
-            }
-          </section>
-        </main>
-      } @else {
-        <router-outlet></router-outlet>
-      }
+      <router-outlet></router-outlet>
     }
   `,
   styles: [
@@ -94,59 +81,6 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         margin: .75rem 0 0;
         color: #64748b;
         line-height: 1.45;
-      }
-
-      .app-access-page {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-        background: linear-gradient(135deg, #0f2440, #17335f);
-        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      }
-
-      .app-access-card {
-        width: min(560px, 100%);
-        display: grid;
-        gap: .85rem;
-        padding: clamp(1.5rem, 4vw, 2.25rem);
-        border-radius: 24px;
-        background: rgba(255, 255, 255, .95);
-        border: 1px solid rgba(255, 255, 255, .52);
-        box-shadow: 0 24px 60px rgba(0, 0, 0, .22);
-        text-align: center;
-      }
-
-      .app-access-card.blocked {
-        border-color: rgba(254, 202, 202, .9);
-      }
-
-      .app-access-badge {
-        justify-self: center;
-        display: inline-flex;
-        align-items: center;
-        min-height: 30px;
-        padding: .35rem .85rem;
-        border-radius: 999px;
-        background: #eff6ff;
-        color: #17335f;
-        font-weight: 900;
-        font-size: .8rem;
-        text-transform: uppercase;
-        letter-spacing: .02em;
-      }
-
-      .app-access-card h1 {
-        margin: 0;
-        color: #0f2440;
-        font-size: clamp(1.7rem, 4vw, 2.35rem);
-      }
-
-      .app-access-card p,
-      .app-access-card small {
-        margin: 0;
-        color: #334155;
-        line-height: 1.55;
       }
 
       .login-page {
@@ -413,7 +347,6 @@ export class App {
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
   private readonly msalReady = signal(false);
-  protected readonly appAccessStatus = signal<AppUserStatus | null>(null);
   private msalInitPromise: Promise<void> | null = null;
 
   constructor() {
@@ -422,7 +355,6 @@ export class App {
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
-      this.refreshAppAccessStatus();
     });
   }
 
@@ -466,7 +398,6 @@ export class App {
 
       if (activeAccount) {
         this.authenticated.set(true);
-        this.refreshAppAccessStatus();
         this.navigatePostLogin();
       } else {
         this.clearAuthState();
@@ -534,44 +465,6 @@ export class App {
     return !this.authenticated() && !this.isPublicRoute() && !this.isInternalRoute();
   }
 
-  showAppAccessStatus(): boolean {
-    const status = this.appAccessStatus();
-    return this.authenticated() && this.isInternalRoute() && (status === 'pending' || status === 'rejected' || status === 'suspended');
-  }
-
-  appAccessBadge(): string {
-    switch (this.appAccessStatus()) {
-      case 'rejected':
-        return 'Richiesta respinta';
-      case 'suspended':
-        return 'Accesso sospeso';
-      default:
-        return 'Richiesta in attesa';
-    }
-  }
-
-  appAccessTitle(): string {
-    switch (this.appAccessStatus()) {
-      case 'rejected':
-        return 'Accesso non approvato';
-      case 'suspended':
-        return 'Accesso sospeso';
-      default:
-        return 'In attesa di approvazione';
-    }
-  }
-
-  appAccessMessage(): string {
-    switch (this.appAccessStatus()) {
-      case 'rejected':
-        return 'La richiesta di accesso alla comunità non è stata approvata. Contatta il responsabile o il supporto per maggiori informazioni.';
-      case 'suspended':
-        return 'Il tuo accesso applicativo al gestionale è sospeso. Contatta il responsabile o il supporto prima di procedere.';
-      default:
-        return 'La tua richiesta di accesso comunità è stata inviata. Potrai entrare nella dashboard quando sarà approvata.';
-    }
-  }
-
   login(): void {
     this.startMicrosoftAuth('login');
   }
@@ -628,24 +521,13 @@ export class App {
     sessionStorage.clear();
     this.authService.refreshState();
     this.authenticated.set(false);
-    this.appAccessStatus.set(null);
   }
 
   private navigatePostLogin(): void {
     const currentUrl = window.location.pathname;
-    this.refreshAppAccessStatus();
 
-    if (!hasAppUserProfile()) {
+    if (!hasSelectedCommunity()) {
       if (currentUrl !== ONBOARDING_URL) {
-        this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
-      }
-      return;
-    }
-
-    const status = this.appAccessStatus();
-
-    if (status === 'pending' || status === 'rejected' || status === 'suspended') {
-      if (!currentUrl.startsWith('/gestionale-cn/')) {
         this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
       }
       return;
@@ -661,10 +543,6 @@ export class App {
     }
 
     this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
-  }
-
-  private refreshAppAccessStatus(): void {
-    this.appAccessStatus.set(hasAppUserProfile() ? getAppUserStatus() : null);
   }
 
   private ensureMsalInitialized(): Promise<void> {
