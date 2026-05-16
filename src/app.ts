@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { AuthenticationResult } from '@azure/msal-browser';
+import { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
+import { getAppUserStatus, hasAppUserProfile } from './app/features/gestionaleCN/data/app-user-profile.storage';
 import { catchError, filter, firstValueFrom, of, timeout } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
@@ -375,10 +376,12 @@ export class App {
   private readonly msalReady = signal(false);
   protected readonly authErrorMessage = signal<string | null>(null);
   private msalInitPromise: Promise<void> | null = null;
+  private postLoginRouteResolved = false;
 
   constructor() {
     this.clearInvalidLegacyToken();
     void this.initMsalSafe();
+    window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 3000);
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
@@ -420,15 +423,7 @@ export class App {
         }
       }
 
-      const accounts = this.msalService.instance.getAllAccounts();
-      console.log('[MSAL] accounts found', accounts.length);
-
-      if (!this.msalService.instance.getActiveAccount() && accounts.length > 0) {
-        this.msalService.instance.setActiveAccount(accounts[0]);
-        console.log('[MSAL] active account set', accounts[0].username ?? accounts[0].homeAccountId);
-      }
-
-      const activeAccount = this.msalService.instance.getActiveAccount();
+      const activeAccount = this.getOrSetActiveAccount('redirect');
 
       if (activeAccount) {
         this.authErrorMessage.set(null);
@@ -576,11 +571,60 @@ export class App {
 
   private resolvePostLoginRoute(): void {
     const selected = hasSelectedCommunity();
-    const targetRoute = selected ? DASHBOARD_URL : ONBOARDING_URL;
+    const hasProfile = hasAppUserProfile();
+    const userStatus = getAppUserStatus();
+    const hasApplicationProfile = hasProfile && Boolean(userStatus);
+    const targetRoute = selected || hasApplicationProfile ? DASHBOARD_URL : ONBOARDING_URL;
+    this.postLoginRouteResolved = true;
     console.log('[POST LOGIN] hasSelectedCommunity result', selected);
+    console.log('[POST LOGIN] app_user_profile result', hasProfile);
+    console.log('[POST LOGIN] app_user_status result', userStatus ?? 'missing');
     console.log('[POST LOGIN] post-login route selected', targetRoute);
 
     this.router.navigateByUrl(targetRoute, { replaceUrl: true });
+  }
+
+  private async resolveStalledPostLoginRoute(): Promise<void> {
+    if (this.postLoginRouteResolved || (!this.isInternalRoute() && this.currentPath() !== '/')) {
+      return;
+    }
+
+    try {
+      await this.ensureMsalInitialized();
+      const activeAccount = this.getOrSetActiveAccount('watchdog');
+
+      if (!activeAccount || this.postLoginRouteResolved) {
+        return;
+      }
+
+      console.warn('[POST LOGIN] watchdog fallback: account presente ma rotta non risolta, forzo routing applicativo');
+      this.authErrorMessage.set(null);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.resolvePostLoginRoute();
+    } catch (error) {
+      console.warn('[POST LOGIN] watchdog fallback non riuscito', error);
+    }
+  }
+
+  private getOrSetActiveAccount(source: 'redirect' | 'watchdog'): AccountInfo | null {
+    const accounts = this.msalService.instance.getAllAccounts();
+    console.log(`[MSAL] accounts found (${source})`, accounts.length);
+
+    const activeAccount = this.msalService.instance.getActiveAccount();
+
+    if (activeAccount) {
+      console.log(`[MSAL] active account already set (${source})`, activeAccount.username ?? activeAccount.homeAccountId);
+      return activeAccount;
+    }
+
+    if (accounts.length > 0) {
+      this.msalService.instance.setActiveAccount(accounts[0]);
+      console.log(`[MSAL] active account set (${source})`, accounts[0].username ?? accounts[0].homeAccountId);
+      return accounts[0];
+    }
+
+    return null;
   }
 
   private ensureMsalInitialized(): Promise<void> {
