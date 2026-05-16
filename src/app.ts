@@ -5,7 +5,7 @@ import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
-import { filter, firstValueFrom } from 'rxjs';
+import { catchError, filter, firstValueFrom, of, timeout } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
@@ -19,6 +19,16 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         <section class="auth-loading-card">
           <h2>Accesso in corso...</h2>
           <p>Stiamo verificando il tuo accesso. Attendi un istante.</p>
+        </section>
+      </main>
+    }
+
+    @if (!showLoading() && showAuthError()) {
+      <main class="auth-loading-page">
+        <section class="auth-loading-card error">
+          <h2>Accesso non completato</h2>
+          <p>{{ authErrorMessage() }}</p>
+          <button type="button" class="auth-retry-button" (click)="retryLogin()">Riprova accesso</button>
         </section>
       </main>
     }
@@ -81,6 +91,22 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
         margin: .75rem 0 0;
         color: #64748b;
         line-height: 1.45;
+      }
+
+      .auth-loading-card.error {
+        border-color: #fecaca;
+      }
+
+      .auth-retry-button {
+        min-height: 42px;
+        margin-top: 1rem;
+        padding: .7rem 1rem;
+        border: 0;
+        border-radius: 12px;
+        background: #15365c;
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
       }
 
       .login-page {
@@ -347,6 +373,7 @@ export class App {
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
   private readonly msalReady = signal(false);
+  protected readonly authErrorMessage = signal<string | null>(null);
   private msalInitPromise: Promise<void> | null = null;
 
   constructor() {
@@ -373,40 +400,50 @@ export class App {
 
   private async handleMicrosoftRedirect(): Promise<void> {
     try {
-      const result = await firstValueFrom(this.msalService.handleRedirectObservable());
+      const result = await firstValueFrom(
+        this.msalService.handleRedirectObservable().pipe(
+          timeout({ first: 5000 }),
+          catchError((error) => {
+            console.warn('[MSAL] redirect callback timeout/error', error);
+            return of(null as AuthenticationResult | null);
+          })
+        )
+      );
 
       if (result?.account) {
         this.msalService.instance.setActiveAccount(result.account);
+        console.log('[MSAL] active account set', result.account.username ?? result.account.homeAccountId);
 
         if (result.idToken && this.isValidToken(result.idToken)) {
           localStorage.setItem('id_token', result.idToken);
           this.authService.refreshState();
         }
-
-        this.authenticated.set(true);
-        this.navigatePostLogin();
-        return;
       }
 
       const accounts = this.msalService.instance.getAllAccounts();
+      console.log('[MSAL] accounts found', accounts.length);
 
       if (!this.msalService.instance.getActiveAccount() && accounts.length > 0) {
         this.msalService.instance.setActiveAccount(accounts[0]);
+        console.log('[MSAL] active account set', accounts[0].username ?? accounts[0].homeAccountId);
       }
 
       const activeAccount = this.msalService.instance.getActiveAccount();
 
       if (activeAccount) {
+        this.authErrorMessage.set(null);
         this.authenticated.set(true);
-        this.navigatePostLogin();
+        this.resolvePostLoginRoute();
       } else {
         this.clearAuthState();
         this.authenticated.set(false);
+        this.authErrorMessage.set('Non è stato trovato un account Microsoft valido dopo il redirect. Puoi riprovare l’accesso.');
       }
     } catch (error) {
       console.error('[MSAL] redirect observable error', error);
       this.clearAuthState();
       this.authenticated.set(false);
+      this.authErrorMessage.set('Il callback di accesso non è stato completato correttamente. Puoi riprovare l’accesso.');
     }
   }
 
@@ -458,11 +495,19 @@ export class App {
       return false;
     }
 
+    if (this.authErrorMessage()) {
+      return false;
+    }
+
     if (this.currentPath() === '/') {
       return !this.authenticated();
     }
 
     return !this.authenticated() && !this.isPublicRoute() && !this.isInternalRoute();
+  }
+
+  showAuthError(): boolean {
+    return Boolean(this.authErrorMessage()) && !this.authenticated() && (this.currentPath() === '/' || this.isInternalRoute());
   }
 
   login(): void {
@@ -473,12 +518,18 @@ export class App {
     this.startMicrosoftAuth('register');
   }
 
+  retryLogin(): void {
+    this.authErrorMessage.set(null);
+    this.login();
+  }
+
   private startMicrosoftAuth(intent: 'login' | 'register'): void {
     console.log(`[LOGIN] click ${intent === 'register' ? 'Registrati' : 'Accedi'}`);
     console.log('[LOGIN] redirectUri', window.location.origin);
     console.log('[LOGIN] authority', MSAL_AUTHORITY);
 
     this.clearAuthState();
+    this.authErrorMessage.set(null);
     sessionStorage.setItem('eventiComunità.authIntent', intent);
 
     this.ensureMsalInitialized()
@@ -523,26 +574,13 @@ export class App {
     this.authenticated.set(false);
   }
 
-  private navigatePostLogin(): void {
-    const currentUrl = window.location.pathname;
+  private resolvePostLoginRoute(): void {
+    const selected = hasSelectedCommunity();
+    const targetRoute = selected ? DASHBOARD_URL : ONBOARDING_URL;
+    console.log('[POST LOGIN] hasSelectedCommunity result', selected);
+    console.log('[POST LOGIN] post-login route selected', targetRoute);
 
-    if (!hasSelectedCommunity()) {
-      if (currentUrl !== ONBOARDING_URL) {
-        this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
-      }
-      return;
-    }
-
-    const shouldStayOnCurrentRoute =
-      currentUrl.startsWith('/gestionale-cn/') &&
-      currentUrl !== DASHBOARD_URL &&
-      currentUrl !== ONBOARDING_URL;
-
-    if (shouldStayOnCurrentRoute) {
-      return;
-    }
-
-    this.router.navigateByUrl(DASHBOARD_URL, { replaceUrl: true });
+    this.router.navigateByUrl(targetRoute, { replaceUrl: true });
   }
 
   private ensureMsalInitialized(): Promise<void> {
