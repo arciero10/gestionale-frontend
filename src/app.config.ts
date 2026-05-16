@@ -26,9 +26,9 @@ import {
 import { routes } from './app.routes';
 import MyPreset from './mypreset';
 
-export const MSAL_CLIENT_ID = 'INSERIRE_CLIENT_ID_APP_REGISTRATION_EXTERNAL_ID';
-export const MSAL_TENANT_ID = 'INSERIRE_TENANT_ID_EXTERNAL_ID';
-export const MSAL_EXTERNAL_TENANT_NAME = 'INSERIRE_NOME_TENANT_EXTERNAL_ID';
+export const MSAL_CLIENT_ID = '21ee1eae-67e3-4c7c-86ab-db78994d8666';
+export const MSAL_TENANT_ID = '069bb457-b363-4340-8086-d7dd3b60a2b5';
+export const MSAL_EXTERNAL_TENANT_NAME = 'eventidicomunita';
 export const MSAL_AUTHORITY = `https://${MSAL_EXTERNAL_TENANT_NAME}.ciamlogin.com/${MSAL_TENANT_ID}`;
 
 export function MSALInstanceFactory() {
