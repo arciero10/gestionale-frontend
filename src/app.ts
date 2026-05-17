@@ -382,7 +382,7 @@ export class App {
   constructor() {
     this.clearInvalidLegacyToken();
     void this.initMsalSafe();
-    window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 3000);
+    window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 4000);
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
@@ -397,6 +397,7 @@ export class App {
       console.error('[MSAL] init error', error);
       this.clearAuthState();
       this.authenticated.set(false);
+      this.authErrorMessage.set('Non e stato possibile completare l\'inizializzazione dell\'accesso. Puoi riprovare.');
     } finally {
       this.msalReady.set(true);
     }
@@ -404,15 +405,7 @@ export class App {
 
   private async handleMicrosoftRedirect(): Promise<void> {
     try {
-      const result = await firstValueFrom(
-        this.msalService.handleRedirectObservable().pipe(
-          timeout({ first: 5000 }),
-          catchError((error) => {
-            console.warn('[MSAL] redirect callback timeout/error', error);
-            return of(null as AuthenticationResult | null);
-          })
-        )
-      );
+      const result = await this.readRedirectResult();
 
       console.log('[AUTH] redirect handled', result ? 'with result' : 'without result');
 
@@ -426,22 +419,14 @@ export class App {
         }
       }
 
-      const activeAccount = this.getOrSetActiveAccount('redirect');
+      const routed = await this.resolveRouteFromMsalAccount('redirect');
 
-      if (activeAccount) {
-        this.authErrorMessage.set(null);
-        this.authenticated.set(true);
-        await this.resolvePostLoginRoute();
-      } else {
-        this.clearAuthState();
-        this.authenticated.set(false);
-        this.authErrorMessage.set('Non è stato trovato un account Microsoft valido dopo il redirect. Puoi riprovare l’accesso.');
+      if (routed) {
+        return;
       }
     } catch (error) {
       console.error('[MSAL] redirect observable error', error);
-      this.clearAuthState();
-      this.authenticated.set(false);
-      this.authErrorMessage.set('Il callback di accesso non è stato completato correttamente. Puoi riprovare l’accesso.');
+      await this.resolveRouteFromMsalAccount('redirect-error');
     }
   }
 
@@ -600,28 +585,19 @@ export class App {
   }
 
   private async resolveStalledPostLoginRoute(): Promise<void> {
-    if (this.postLoginRouteResolved || (!this.isInternalRoute() && this.currentPath() !== '/')) {
+    if (this.postLoginRouteResolved || !this.showLoading()) {
       return;
     }
 
     try {
       await this.ensureMsalInitialized();
-      const activeAccount = this.getOrSetActiveAccount('watchdog');
+      const routed = await this.resolveRouteFromMsalAccount('watchdog');
 
       if (this.postLoginRouteResolved) {
         return;
       }
 
-      if (activeAccount) {
-        console.warn('[AUTH] watchdog fallback: account presente ma rotta non risolta');
-        this.authErrorMessage.set(null);
-        this.authenticated.set(true);
-        this.msalReady.set(true);
-        await this.resolvePostLoginRoute();
-        return;
-      }
-
-      if (this.startedFromAuthCallback) {
+      if (!routed && this.startedFromAuthCallback) {
         console.warn('[AUTH] watchdog fallback: callback rilevato senza route, forzo onboarding');
         this.msalReady.set(true);
         await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
@@ -629,10 +605,29 @@ export class App {
       }
     } catch (error) {
       console.warn('[AUTH] watchdog fallback non riuscito', error);
+      this.msalReady.set(true);
     }
   }
 
-  private getOrSetActiveAccount(source: 'redirect' | 'watchdog'): AccountInfo | null {
+  private async resolveRouteFromMsalAccount(source: 'redirect' | 'redirect-error' | 'watchdog'): Promise<boolean> {
+    const activeAccount = this.getOrSetActiveAccount(source);
+
+    if (!activeAccount) {
+      this.clearAuthState();
+      this.authenticated.set(false);
+      this.msalReady.set(true);
+      this.authErrorMessage.set('Non e stato trovato un account Microsoft valido dopo il redirect. Puoi riprovare l\'accesso.');
+      return false;
+    }
+
+    this.authErrorMessage.set(null);
+    this.authenticated.set(true);
+    this.msalReady.set(true);
+    await this.resolvePostLoginRoute();
+    return true;
+  }
+
+  private getOrSetActiveAccount(source: 'redirect' | 'redirect-error' | 'watchdog'): AccountInfo | null {
     const accounts = this.msalService.instance.getAllAccounts();
     console.log('[AUTH] accounts found', accounts.length, source);
 
@@ -650,6 +645,24 @@ export class App {
     }
 
     return null;
+  }
+
+  private async readRedirectResult(): Promise<AuthenticationResult | null> {
+    const redirectResult = firstValueFrom(
+      this.msalService.handleRedirectObservable().pipe(
+        timeout({ first: 4000 }),
+        catchError((error) => {
+          console.warn('[MSAL] redirect callback timeout/error', error);
+          return of(null as AuthenticationResult | null);
+        })
+      )
+    );
+
+    const hardTimeout = new Promise<AuthenticationResult | null>((resolve) => {
+      window.setTimeout(() => resolve(null), 4000);
+    });
+
+    return Promise.race([redirectResult, hardTimeout]);
   }
 
   private ensureMsalInitialized(): Promise<void> {
