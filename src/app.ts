@@ -374,6 +374,7 @@ export class App {
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
   private readonly msalReady = signal(false);
+  private readonly forceShowOutlet = signal(false);
   protected readonly authErrorMessage = signal<string | null>(null);
   private readonly startedFromAuthCallback = this.isAuthCallbackUrl();
   private msalInitPromise: Promise<void> | null = null;
@@ -470,6 +471,7 @@ export class App {
   }
 
   showLoading(): boolean {
+    if (this.forceShowOutlet()) return false;
     return !this.msalReady() && (this.currentPath() === '/' || this.isInternalRoute());
   }
 
@@ -569,6 +571,7 @@ export class App {
     console.log('[AUTH] navigating to', targetRoute === ONBOARDING_URL ? 'onboarding' : 'dashboard');
     this.authenticated.set(true);
     this.msalReady.set(true);
+    this.forceShowOutlet.set(true);
 
     try {
       const navigated = await this.router.navigateByUrl(targetRoute, { replaceUrl: true });
