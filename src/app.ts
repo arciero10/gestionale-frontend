@@ -567,6 +567,8 @@ export class App {
     console.log('[AUTH] app_user_profile?', hasProfile);
     console.log('[AUTH] app_user_status?', userStatus ?? 'missing');
     console.log('[AUTH] navigating to', targetRoute === ONBOARDING_URL ? 'onboarding' : 'dashboard');
+    this.authenticated.set(true);
+    this.msalReady.set(true);
 
     try {
       const navigated = await this.router.navigateByUrl(targetRoute, { replaceUrl: true });
@@ -574,11 +576,15 @@ export class App {
 
       if (!navigated && targetRoute !== ONBOARDING_URL) {
         console.warn('[AUTH] dashboard navigation was not completed, fallback to onboarding');
+        this.authenticated.set(true);
+        this.msalReady.set(true);
         await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
         this.postLoginRouteResolved = true;
       }
     } catch (error) {
       console.warn('[AUTH] post-login navigation failed, fallback to onboarding', error);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
       await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
       this.postLoginRouteResolved = true;
     }
@@ -599,6 +605,7 @@ export class App {
 
       if (!routed && this.startedFromAuthCallback) {
         console.warn('[AUTH] watchdog fallback: callback rilevato senza route, forzo onboarding');
+        this.authenticated.set(true);
         this.msalReady.set(true);
         await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
         this.postLoginRouteResolved = true;
