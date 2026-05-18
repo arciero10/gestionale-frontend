@@ -476,6 +476,7 @@ export class App {
   }
 
   showLogin(): boolean {
+    if (this.forceShowOutlet()) return false;
     if (!this.msalReady()) {
       return false;
     }
