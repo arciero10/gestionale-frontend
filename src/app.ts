@@ -585,7 +585,7 @@ export class App {
   }
 
   private async resolveStalledPostLoginRoute(): Promise<void> {
-    if (this.postLoginRouteResolved || (!this.startedFromAuthCallback && !this.showLoading())) {
+    if (this.postLoginRouteResolved) {
       return;
     }
 
@@ -610,19 +610,26 @@ export class App {
   }
 
   private async resolveRouteFromMsalAccount(source: 'redirect' | 'redirect-error' | 'watchdog'): Promise<boolean> {
-    let activeAccount = this.getOrSetActiveAccount(source);
-
-    if (!activeAccount && this.startedFromAuthCallback) {
-      console.warn('[AUTH] account non ancora in cache dopo callback, riprovo tra 2 secondi', source);
-      await this.wait(2000);
-      activeAccount = this.getOrSetActiveAccount(`${source}-retry`);
-    }
+    const activeAccount = this.getOrSetActiveAccount(source);
 
     if (!activeAccount) {
+      if (this.startedFromAuthCallback) {
+        // aspetta e riprova una volta
+        await new Promise(r => setTimeout(r, 2000));
+        const retryAccount = this.getOrSetActiveAccount(source + '-retry' as any);
+        if (retryAccount) {
+          this.authErrorMessage.set(null);
+          this.authenticated.set(true);
+          this.msalReady.set(true);
+          await this.resolvePostLoginRoute();
+          return true;
+        }
+      }
       this.clearAuthState();
       this.authenticated.set(false);
       this.msalReady.set(true);
-      this.authErrorMessage.set('Non e stato trovato un account Microsoft valido dopo il redirect. Puoi riprovare l\'accesso.');
+      this.authErrorMessage.set(null);
+      await this.router.navigateByUrl('/', { replaceUrl: true });
       return false;
     }
 
