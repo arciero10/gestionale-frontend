@@ -52,8 +52,14 @@
                 "glob": "**/*",
                 "input": "public",
                 "ignore": [
-                  "demo/**"
+                  "demo/**",
+                  "staticwebapp.config.json"
                 ]
+              },
+              {
+                "glob": "staticwebapp.config.json",
+                "input": ".",
+                "output": "/"
               },
               {
                 "glob": "**/*",
