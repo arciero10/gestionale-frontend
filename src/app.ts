@@ -382,7 +382,7 @@ export class App {
   constructor() {
     this.clearInvalidLegacyToken();
     void this.initMsalSafe();
-    window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 4000);
+    window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 6000);
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
@@ -585,7 +585,7 @@ export class App {
   }
 
   private async resolveStalledPostLoginRoute(): Promise<void> {
-    if (this.postLoginRouteResolved || !this.showLoading()) {
+    if (this.postLoginRouteResolved || (!this.startedFromAuthCallback && !this.showLoading())) {
       return;
     }
 
@@ -610,7 +610,13 @@ export class App {
   }
 
   private async resolveRouteFromMsalAccount(source: 'redirect' | 'redirect-error' | 'watchdog'): Promise<boolean> {
-    const activeAccount = this.getOrSetActiveAccount(source);
+    let activeAccount = this.getOrSetActiveAccount(source);
+
+    if (!activeAccount && this.startedFromAuthCallback) {
+      console.warn('[AUTH] account non ancora in cache dopo callback, riprovo tra 2 secondi', source);
+      await this.wait(2000);
+      activeAccount = this.getOrSetActiveAccount(`${source}-retry`);
+    }
 
     if (!activeAccount) {
       this.clearAuthState();
@@ -627,7 +633,7 @@ export class App {
     return true;
   }
 
-  private getOrSetActiveAccount(source: 'redirect' | 'redirect-error' | 'watchdog'): AccountInfo | null {
+  private getOrSetActiveAccount(source: string): AccountInfo | null {
     const accounts = this.msalService.instance.getAllAccounts();
     console.log('[AUTH] accounts found', accounts.length, source);
 
@@ -645,6 +651,10 @@ export class App {
     }
 
     return null;
+  }
+
+  private wait(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
   }
 
   private async readRedirectResult(): Promise<AuthenticationResult | null> {
