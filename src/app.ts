@@ -573,24 +573,56 @@ export class App {
     this.authenticated.set(true);
     this.msalReady.set(true);
     this.forceShowOutlet.set(true);
+    this.authErrorMessage.set(null);
 
     try {
       const navigated = await this.router.navigateByUrl(targetRoute, { replaceUrl: true });
-      this.postLoginRouteResolved = navigated;
-
-      if (!navigated && targetRoute !== ONBOARDING_URL) {
-        console.warn('[AUTH] dashboard navigation was not completed, fallback to onboarding');
-        this.authenticated.set(true);
-        this.msalReady.set(true);
-        await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
-        this.postLoginRouteResolved = true;
-      }
-    } catch (error) {
-      console.warn('[AUTH] post-login navigation failed, fallback to onboarding', error);
       this.authenticated.set(true);
       this.msalReady.set(true);
-      await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
-      this.postLoginRouteResolved = true;
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+
+      if (navigated) {
+        this.postLoginRouteResolved = true;
+        return;
+      }
+
+      console.error('[AUTH] post-login navigation returned false', targetRoute);
+
+      if (targetRoute !== ONBOARDING_URL) {
+        console.warn('[AUTH] dashboard navigation was not completed, fallback to onboarding', ONBOARDING_URL);
+        const fallbackNavigated = await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
+        this.authenticated.set(true);
+        this.msalReady.set(true);
+        this.forceShowOutlet.set(true);
+        this.authErrorMessage.set(null);
+        this.postLoginRouteResolved = fallbackNavigated;
+
+        if (fallbackNavigated) {
+          return;
+        }
+      }
+
+      console.error('[AUTH] onboarding navigation was not completed, fallback to root');
+      this.forceShowOutlet.set(false);
+      this.authenticated.set(false);
+      this.msalReady.set(true);
+      await this.router.navigateByUrl('/', { replaceUrl: true });
+    } catch (error) {
+      console.warn('[AUTH] post-login navigation failed, fallback to onboarding', error);
+      const fallbackNavigated = await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = fallbackNavigated;
+
+      if (!fallbackNavigated) {
+        console.error('[AUTH] onboarding fallback failed, fallback to root');
+        this.forceShowOutlet.set(false);
+        this.authenticated.set(false);
+        await this.router.navigateByUrl('/', { replaceUrl: true });
+      }
     }
   }
 

@@ -5,9 +5,12 @@ import { hasSelectedCommunity } from '../features/gestionaleCN/data/community-se
 
 const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
 
-export const gestionaleAuthGuard: CanMatchFn = () => {
+export const gestionaleAuthGuard: CanMatchFn = (_route, segments) => {
   const msalService = inject(MsalService);
   const router = inject(Router);
+  const targetPath = `/${segments.map((segment) => segment.path).join('/')}`;
+  const navigationPath = router.getCurrentNavigation()?.finalUrl?.toString().split('?')[0].split('#')[0];
+  const isOnboardingTarget = targetPath === ONBOARDING_URL || navigationPath === ONBOARDING_URL;
 
   const activeAccount = msalService.instance.getActiveAccount();
   const accounts = msalService.instance.getAllAccounts();
@@ -18,9 +21,7 @@ export const gestionaleAuthGuard: CanMatchFn = () => {
       msalService.instance.setActiveAccount(account);
     }
 
-    const currentPath = window.location.pathname;
-
-    if (!hasSelectedCommunity() && currentPath !== ONBOARDING_URL) {
+    if (!hasSelectedCommunity() && !isOnboardingTarget) {
       return router.createUrlTree(['/gestionale-cn/onboarding-comunita']);
     }
 
