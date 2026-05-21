@@ -32,6 +32,14 @@ import {
     readStruttureSegnalate,
     writeStruttureSegnalate
 } from '../../strutture/strutture-censimento.mock';
+import {
+    ProfileStatus,
+    StrutturaProfileMock,
+    activePromo,
+    fotoCopertina,
+    readProfileStatus,
+    readStrutturaProfile
+} from '../../strutture/struttura-profile.storage';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -56,6 +64,9 @@ type PostoConCensimento = PostoConvivenza & {
     statoVerifica?: StatoVerificaStruttura;
     statoSegnalazione?: StatoSegnalazioneStruttura;
     pubblicata?: boolean;
+    strutturaProfile?: StrutturaProfileMock;
+    fotoCopertina?: string;
+    promoAttive?: ReturnType<typeof activePromo>;
 };
 
 @Component({
@@ -238,6 +249,9 @@ type PostoConCensimento = PostoConvivenza & {
                                 [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
                                 (click)="select(posto, true)"
                                 (keydown.enter)="select(posto, true)">
+                                @if (posto.fotoCopertina) {
+                                    <img class="posto-thumb" [src]="posto.fotoCopertina" [alt]="posto.nome" />
+                                }
                                 <span class="posto-title">{{ posto.nome }}</span>
                                 <span class="posto-meta">{{ posto.tipo }} · {{ posto.zona || posto.citta }}</span>
                                 <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
@@ -344,6 +358,10 @@ type PostoConCensimento = PostoConvivenza & {
                             </div>
                         }
 
+                        @if (selected.fotoCopertina) {
+                            <img class="detail-cover" [src]="selected.fotoCopertina" [alt]="selected.nome" />
+                        }
+
                         @if (!selected.email) {
                             <div class="email-warning"><i class="pi pi-exclamation-triangle"></i><span>Email struttura mancante.</span></div>
                         }
@@ -372,6 +390,42 @@ type PostoConCensimento = PostoConvivenza & {
                                     <div><dt>Parcheggio</dt><dd>{{ booleanLabel(selected.censimento.parcheggio) }}</dd></div>
                                     <div><dt>Pasti disponibili</dt><dd>{{ displayValue(selected.censimento.pastiDisponibili) }}</dd></div>
                                 </dl>
+                            </section>
+                        }
+
+                        @if (selected.strutturaProfile) {
+                            <section class="census-detail structure-profile-detail">
+                                <h3>Dati aggiornati dalla struttura</h3>
+                                <p>{{ selected.strutturaProfile.descrizione || 'Descrizione da completare.' }}</p>
+                                <dl class="detail-grid">
+                                    <div><dt>Posti letto</dt><dd>{{ selected.strutturaProfile.postiLetto ?? 'Da completare' }}</dd></div>
+                                    <div><dt>Camere</dt><dd>{{ selected.strutturaProfile.camere ?? 'Da completare' }}</dd></div>
+                                    <div><dt>Sale</dt><dd>{{ displayValue(selected.strutturaProfile.sale) }}</dd></div>
+                                    <div><dt>Cappella</dt><dd>{{ booleanLabel(selected.strutturaProfile.cappella) }}</dd></div>
+                                    <div><dt>Mensa</dt><dd>{{ booleanLabel(selected.strutturaProfile.mensa) }}</dd></div>
+                                    <div><dt>Cucina interna</dt><dd>{{ booleanLabel(selected.strutturaProfile.cucinaInterna) }}</dd></div>
+                                    <div><dt>Parcheggio</dt><dd>{{ booleanLabel(selected.strutturaProfile.parcheggio) }}</dd></div>
+                                    <div><dt>Accessibilita</dt><dd>{{ booleanLabel(selected.strutturaProfile.accessibilitaDisabili) }}</dd></div>
+                                    <div><dt>Tariffe indicative</dt><dd>{{ displayValue(selected.strutturaProfile.tariffeIndicative) }}</dd></div>
+                                    <div><dt>Caparra</dt><dd>{{ displayValue(selected.strutturaProfile.condizioniCaparra) }}</dd></div>
+                                    <div><dt>Cancellazione</dt><dd>{{ displayValue(selected.strutturaProfile.condizioniCancellazione) }}</dd></div>
+                                </dl>
+
+                                @if (selected.strutturaProfile.foto.length) {
+                                    <div class="structure-gallery">
+                                        @for (foto of selected.strutturaProfile.foto; track foto.id) {
+                                            <img [src]="foto.url" [alt]="foto.descrizione" />
+                                        }
+                                    </div>
+                                }
+
+                                @if (selected.promoAttive?.length) {
+                                    <div class="promo-chips">
+                                        @for (promo of selected.promoAttive; track promo.id) {
+                                            <span><strong>{{ promo.titolo }}</strong>{{ promo.descrizione ? ' - ' + promo.descrizione : '' }}</span>
+                                        }
+                                    </div>
+                                }
                             </section>
                         }
 
@@ -565,6 +619,7 @@ type PostoConCensimento = PostoConvivenza & {
             .notes h3,
             .history h3,
             .census-detail h3 { margin: 1rem 0 .55rem; color: #111827; }
+            .structure-profile-detail { margin-top: 1rem; padding: 1rem; border-radius: 14px; background: #f8fafc; }
             .notes p,
             .history p { margin: 0; color: #4b5563; line-height: 1.5; }
             .census-link-box {
@@ -1139,6 +1194,8 @@ ${this.comunitaNome}`;
     private creaPostiConCensimento(): PostoConCensimento[] {
         const censimento = this.readSanGaetanoCensimento();
         const segnalazioni = readStruttureSegnalate();
+        const strutturaProfile = readStrutturaProfile();
+        const profileStatus = readProfileStatus();
 
         const postiBase = POSTI_CONVIVENZA_MOCK.map((posto) => {
             if (!censimento || !this.isSanGaetano(posto)) {
@@ -1179,7 +1236,60 @@ ${this.comunitaNome}`;
             .filter((item) => !item.pubblicata && item.stato !== 'Scartata')
             .map((item, index): PostoConCensimento => this.creaPostoDaSegnalazione(item, index));
 
-        return [...postiBase, ...segnalateNonPubblicate];
+        if (!strutturaProfile) {
+            return [...postiBase, ...segnalateNonPubblicate];
+        }
+
+        const postoProfilo = this.creaPostoDaStrutturaProfile(strutturaProfile, profileStatus);
+        const senzaDuplicato = postiBase.filter((posto) => posto.nome.trim().toLowerCase() !== postoProfilo.nome.trim().toLowerCase());
+        return [postoProfilo, ...senzaDuplicato, ...segnalateNonPubblicate];
+    }
+
+    private creaPostoDaStrutturaProfile(profile: StrutturaProfileMock, status: ProfileStatus): PostoConCensimento {
+        const lat = 41.9028;
+        const lng = 12.4964;
+        const pubblicata = status === 'APPROVATA';
+        return {
+            id: 9500,
+            nome: profile.nome,
+            tipo: (profile.tipo || 'Struttura di accoglienza') as TipoStrutturaMappa,
+            tipologia: 'Casa di convivenza',
+            zona: profile.citta || profile.regione || 'Da verificare',
+            citta: profile.citta || 'Da verificare',
+            regione: profile.regione || 'Da verificare',
+            indirizzo: profile.indirizzo,
+            indirizzoNormalizzato: profile.indirizzo,
+            capienza: profile.capienza,
+            referente: profile.referente,
+            telefono: profile.telefono,
+            email: profile.email,
+            sitoWeb: '',
+            statoRelazione: (pubblicata ? 'Partner attivo' : 'Da verificare') as StatoRelazione,
+            statoDisponibilita: (pubblicata ? 'Disponibile' : 'Da verificare') as StatoDisponibilitaPosto,
+            note: profile.descrizione,
+            latitudine: lat,
+            longitudine: lng,
+            lat,
+            lng,
+            placeId: null,
+            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${profile.nome}, ${profile.indirizzo}, ${profile.citta}, ${profile.regione}`)}`,
+            ultimoContatto: profile.updatedAt || null,
+            storicoConvivenze: [],
+            servizi: {
+                camere: Boolean(profile.camere),
+                salaIncontri: Boolean(profile.sale?.trim()),
+                cucina: profile.cucinaInterna || profile.mensa,
+                parcheggio: profile.parcheggio,
+                accessibilita: profile.accessibilitaDisabili,
+                spazioBambini: profile.famiglieConBambini
+            },
+            valutazioneInterna: pubblicata ? 'positivo' : 'da verificare',
+            strutturaProfile: profile,
+            fotoCopertina: fotoCopertina(profile),
+            promoAttive: activePromo(profile),
+            statoVerifica: pubblicata ? 'Verificata' : 'Da verificare',
+            pubblicata
+        };
     }
 
     private readSanGaetanoCensimento(): CensimentoStrutturaMock | null {

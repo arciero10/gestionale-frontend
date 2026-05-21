@@ -83,6 +83,34 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/strutture/censimento-struttura').then((c) => c.CensimentoStruttura)
   },
   {
+    path: 'area-strutture',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureHome)
+  },
+  {
+    path: 'area-strutture/accreditamento',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureAccreditamento)
+  },
+  {
+    path: 'area-strutture/in-attesa',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureInAttesa)
+  },
+  {
+    path: 'area-strutture/profilo',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureProfilo)
+  },
+  {
+    path: 'area-strutture/foto',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureFoto)
+  },
+  {
+    path: 'area-strutture/offerte',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureOfferte)
+  },
+  {
+    path: 'area-strutture/richieste',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureRichieste)
+  },
+  {
     path: 'gestionale-cn',
     component: AppLayout,
     canMatch: [gestionaleAuthGuard],

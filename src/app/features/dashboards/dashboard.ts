@@ -12,13 +12,14 @@ import { ensureAccessContext } from '../gestionaleCN/data/access-context.mock';
 import { canSeeMenuItem, getUserAccessContext } from '../gestionaleCN/data/access-policy.mock';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../gestionaleCN/data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
+import { activePromo, readProfileStatus, readProfileType, readStrutturaProfile } from '../strutture/struttura-profile.storage';
 
 interface DashboardModule {
     title: string;
     icon: string;
     status: 'Attivo' | 'In sviluppo' | 'Prossimamente';
     route: string;
-    tone: 'community' | 'convivenze' | 'posti' | 'viaggi';
+    tone: 'community' | 'convivenze' | 'posti' | 'viaggi' | 'struttura';
     cta: 'Apri' | 'Entra' | 'Vai al modulo';
 }
 
@@ -31,6 +32,27 @@ interface DashboardModule {
             <div class="dashboard-overlay"></div>
 
             <div class="dashboard-content">
+                @if (isStrutturaProfile) {
+                    <aside class="community-summary structure-summary" aria-label="Dati struttura">
+                        <span class="summary-eyebrow">Profilo struttura</span>
+                        <h1>{{ strutturaNome }}</h1>
+                        <p class="summary-parish">Stato accreditamento: {{ profileStatus }}</p>
+                        <dl>
+                            <div><dt>Tipo</dt><dd>{{ strutturaTipo }}</dd></div>
+                            <div><dt>Citta / Regione</dt><dd>{{ strutturaCittaRegione }}</dd></div>
+                            <div><dt>Capienza</dt><dd>{{ strutturaCapienza }}</dd></div>
+                            <div><dt>Posti letto</dt><dd>{{ strutturaPostiLetto }}</dd></div>
+                            <div><dt>Promo attive</dt><dd>{{ strutturaPromoCount }}</dd></div>
+                            <div><dt>Richieste ricevute</dt><dd>0</dd></div>
+                        </dl>
+                        @if (profileStatus === 'IN_ATTESA') {
+                            <div class="structure-waiting">
+                                <i class="pi pi-clock"></i>
+                                <span>In attesa di approvazione</span>
+                            </div>
+                        }
+                    </aside>
+                } @else {
                 <aside class="community-summary" aria-label="Dati comunità">
                     <span class="summary-eyebrow">{{ isDemo ? 'Comunità demo' : 'Comunità attiva' }}</span>
                     <h1>{{ nomeComunita }}</h1>
@@ -80,6 +102,7 @@ interface DashboardModule {
                         </div>
                     </dl>
                 </aside>
+                }
 
                 <div class="dashboard-grid">
                     @for (module of modules; track module.title) {
@@ -214,6 +237,24 @@ interface DashboardModule {
                 min-width: min(100%, 29rem);
                 min-height: 3.8rem;
                 align-content: start;
+            }
+
+            .structure-summary {
+                position: relative;
+            }
+
+            .structure-waiting {
+                grid-column: 1 / -1;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.45rem;
+                width: fit-content;
+                padding: 0.5rem 0.75rem;
+                border-radius: 999px;
+                color: #92400e;
+                background: #fef3c7;
+                border: 1px solid #fde68a;
+                font-weight: 850;
             }
 
             .community-summary dt {
@@ -395,6 +436,10 @@ interface DashboardModule {
                 --card-accent: #8a3f4c;
             }
 
+            .module-card-struttura {
+                --card-accent: #7c3aed;
+            }
+
             @media (max-width: 1024px) {
                 .dashboard-content {
                     grid-template-columns: 1fr;
@@ -479,6 +524,9 @@ export class Dashboard {
     readonly currentUserPermessi = getPermessiByCarismi(this.currentUserCarismi);
     readonly userAccessContext = getUserAccessContext();
     readonly currentUserCanEditCommunity = this.currentUserPermessi.includes('EDIT_COMUNITA');
+    readonly profileType = readProfileType();
+    readonly profileStatus = readProfileStatus();
+    readonly strutturaProfile = readStrutturaProfile();
     tappeOptions = [...TAPPE_CAMMINO];
     tappaCammino: TappaCammino = 'Precatecumenato';
     tappaInBozza: TappaCammino = 'Precatecumenato';
@@ -488,7 +536,7 @@ export class Dashboard {
     constructor() {
         const normalizedUrl = this.router.url.split('?')[0].split('#')[0];
 
-        if (!this.isDemo && (normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard')) {
+        if (!this.isDemo && !this.isStrutturaProfile && (normalizedUrl === '/gestionale-cn' || normalizedUrl === '/gestionale-cn/dashboard')) {
             if (!hasSelectedCommunity()) {
                 this.router.navigateByUrl('/gestionale-cn/onboarding-comunita', { replaceUrl: true });
                 return;
@@ -513,6 +561,36 @@ export class Dashboard {
 
     get basePath() {
         return this.isDemo ? '/demo' : '/gestionale-cn';
+    }
+
+    get isStrutturaProfile() {
+        return !this.isDemo && this.profileType === 'struttura';
+    }
+
+    get strutturaNome() {
+        return this.strutturaProfile?.nome || 'Struttura';
+    }
+
+    get strutturaTipo() {
+        return this.strutturaProfile?.tipo || 'Da completare';
+    }
+
+    get strutturaCittaRegione() {
+        const citta = this.strutturaProfile?.citta || 'Da completare';
+        const regione = this.strutturaProfile?.regione || 'Da completare';
+        return `${citta} / ${regione}`;
+    }
+
+    get strutturaCapienza() {
+        return this.strutturaProfile?.capienza ?? 'Da completare';
+    }
+
+    get strutturaPostiLetto() {
+        return this.strutturaProfile?.postiLetto ?? 'Da completare';
+    }
+
+    get strutturaPromoCount() {
+        return activePromo(this.strutturaProfile).length;
     }
 
     get nomeComunita() {
@@ -544,9 +622,62 @@ export class Dashboard {
     }
 
     get modules(): DashboardModule[] {
+        if (this.isStrutturaProfile) {
+            return [
+                {
+                    title: 'Profilo struttura',
+                    icon: 'pi-building',
+                    status: 'Attivo',
+                    route: '/area-strutture/profilo',
+                    tone: 'struttura',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Foto struttura',
+                    icon: 'pi-images',
+                    status: 'Attivo',
+                    route: '/area-strutture/foto',
+                    tone: 'struttura',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Offerte e promo',
+                    icon: 'pi-tags',
+                    status: 'Attivo',
+                    route: '/area-strutture/offerte',
+                    tone: 'struttura',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Richieste ricevute',
+                    icon: 'pi-inbox',
+                    status: 'In sviluppo',
+                    route: '/area-strutture/richieste',
+                    tone: 'struttura',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Stato accreditamento',
+                    icon: 'pi-verified',
+                    status: this.profileStatus === 'APPROVATA' ? 'Attivo' : 'In sviluppo',
+                    route: '/area-strutture/in-attesa',
+                    tone: 'struttura',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Dati da completare',
+                    icon: 'pi-list-check',
+                    status: 'Attivo',
+                    route: '/area-strutture/accreditamento',
+                    tone: 'struttura',
+                    cta: 'Vai al modulo'
+                }
+            ];
+        }
+
         const modules: DashboardModule[] = [
             {
-                title: 'La tua Comunità',
+                title: this.currentUserPermessi.includes('EDIT_COMUNITA') ? 'La tua comunità' : 'La mia comunità',
                 icon: 'pi-users',
                 status: 'Attivo',
                 route: `${this.basePath}/comunita`,
@@ -562,10 +693,10 @@ export class Dashboard {
                 cta: 'Entra'
             },
             {
-                title: 'Catalogo strutture',
+                title: 'Posti di convivenza',
                 icon: 'pi-building',
                 status: 'In sviluppo',
-                route: `${this.basePath}/catalogo-strutture`,
+                route: `${this.basePath}/posti-convivenza`,
                 tone: 'posti',
                 cta: 'Vai al modulo'
             },
@@ -579,8 +710,58 @@ export class Dashboard {
             }
         ];
 
+        if (!this.isDemo && this.currentUserPermessi.includes('EDIT_COMUNITA')) {
+            modules.push(
+                {
+                    title: 'Richieste strutture',
+                    icon: 'pi-send',
+                    status: 'In sviluppo',
+                    route: `${this.basePath}/richieste-strutture`,
+                    tone: 'posti',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Censimento comunità',
+                    icon: 'pi-user-plus',
+                    status: 'Attivo',
+                    route: `${this.basePath}/censimento-comunita`,
+                    tone: 'community',
+                    cta: 'Vai al modulo'
+                },
+                {
+                    title: 'Approvazioni',
+                    icon: 'pi-check-circle',
+                    status: 'In sviluppo',
+                    route: `${this.basePath}/comunita`,
+                    tone: 'community',
+                    cta: 'Apri'
+                }
+            );
+        }
+
+        if (!this.isDemo && this.currentUserCarismi.includes('catechista')) {
+            modules.push(
+                {
+                    title: 'Comunità figlie',
+                    icon: 'pi-sitemap',
+                    status: 'Attivo',
+                    route: `${this.basePath}/catechista/comunita-figlie`,
+                    tone: 'convivenze',
+                    cta: 'Apri'
+                },
+                {
+                    title: 'Convivenze catechistiche',
+                    icon: 'pi-calendar-plus',
+                    status: 'Attivo',
+                    route: `${this.basePath}/catechista/convivenze`,
+                    tone: 'convivenze',
+                    cta: 'Apri'
+                }
+            );
+        }
+
         return modules.filter((module) => {
-            if (module.route.endsWith('/catalogo-strutture')) {
+            if (module.route.endsWith('/posti-convivenza')) {
                 return canSeeMenuItem('posti-convivenza', this.userAccessContext);
             }
 
