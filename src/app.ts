@@ -462,7 +462,17 @@ export class App {
 
   isPublicRoute(): boolean {
     const path = this.currentPath();
-    return path === '/demo' || path.startsWith('/demo/') || path === '/faq' || path === '/privacy' || path === '/completa-profilo' || path.startsWith('/completa-anagrafica/') || path.startsWith('/strutture/censimento');
+
+    return (
+      path === '/demo' ||
+      path.startsWith('/demo/') ||
+      path === '/faq' ||
+      path === '/privacy' ||
+      path === '/completa-profilo' ||
+      path.startsWith('/completa-anagrafica/') ||
+      path === '/area-strutture' ||
+      path.startsWith('/area-strutture/')
+    );
   }
 
   isInternalRoute(): boolean {
