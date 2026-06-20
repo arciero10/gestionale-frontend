@@ -682,6 +682,11 @@ export class App {
       this.authenticated.set(false);
       this.msalReady.set(true);
       this.authErrorMessage.set(null);
+
+      if (this.isPublicRoute()) {
+        return false;
+      }
+
       await this.router.navigateByUrl('/', { replaceUrl: true });
       return false;
     }
