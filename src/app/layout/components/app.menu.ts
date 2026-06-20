@@ -195,19 +195,54 @@ export class AppMenu {
             ]
         },
         {
-            label: 'Admin piattaforma',
+            label: 'Amministrazione globale',
             icon: 'pi pi-fw pi-shield',
             visible: this.platformAdminAccess.isPlatformAdmin(),
             items: [
                 {
                     label: 'Dashboard admin',
                     icon: 'pi pi-fw pi-th-large',
-                    routerLink: ['/gestionale-cn/admin']
+                    routerLink: ['/gestionale-cn/admin/dashboard']
+                },
+                {
+                    label: 'Utenti',
+                    icon: 'pi pi-fw pi-id-card',
+                    routerLink: ['/gestionale-cn/admin/utenti']
+                },
+                {
+                    label: 'Comunità',
+                    icon: 'pi pi-fw pi-sitemap',
+                    routerLink: ['/gestionale-cn/admin/comunita']
+                },
+                {
+                    label: 'Profili',
+                    icon: 'pi pi-fw pi-users',
+                    routerLink: ['/gestionale-cn/admin/profili']
                 },
                 {
                     label: 'Strutture',
                     icon: 'pi pi-fw pi-building',
                     routerLink: ['/gestionale-cn/admin/strutture']
+                },
+                {
+                    label: 'Convivenze',
+                    icon: 'pi pi-fw pi-calendar',
+                    routerLink: ['/gestionale-cn/admin/convivenze']
+                },
+                {
+                    label: 'Richieste',
+                    icon: 'pi pi-fw pi-send',
+                    routerLink: ['/gestionale-cn/admin/richieste']
+                },
+                {
+                    label: 'Viaggi',
+                    icon: 'pi pi-fw pi-map',
+                    routerLink: ['/gestionale-cn/admin/viaggi']
+                },
+                {
+                    label: 'Impostazioni',
+                    icon: 'pi pi-fw pi-cog',
+                    routerLink: ['/gestionale-cn/admin/impostazioni']
                 }
             ]
         },

@@ -73,13 +73,53 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         children: [
             {
                 path: '',
-                loadComponent: () => import('./admin/admin-dashboard').then((c) => c.AdminDashboard),
+                redirectTo: 'dashboard',
+                pathMatch: 'full'
+            },
+            {
+                path: 'dashboard',
+                loadComponent: () => import('./admin/global-admin-dashboard').then((c) => c.GlobalAdminDashboard),
                 data: { breadcrumb: 'Admin piattaforma' }
+            },
+            {
+                path: 'utenti',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Utenti', title: 'Utenti e ruoli', description: 'Gestione globale utenti, ruoli applicativi e abilitazioni.' }
+            },
+            {
+                path: 'comunita',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Comunità', title: 'Comunità', description: 'Gestione globale di diocesi, settori, parrocchie e comunità.' }
+            },
+            {
+                path: 'profili',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Profili', title: 'Profili/fratelli', description: 'Consultazione e correzione dei profili personali censiti.' }
             },
             {
                 path: 'strutture',
                 loadComponent: () => import('./admin-strutture/admin-strutture').then((c) => c.AdminStrutture),
                 data: { breadcrumb: 'Admin strutture' }
+            },
+            {
+                path: 'convivenze',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Convivenze', title: 'Convivenze', description: 'Controllo globale di convivenze attive, concluse e catechistiche.' }
+            },
+            {
+                path: 'richieste',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Richieste', title: 'Richieste disponibilità', description: 'Monitoraggio globale delle richieste disponibilità verso le strutture.' }
+            },
+            {
+                path: 'viaggi',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Viaggi', title: 'Viaggi / Pellegrinaggi', description: 'Governo globale di viaggi e pellegrinaggi quando il modulo sarà attivo.' }
+            },
+            {
+                path: 'impostazioni',
+                loadComponent: () => import('./admin/admin-section-placeholder').then((c) => c.AdminSectionPlaceholder),
+                data: { breadcrumb: 'Impostazioni', title: 'Impostazioni', description: 'Configurazioni generali, privacy e parametri del gestionale.' }
             }
         ]
     },

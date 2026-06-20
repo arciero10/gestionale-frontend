@@ -6,10 +6,12 @@ import { AuthService } from './app/auth/auth.service';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
 import { getAppUserStatus, hasAppUserProfile } from './app/features/gestionaleCN/data/app-user-profile.storage';
+import { isPlatformAdminEmail } from './app/features/gestionaleCN/admin/platform-admin.mock';
 import { catchError, filter, firstValueFrom, of, timeout } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
+const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
 
 @Component({
   selector: 'app-root',
@@ -575,11 +577,13 @@ export class App {
     const hasProfile = hasAppUserProfile();
     const userStatus = getAppUserStatus();
     const hasApplicationProfile = hasProfile && Boolean(userStatus);
-    const targetRoute = selected || hasApplicationProfile ? DASHBOARD_URL : ONBOARDING_URL;
+    const isGlobalAdmin = this.isCurrentGlobalAdmin();
+    const targetRoute = isGlobalAdmin ? GLOBAL_ADMIN_DASHBOARD_URL : selected || hasApplicationProfile ? DASHBOARD_URL : ONBOARDING_URL;
     console.log('[AUTH] selected community?', selected);
     console.log('[AUTH] app_user_profile?', hasProfile);
     console.log('[AUTH] app_user_status?', userStatus ?? 'missing');
-    console.log('[AUTH] navigating to', targetRoute === ONBOARDING_URL ? 'onboarding' : 'dashboard');
+    console.log('[AUTH] global admin?', isGlobalAdmin);
+    console.log('[AUTH] navigating to', targetRoute === ONBOARDING_URL ? 'onboarding' : targetRoute);
     this.authenticated.set(true);
     this.msalReady.set(true);
     this.forceShowOutlet.set(true);
@@ -716,6 +720,24 @@ export class App {
     }
 
     return null;
+  }
+
+  private isCurrentGlobalAdmin(): boolean {
+    const activeAccount = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
+    const candidates = [
+      this.authService.state().email,
+      activeAccount?.username,
+      activeAccount?.idTokenClaims?.['email'] as string | undefined,
+      activeAccount?.idTokenClaims?.['preferred_username'] as string | undefined,
+      activeAccount?.idTokenClaims?.['upn'] as string | undefined
+    ];
+
+    const emails = activeAccount?.idTokenClaims?.['emails'];
+    if (Array.isArray(emails)) {
+      candidates.push(...emails.filter((value): value is string => typeof value === 'string'));
+    }
+
+    return candidates.some((email) => isPlatformAdminEmail(email));
   }
 
   private wait(milliseconds: number): Promise<void> {

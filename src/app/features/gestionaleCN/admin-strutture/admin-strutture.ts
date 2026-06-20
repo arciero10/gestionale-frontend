@@ -10,6 +10,20 @@ import {
     readStruttureSegnalate,
     writeStruttureSegnalate
 } from '../../strutture/strutture-censimento.mock';
+import { ProfileStatus, readProfileStatus, readStrutturaProfile, saveStrutturaProfile, StrutturaProfileMock } from '../../strutture/struttura-profile.storage';
+
+type StatoAdminStruttura = 'IN_ATTESA' | 'APPROVATA' | 'RIFIUTATA' | 'SOSPESA';
+
+type AdminStrutturaItem = {
+    id: string;
+    nome: string;
+    referente: string;
+    citta: string;
+    stato: StatoAdminStruttura;
+    origine: 'Accreditamento struttura' | 'Censimento struttura' | 'Segnalazione comunità';
+    data: string;
+    dettaglio: string;
+};
 
 @Component({
     selector: 'app-admin-strutture',
@@ -20,10 +34,66 @@ import {
             <header class="page-head">
                 <div>
                     <span>Admin piattaforma</span>
-                    <h1>Admin strutture</h1>
-                    <p>Gestione mock delle segnalazioni, degli inviti formali al censimento e della pubblicazione.</p>
+                    <h1>Gestione strutture Global Admin</h1>
+                    <p>Controllo completo di accreditamenti, censimenti, sospensioni e pubblicazione delle strutture.</p>
                 </div>
             </header>
+
+            <section class="panel">
+                <div class="section-title">
+                    <div>
+                        <span>Stati strutture</span>
+                        <h2>Strutture amministrabili</h2>
+                    </div>
+                    <strong>{{ struttureAdmin.length }}</strong>
+                </div>
+
+                <div class="status-grid">
+                    @for (stato of statiAdmin; track stato) {
+                        <article class="status-card">
+                            <span>{{ statoLabel(stato) }}</span>
+                            <strong>{{ countByStatus(stato) }}</strong>
+                        </article>
+                    }
+                </div>
+
+                <div class="cards-grid admin-list">
+                    @for (struttura of struttureAdmin; track struttura.id) {
+                        <article>
+                            <header>
+                                <div>
+                                    <h3>{{ struttura.nome }}</h3>
+                                    <p>{{ struttura.citta || 'Città da completare' }} · {{ struttura.origine }}</p>
+                                </div>
+                                <p-tag [value]="statoLabel(struttura.stato)" [severity]="statusSeverity(struttura.stato)"></p-tag>
+                            </header>
+                            <dl>
+                                <div><dt>Referente</dt><dd>{{ displayValue(struttura.referente) }}</dd></div>
+                                <div><dt>Data</dt><dd>{{ formatDate(struttura.data) }}</dd></div>
+                                <div class="span-2"><dt>Dettaglio</dt><dd>{{ struttura.dettaglio }}</dd></div>
+                            </dl>
+                            <footer>
+                                <button pButton type="button" label="Approva" icon="pi pi-check" [disabled]="struttura.stato === 'APPROVATA'" (click)="approvaStruttura(struttura)"></button>
+                                <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined [disabled]="struttura.stato === 'RIFIUTATA'" (click)="rifiutaStruttura(struttura)"></button>
+                                <button pButton type="button" label="Sospendi" icon="pi pi-ban" severity="warn" outlined [disabled]="struttura.stato === 'SOSPESA'" (click)="sospendiStruttura(struttura)"></button>
+                                <button pButton type="button" label="Riattiva" icon="pi pi-refresh" severity="secondary" outlined [disabled]="struttura.stato !== 'SOSPESA'" (click)="riattivaStruttura(struttura)"></button>
+                                <button pButton type="button" label="Modifica" icon="pi pi-pencil" severity="secondary" outlined (click)="selezionaStruttura(struttura, 'modifica')"></button>
+                                <button pButton type="button" label="Vedi dettaglio" icon="pi pi-eye" outlined (click)="selezionaStruttura(struttura, 'dettaglio')"></button>
+                            </footer>
+                        </article>
+                    } @empty {
+                        <div class="empty-state">Nessuna struttura da amministrare in localStorage/mock.</div>
+                    }
+                </div>
+
+                @if (selectedAdminStruttura) {
+                    <div class="mock-link detail-box">
+                        <span>{{ selectedMode === 'modifica' ? 'Modifica mock' : 'Dettaglio struttura' }}</span>
+                        <strong>{{ selectedAdminStruttura.nome }}</strong>
+                        <p>{{ selectedAdminStruttura.dettaglio }}</p>
+                    </div>
+                }
+            </section>
 
             <section class="panel">
                 <div class="section-title">
@@ -141,7 +211,21 @@ import {
             dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin: 0; }
             dt { color: #64748b; font-size: .8rem; }
             dd { margin: .15rem 0 0; color: #111827; font-weight: 800; overflow-wrap: anywhere; }
+            .span-2 { grid-column: span 2; }
             footer { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: flex-end; }
+            .status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: .9rem; }
+            .status-card {
+                display: grid;
+                gap: .25rem;
+                padding: .9rem;
+                border: 1px solid #e2e8f0;
+                border-radius: 14px;
+                background: rgba(255,255,255,.96);
+            }
+            .status-card span { color: #475569; font-size: .8rem; font-weight: 850; text-transform: uppercase; }
+            .status-card strong { color: #0f172a; font-size: 1.55rem; }
+            .detail-box strong { color: #0f172a; }
+            .detail-box p { color: #334155; }
             .mock-link {
                 display: grid;
                 gap: .25rem;
@@ -156,7 +240,9 @@ import {
             .empty-state { padding: 1rem; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b; text-align: center; }
             @media (max-width: 900px) {
                 .cards-grid,
+                .status-grid,
                 dl { grid-template-columns: 1fr; }
+                .span-2 { grid-column: span 1; }
                 article header,
                 .section-title { flex-direction: column; align-items: stretch; }
                 footer button { width: 100%; }
@@ -167,6 +253,27 @@ import {
 export class AdminStrutture {
     segnalazioni = readStruttureSegnalate().filter((item) => item.stato !== 'Scartata');
     censimentoSanGaetano = this.readCensimentoSanGaetano();
+    strutturaProfile = readStrutturaProfile();
+    strutturaProfileStatus = readProfileStatus();
+    selectedAdminStruttura: AdminStrutturaItem | null = null;
+    selectedMode: 'modifica' | 'dettaglio' = 'dettaglio';
+    readonly statiAdmin: StatoAdminStruttura[] = ['IN_ATTESA', 'APPROVATA', 'RIFIUTATA', 'SOSPESA'];
+
+    get struttureAdmin(): AdminStrutturaItem[] {
+        const items: AdminStrutturaItem[] = [];
+
+        if (this.strutturaProfile) {
+            items.push(this.toAdminItemFromProfile(this.strutturaProfile, this.strutturaProfileStatus));
+        }
+
+        if (this.censimentoSanGaetano) {
+            items.push(this.toAdminItemFromCensimento(this.censimentoSanGaetano));
+        }
+
+        items.push(...readStruttureSegnalate().map((item) => this.toAdminItemFromSegnalazione(item)));
+
+        return items;
+    }
 
     preparaInvito(struttura: StrutturaSegnalataMock) {
         this.updateSegnalazione(struttura.id, {
@@ -241,6 +348,51 @@ export class AdminStrutture {
         this.censimentoSanGaetano = aggiornata;
     }
 
+    approvaStruttura(struttura: AdminStrutturaItem) {
+        this.updateAdminStruttura(struttura, 'APPROVATA');
+    }
+
+    rifiutaStruttura(struttura: AdminStrutturaItem) {
+        this.updateAdminStruttura(struttura, 'RIFIUTATA');
+    }
+
+    sospendiStruttura(struttura: AdminStrutturaItem) {
+        this.updateAdminStruttura(struttura, 'SOSPESA');
+    }
+
+    riattivaStruttura(struttura: AdminStrutturaItem) {
+        this.updateAdminStruttura(struttura, 'APPROVATA');
+    }
+
+    selezionaStruttura(struttura: AdminStrutturaItem, mode: 'modifica' | 'dettaglio') {
+        this.selectedAdminStruttura = struttura;
+        this.selectedMode = mode;
+    }
+
+    countByStatus(stato: StatoAdminStruttura) {
+        return this.struttureAdmin.filter((item) => item.stato === stato).length;
+    }
+
+    statoLabel(stato: StatoAdminStruttura) {
+        const labels: Record<StatoAdminStruttura, string> = {
+            IN_ATTESA: 'In attesa',
+            APPROVATA: 'Approvata',
+            RIFIUTATA: 'Respinta',
+            SOSPESA: 'Sospesa'
+        };
+        return labels[stato];
+    }
+
+    statusSeverity(stato: StatoAdminStruttura): 'success' | 'secondary' | 'warn' | 'danger' {
+        const severities: Record<StatoAdminStruttura, 'success' | 'secondary' | 'warn' | 'danger'> = {
+            IN_ATTESA: 'warn',
+            APPROVATA: 'success',
+            RIFIUTATA: 'danger',
+            SOSPESA: 'secondary'
+        };
+        return severities[stato];
+    }
+
     linkCensimento(struttura: StrutturaSegnalataMock) {
         return `/strutture/censimento?token=${struttura.tokenCensimento || 'SG-2026-000001'}`;
     }
@@ -297,6 +449,96 @@ export class AdminStrutture {
         );
         writeStruttureSegnalate(updated);
         this.segnalazioni = updated.filter((item) => item.stato !== 'Scartata');
+    }
+
+    private updateAdminStruttura(struttura: AdminStrutturaItem, stato: StatoAdminStruttura) {
+        if (struttura.id === 'struttura-profile-local' && this.strutturaProfile) {
+            saveStrutturaProfile(this.strutturaProfile, this.profileStatusFromAdmin(stato));
+            this.strutturaProfileStatus = readProfileStatus();
+        }
+
+        if (struttura.id === 'censimento-san-gaetano' && this.censimentoSanGaetano) {
+            const aggiornata: CensimentoStrutturaMock = {
+                ...this.censimentoSanGaetano,
+                pubblicata: stato === 'APPROVATA',
+                statoVerifica: stato === 'APPROVATA' ? 'Verificata' : stato === 'SOSPESA' ? 'Sospesa' : 'Da verificare',
+                statoDisponibilita: stato === 'APPROVATA' ? 'Disponibile' : 'Non disponibile'
+            };
+            localStorage.setItem(SAN_GAETANO_CENSIMENTO_STORAGE_KEY, JSON.stringify(aggiornata));
+            this.censimentoSanGaetano = aggiornata;
+        }
+
+        if (struttura.id.startsWith('segnalazione-')) {
+            const id = struttura.id.replace('segnalazione-', '');
+            this.updateSegnalazione(id, {
+                pubblicata: stato === 'APPROVATA',
+                stato: stato === 'RIFIUTATA' ? 'Scartata' : 'Censimento ricevuto',
+                statoVerifica: stato === 'APPROVATA' ? 'Verificata' : stato === 'SOSPESA' ? 'Sospesa' : 'Da verificare',
+                statoDisponibilita: stato === 'APPROVATA' ? 'Disponibile' : 'Non disponibile'
+            });
+        }
+
+        this.selectedAdminStruttura = null;
+    }
+
+    private profileStatusFromAdmin(stato: StatoAdminStruttura): ProfileStatus {
+        const map: Record<StatoAdminStruttura, ProfileStatus> = {
+            IN_ATTESA: 'IN_ATTESA',
+            APPROVATA: 'APPROVATA',
+            RIFIUTATA: 'RIFIUTATA',
+            SOSPESA: 'SOSPESA'
+        };
+        return map[stato];
+    }
+
+    private toAdminItemFromProfile(profile: StrutturaProfileMock, status: ProfileStatus): AdminStrutturaItem {
+        return {
+            id: 'struttura-profile-local',
+            nome: profile.nome,
+            referente: profile.referente,
+            citta: [profile.citta, profile.regione].filter(Boolean).join(' / '),
+            stato: this.adminStatusFromProfile(status),
+            origine: 'Accreditamento struttura',
+            data: profile.updatedAt,
+            dettaglio: profile.descrizione || 'Profilo struttura accreditato tramite Area Strutture.'
+        };
+    }
+
+    private toAdminItemFromCensimento(censimento: CensimentoStrutturaMock): AdminStrutturaItem {
+        return {
+            id: 'censimento-san-gaetano',
+            nome: censimento.nomeStruttura,
+            referente: censimento.referente,
+            citta: [censimento.citta, censimento.regione].filter(Boolean).join(' / '),
+            stato: censimento.pubblicata ? 'APPROVATA' : censimento.statoVerifica === 'Sospesa' ? 'SOSPESA' : 'IN_ATTESA',
+            origine: 'Censimento struttura',
+            data: censimento.dataInvio,
+            dettaglio: censimento.noteOrganizzative || 'Censimento struttura ricevuto e in attesa di verifica admin.'
+        };
+    }
+
+    private toAdminItemFromSegnalazione(segnalazione: StrutturaSegnalataMock): AdminStrutturaItem {
+        return {
+            id: `segnalazione-${segnalazione.id}`,
+            nome: segnalazione.nomeStruttura,
+            referente: segnalazione.referente,
+            citta: [segnalazione.citta, segnalazione.regione].filter(Boolean).join(' / '),
+            stato: segnalazione.stato === 'Scartata' ? 'RIFIUTATA' : segnalazione.pubblicata ? 'APPROVATA' : segnalazione.statoVerifica === 'Sospesa' ? 'SOSPESA' : 'IN_ATTESA',
+            origine: 'Segnalazione comunità',
+            data: segnalazione.dataSegnalazione,
+            dettaglio: segnalazione.note || 'Segnalazione proposta da comunità.'
+        };
+    }
+
+    private adminStatusFromProfile(status: ProfileStatus): StatoAdminStruttura {
+        const map: Record<ProfileStatus, StatoAdminStruttura> = {
+            BOZZA: 'IN_ATTESA',
+            IN_ATTESA: 'IN_ATTESA',
+            APPROVATA: 'APPROVATA',
+            RIFIUTATA: 'RIFIUTATA',
+            SOSPESA: 'SOSPESA'
+        };
+        return map[status];
     }
 
     readonly defaultCensimentoLink = SAN_GAETANO_CENSIMENTO_LINK;
