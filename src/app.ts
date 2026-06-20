@@ -57,7 +57,7 @@ const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
       </main>
     }
 
-    @if (!showLoading() && !showLogin()) {
+    @if (!showLoading() && (isPublicRoute() || !showLogin())) {
       <router-outlet></router-outlet>
     }
   `,
