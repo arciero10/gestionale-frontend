@@ -76,12 +76,18 @@ const structurePageStyles = `
     .photo-grid span,
     .promo-list span,
     .promo-list em { color: #475569; font-style: normal; }
+    .dashboard-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; margin-top: 1rem; }
+    .dashboard-card { display: grid; gap: .45rem; align-content: start; min-height: 9rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; color: #0f172a; text-decoration: none; box-shadow: 0 10px 22px rgba(15,23,42,.08); }
+    .dashboard-card i { color: #1d4ed8; font-size: 1.35rem; }
+    .dashboard-card strong { font-size: 1rem; }
+    .dashboard-card span { color: #475569; line-height: 1.35; }
     @media (max-width: 760px) {
         .form-grid,
         .profile-preview,
         dl,
         .photo-grid,
-        .promo-list { grid-template-columns: 1fr; }
+        .promo-list,
+        .dashboard-cards { grid-template-columns: 1fr; }
         .span-2 { grid-column: span 1; }
         .structure-entry { background-attachment: scroll; }
     }
@@ -107,6 +113,95 @@ const structurePageStyles = `
     styles: [structurePageStyles]
 })
 export class AreaStruttureHome {}
+
+@Component({
+    selector: 'app-area-strutture-dashboard',
+    standalone: true,
+    imports: [CommonModule, RouterLink, ButtonModule],
+    template: `
+        <main class="structure-entry structure-form-page">
+            <section class="editor-card">
+                <header>
+                    <span>Area Strutture</span>
+                    <h1>Dashboard struttura</h1>
+                    <p>Gestisci profilo, foto, offerte e richieste ricevute dalla tua struttura.</p>
+                </header>
+
+                @if (!hasProfile) {
+                    <div class="status-box">
+                        <strong>Nessuna struttura accreditata su questo dispositivo</strong>
+                        <p>Avvia l'accreditamento per creare la scheda struttura e accedere agli strumenti dedicati.</p>
+                    </div>
+                    <div class="actions">
+                        <a pButton routerLink="/area-strutture/accreditamento" label="Accredita la tua struttura" icon="pi pi-building"></a>
+                    </div>
+                } @else {
+                    <div class="profile-preview">
+                        <img [src]="cover" alt="Foto copertina struttura" />
+                        <dl>
+                            <div><dt>Nome struttura</dt><dd>{{ profile?.nome }}</dd></div>
+                            <div><dt>Stato accreditamento</dt><dd>{{ statusLabel }}</dd></div>
+                            <div><dt>Citta / Regione</dt><dd>{{ profile?.citta }} / {{ profile?.regione }}</dd></div>
+                            <div><dt>Capienza</dt><dd>{{ profile?.capienza ?? 'Da completare' }}</dd></div>
+                            <div><dt>Posti letto</dt><dd>{{ profile?.postiLetto ?? 'Da completare' }}</dd></div>
+                            <div><dt>Promo attive</dt><dd>{{ promoAttive.length }}</dd></div>
+                        </dl>
+                    </div>
+
+                    <div class="dashboard-cards">
+                        @for (card of cards; track card.title) {
+                            <a class="dashboard-card" [routerLink]="card.route">
+                                <i class="pi" [ngClass]="card.icon"></i>
+                                <strong>{{ card.title }}</strong>
+                                <span>{{ card.text }}</span>
+                            </a>
+                        }
+                    </div>
+                }
+            </section>
+        </main>
+    `,
+    styles: [structurePageStyles]
+})
+export class AreaStruttureDashboard {
+    readonly profile = readStrutturaProfile();
+    readonly statusLabel = readProfileStatus();
+    readonly promoAttive = activePromo(this.profile);
+    readonly cards = [
+        {
+            title: 'Profilo struttura',
+            text: 'Dati anagrafici, referente, capienza e condizioni.',
+            icon: 'pi-id-card',
+            route: '/area-strutture/profilo'
+        },
+        {
+            title: 'Foto struttura',
+            text: 'Copertina, camere, sale, cappella, mensa ed esterni.',
+            icon: 'pi-images',
+            route: '/area-strutture/foto'
+        },
+        {
+            title: 'Offerte e disponibilita',
+            text: 'Promo, pacchetti e disponibilita commerciali.',
+            icon: 'pi-tags',
+            route: '/area-strutture/offerte'
+        },
+        {
+            title: 'Richieste ricevute',
+            text: 'Richieste di disponibilita ricevute dalle comunita.',
+            icon: 'pi-inbox',
+            route: '/area-strutture/richieste'
+        }
+    ];
+
+    get hasProfile() {
+        return Boolean(this.profile);
+    }
+
+    get cover() {
+        return fotoCopertina(this.profile);
+    }
+}
 
 @Component({
     selector: 'app-area-strutture-accreditamento',
@@ -176,7 +271,7 @@ export class AreaStruttureAccreditamento {
 
         saveStrutturaProfile(this.form, 'IN_ATTESA');
         this.message = 'Profilo salvato. La struttura e in attesa di approvazione.';
-        setTimeout(() => void this.router.navigateByUrl('/gestionale-cn/dashboard'), 400);
+        setTimeout(() => void this.router.navigateByUrl('/area-strutture/dashboard'), 400);
     }
 }
 
@@ -214,7 +309,7 @@ export class AreaStruttureAccreditamento {
                     </div>
                     <div class="actions">
                         <a pButton routerLink="/area-strutture/accreditamento" label="Modifica dati" icon="pi pi-pencil"></a>
-                        <a pButton routerLink="/gestionale-cn/dashboard" label="Vai alla dashboard" icon="pi pi-th-large" outlined></a>
+                        <a pButton routerLink="/area-strutture/dashboard" label="Vai alla dashboard" icon="pi pi-th-large" outlined></a>
                     </div>
                 }
 
