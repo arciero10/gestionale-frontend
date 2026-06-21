@@ -1,0 +1,264 @@
+diff --git a/components/donation-card.tsx b/components/donation-card.tsx
+new file mode 100644
+index 0000000..2a21a18
+--- /dev/null
++++ b/components/donation-card.tsx
+@@ -0,0 +1,123 @@
++"use client";
++
++import { useEffect, useState } from "react";
++
++type DonationCardProps = {
++  accountHolder: string;
++  iban: string;
++  bic: string;
++  bank: string;
++  branch: string;
++};
++
++async function copyText(value: string) {
++  if (navigator.clipboard?.writeText) {
++    await navigator.clipboard.writeText(value);
++    return;
++  }
++
++  const textarea = document.createElement("textarea");
++  textarea.value = value;
++  textarea.style.position = "fixed";
++  textarea.style.opacity = "0";
++  document.body.appendChild(textarea);
++  textarea.select();
++  document.execCommand("copy");
++  textarea.remove();
++}
++
++export function DonationCard({
++  accountHolder,
++  iban,
++  bic,
++  bank,
++  branch,
++}: DonationCardProps) {
++  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
++
++  useEffect(() => {
++    if (copyStatus === "idle") {
++      return;
++    }
++
++    const timeout = window.setTimeout(() => setCopyStatus("idle"), 2500);
++    return () => window.clearTimeout(timeout);
++  }, [copyStatus]);
++
++  async function handleCopy() {
++    try {
++      await copyText(iban);
++      setCopyStatus("copied");
++    } catch {
++      setCopyStatus("error");
++    }
++  }
++
++  const details = [
++    { label: "Intestatario", value: accountHolder },
++    { label: "BIC / SWIFT", value: bic },
++    { label: "Banca", value: bank },
++    { label: "Filiale", value: branch },
++  ];
++
++  return (
++    <article className="overflow-hidden rounded-[32px] border border-stone-200 bg-white shadow-[0_28px_80px_-52px_rgba(41,37,36,0.42)]">
++      <div className="border-b border-stone-200 bg-[linear-gradient(135deg,_#fffaf7_0%,_#f4e8df_100%)] p-6 sm:p-8">
++        <div className="flex items-start justify-between gap-5">
++          <div>
++            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#aa2034]">
++              Bonifico bancario
++            </p>
++            <h2 className="mt-3 font-serif text-3xl text-stone-950 sm:text-4xl">
++              Donazione libera
++            </h2>
++          </div>
++          <div
++            aria-hidden="true"
++            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#aa2034] text-white shadow-sm"
++          >
++            <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor">
++              <path
++                d="M12 21s-7-4.35-9.33-8.28C.62 9.27 2.27 5 6.15 5c2.05 0 3.22 1.17 3.85 2.17C10.63 6.17 11.8 5 13.85 5c3.88 0 5.53 4.27 3.48 7.72C15 16.65 12 21 12 21Z"
++                strokeLinecap="round"
++                strokeLinejoin="round"
++                strokeWidth="1.7"
++              />
++            </svg>
++          </div>
++        </div>
++      </div>
++
++      <div className="p-6 sm:p-8">
++        <div className="rounded-2xl border border-[#aa2034]/15 bg-[#fffaf7] p-5 sm:p-6">
++          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
++            IBAN
++          </p>
++          <p className="mt-3 break-all font-mono text-lg font-semibold tracking-[0.04em] text-stone-950 sm:text-xl">
++            {iban}
++          </p>
++          <button
++            type="button"
++            onClick={handleCopy}
++            className="btn mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#aa2034] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#931a2c] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#aa2034]/40"
++          >
++            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor">
++              <rect x="8" y="8" width="11" height="11" rx="2" strokeWidth="1.8" />
++              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" strokeWidth="1.8" />
++            </svg>
++            {copyStatus === "copied" ? "IBAN copiato" : "Copia IBAN"}
++          </button>
++          <p className="sr-only" aria-live="polite">
++            {copyStatus === "copied"
++              ? "IBAN copiato negli appunti."
++              : copyStatus === "error"
++                ? "Non e' stato possibile copiare l'IBAN."
++                : ""}
++          </p>
++        </div>
++
++        <dl className="mt-7 grid gap-x-8 gap-y-5 sm:grid-cols-2">
++          {details.map((detail) => (
++            <div key={detail.label} className="border-b border-stone-100 pb-4">
++              <dt className="text-xs font-semibold uppercase tracking-[0.15em] text-stone-500">
++                {detail.label}
++              </dt>
++              <dd className="mt-2 text-base font-medium leading-7 text-stone-900">
++                {detail.value}
++              </dd>
++            </div>
++          ))}
++        </dl>
++      </div>
++    </article>
++  );
++}
+diff --git a/app/sostienici/page.tsx b/app/sostienici/page.tsx
+index bd173de..c9e8459 100644
+--- a/app/sostienici/page.tsx
++++ b/app/sostienici/page.tsx
+@@ -1,64 +1,70 @@
+ import type { Metadata } from "next";
+ 
+-import { CardsGrid } from "@/components/cards-grid";
+ import { Container } from "@/components/container";
++import { DonationCard } from "@/components/donation-card";
+ import { PageHero } from "@/components/page-hero";
+-import { siteConfig, supportMethods } from "@/content/site";
+ 
+ export const metadata: Metadata = {
+   title: "Sostienici",
+   description:
+-    "Sezione dedicata al sostegno di PANTELEIA - APS: donazioni, campagne progetto, crowdfunding e 5x1000.",
++    "Sostieni PANTELEIA - APS con una donazione libera tramite bonifico bancario.",
+ };
+ 
+ export default function SostieniciPage() {
+-  const items = supportMethods.map((method) => ({
+-    title: method.title,
+-    description: method.description,
+-  }));
+-
+   return (
+     <>
+       <PageHero
+         eyebrow="Partecipazione"
+         title="Sostienici"
+-        description="La sezione e' predisposta per accogliere future modalita' di donazione e supporto, con una comunicazione chiara e rispettosa della natura associativa dell'ente."
++        description="Puoi sostenere PANTELEIA - APS con una donazione libera tramite bonifico bancario. Ogni contributo aiuta l'associazione a sviluppare progetti digitali, culturali e comunitari al servizio delle persone."
+       />
+-      <Container className="space-y-12 py-16">
+-        <CardsGrid items={items} />
+-        <section className="grid gap-6 lg:grid-cols-2">
+-          <div className="rounded-[28px] border border-stone-200 bg-white p-8">
+-            <h2 className="font-serif text-3xl text-stone-950">Informazioni da completare</h2>
+-            <div className="mt-6 space-y-4 text-sm leading-7 text-stone-600">
++      <Container className="py-16 sm:py-20">
++        <section className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
++          <div className="space-y-6 lg:sticky lg:top-28">
++            <div>
++              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#aa2034]">
++                Il tuo contributo
++              </p>
++              <h2 className="mt-4 font-serif text-3xl leading-tight text-stone-950 sm:text-4xl">
++                Un gesto concreto per progetti che mettono al centro le persone
++              </h2>
++            </div>
++            <div className="space-y-4 text-base leading-8 text-stone-600">
+               <p>
+-                <span className="block font-semibold text-stone-950">Donazioni</span>
+-                Inserire IBAN, intestazione conto o link ufficiale alla piattaforma di
+-                pagamento.
++                Anche una donazione libera contribuisce a dare continuita' alle attivita'
++                associative e a trasformare idee di utilita' sociale in iniziative accessibili.
+               </p>
+               <p>
+-                <span className="block font-semibold text-stone-950">Crowdfunding</span>
+-                Inserire eventuale piattaforma, pagina campagna o regolamento di raccolta.
++                Per effettuare il bonifico utilizza i dati bancari ufficiali riportati qui
++                accanto. Puoi copiare l'IBAN con un solo clic.
+               </p>
+             </div>
+-          </div>
+-          <div className="rounded-[28px] border border-stone-200 bg-[linear-gradient(180deg,_#f7f3eb_0%,_#efe5d8_100%)] p-8">
+-            <h2 className="font-serif text-3xl text-stone-950">5x1000</h2>
+-            <p className="mt-5 text-base leading-8 text-stone-700">
+-              Non appena il dato sara' disponibile, sostituire il placeholder seguente con il
+-              codice fiscale ufficiale dell'associazione:
+-            </p>
+-            <p className="mt-6 rounded-2xl border border-white/70 bg-white/70 px-5 py-4 text-lg font-semibold text-stone-950">
+-              {siteConfig.fivePerThousandPlaceholder}
+-            </p>
++            <div className="rounded-2xl border border-stone-200 bg-white/70 p-5 text-sm leading-7 text-stone-600">
++              <p className="font-semibold text-stone-950">Trasparenza e fiducia</p>
++              <p className="mt-2">
++                I fondi raccolti sostengono le finalita' istituzionali e le attivita' di
++                PANTELEIA - APS.
++              </p>
++            </div>
+           </div>
++
++          <DonationCard
++            accountHolder="PANTELEIA - APS"
++            iban="IT39R0623005034000035836875"
++            bic="CRPPIT2P450"
++            bank="Credit Agricole"
++            branch="00450 - Ag. di Roma 26"
++          />
+         </section>
+       </Container>
+     </>
+   );
+ }
+diff --git a/content/site.ts b/content/site.ts
+index 1d3660d..d0a2ba2 100644
+--- a/content/site.ts
++++ b/content/site.ts
+@@ -81,8 +81,8 @@ export const supportMethods = [
+   {
+     title: "Donazione libera",
+     description:
+-      "Area predisposta per inserire in seguito IBAN, link di pagamento o altri canali ufficiali di raccolta fondi.",
++      "Sostieni le attivita' di PANTELEIA - APS con una donazione libera tramite bonifico bancario.",
+   },
+   {
+     title: "Sostegno a un progetto",
+diff --git a/app/page.tsx b/app/page.tsx
+index 45953f2..d3cf570 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -218,8 +218,8 @@ export default function HomePage() {
+               Sostenere i progetti significa rafforzare attivita' educative, culturali e comunitarie
+             </h2>
+             <p className="text-lg leading-8 text-stone-300">
+-              La sezione dedicata al sostegno resta semplice da consultare e pronta per
+-              accogliere donazioni, crowdfunding e 5x1000 quando i dati saranno definiti.
++              Con una donazione libera puoi contribuire in modo concreto allo sviluppo di
++              progetti digitali, culturali e comunitari al servizio delle persone.
+             </p>
+           </div>

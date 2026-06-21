@@ -1,0 +1,38 @@
+diff --git a/app/page.tsx b/app/page.tsx
+index d3cf570..cc037d4 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -11,10 +11,12 @@ export default function HomePage() {
+       <section className="relative flex min-h-[78vh] items-center overflow-hidden">
+         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+-          <img
++          <Image
+             src="/Panteleia.svg"
+             alt="Panteleia"
++            width={960}
++            height={960}
+             className="w-[960px] scale-110 opacity-20"
+           />
+         </div>
+diff --git a/app/sostienici/page.tsx b/app/sostienici/page.tsx
+index c9e8459..d16ebd4 100644
+--- a/app/sostienici/page.tsx
++++ b/app/sostienici/page.tsx
+@@ -17,7 +17,7 @@ export default function SostieniciPage() {
+         eyebrow="Partecipazione"
+         title="Sostienici"
+-        description="Puoi sostenere PANTELEIA - APS con una donazione libera tramite bonifico bancario. Ogni contributo aiuta l'associazione a sviluppare progetti digitali, culturali e comunitari al servizio delle persone."
++        description="Puoi sostenere PANTELEIA – APS con una donazione libera tramite bonifico bancario. Ogni contributo aiuta l'associazione a sviluppare progetti digitali, culturali e comunitari al servizio delle persone."
+       />
+@@ -51,11 +51,11 @@ export default function SostieniciPage() {
+ 
+           <DonationCard
+-            accountHolder="PANTELEIA - APS"
++            accountHolder="PANTELEIA - APS"
+             iban="IT39R0623005034000035836875"
+             bic="CRPPIT2P450"
+-            bank="Credit Agricole"
+-            branch="00450 - Ag. di Roma 26"
++            bank="Crédit Agricole"
++            branch="00450 – Ag. di Roma 26"
+           />
