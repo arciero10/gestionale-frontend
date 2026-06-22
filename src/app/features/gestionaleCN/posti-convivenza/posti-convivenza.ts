@@ -1193,7 +1193,6 @@ ${this.comunitaNome}`;
 
     private creaPostiConCensimento(): PostoConCensimento[] {
         const censimento = this.readSanGaetanoCensimento();
-        const segnalazioni = readStruttureSegnalate();
         const strutturaProfile = readStrutturaProfile();
         const profileStatus = readProfileStatus();
 
@@ -1232,17 +1231,13 @@ ${this.comunitaNome}`;
             };
         });
 
-        const segnalateNonPubblicate = segnalazioni
-            .filter((item) => !item.pubblicata && item.stato !== 'Scartata')
-            .map((item, index): PostoConCensimento => this.creaPostoDaSegnalazione(item, index));
-
         if (!strutturaProfile) {
-            return [...postiBase, ...segnalateNonPubblicate];
+            return postiBase.filter((posto) => posto.pubblicata === true);
         }
 
         const postoProfilo = this.creaPostoDaStrutturaProfile(strutturaProfile, profileStatus);
         const senzaDuplicato = postiBase.filter((posto) => posto.nome.trim().toLowerCase() !== postoProfilo.nome.trim().toLowerCase());
-        return [postoProfilo, ...senzaDuplicato, ...segnalateNonPubblicate];
+        return [postoProfilo, ...senzaDuplicato].filter((posto) => posto.pubblicata === true);
     }
 
     private creaPostoDaStrutturaProfile(profile: StrutturaProfileMock, status: ProfileStatus): PostoConCensimento {

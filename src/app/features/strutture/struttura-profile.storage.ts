@@ -1,7 +1,7 @@
 export type ProfileType = 'comunita' | 'struttura';
-export type ProfileStatus = 'BOZZA' | 'IN_ATTESA' | 'APPROVATA' | 'RIFIUTATA' | 'SOSPESA';
+export type ProfileStatus = 'BOZZA' | 'IN_ATTESA' | 'APPROVATA' | 'RESPINTA' | 'SOSPESA';
 
-export type CategoriaFotoStruttura = 'copertina' | 'camere' | 'sale' | 'cappella' | 'mensa' | 'esterni' | 'altro';
+export type CategoriaFotoStruttura = 'copertina' | 'camere' | 'sale' | 'cappella' | 'mensa' | 'esterni' | 'spazi comuni' | 'servizi' | 'altro';
 
 export interface FotoStrutturaMock {
     id: string;
@@ -9,6 +9,8 @@ export interface FotoStrutturaMock {
     url: string;
     descrizione: string;
     copertina?: boolean;
+    isCover?: boolean;
+    createdAt?: string;
 }
 
 export interface PromoStrutturaMock {
@@ -85,7 +87,9 @@ export const STRUTTURA_PROFILE_DEFAULT: StrutturaProfileMock = {
             categoria: 'copertina',
             url: '/images/backgrounds/posti-convivenza-bg.jpg',
             descrizione: 'Foto copertina struttura',
-            copertina: true
+            copertina: true,
+            isCover: true,
+            createdAt: ''
         }
     ],
     promo: [
@@ -116,8 +120,7 @@ export function readProfileStatus(): ProfileStatus {
         return 'BOZZA';
     }
 
-    const value = localStorage.getItem(PROFILE_STATUS_KEY) as ProfileStatus | null;
-    return value ?? 'BOZZA';
+    return normalizeProfileStatus(localStorage.getItem(PROFILE_STATUS_KEY));
 }
 
 export function readStrutturaProfile(): StrutturaProfileMock | null {
@@ -131,7 +134,7 @@ export function readStrutturaProfile(): StrutturaProfileMock | null {
     }
 
     try {
-        return JSON.parse(raw) as StrutturaProfileMock;
+        return normalizeStrutturaProfile(JSON.parse(raw) as Partial<StrutturaProfileMock>);
     } catch {
         return null;
     }
@@ -143,8 +146,8 @@ export function saveStrutturaProfile(profile: StrutturaProfileMock, status: Prof
     }
 
     localStorage.setItem(PROFILE_TYPE_KEY, 'struttura');
-    localStorage.setItem(PROFILE_STATUS_KEY, status);
-    localStorage.setItem(STRUTTURA_PROFILE_KEY, JSON.stringify({ ...profile, updatedAt: new Date().toISOString() }));
+    localStorage.setItem(PROFILE_STATUS_KEY, normalizeProfileStatus(status));
+    localStorage.setItem(STRUTTURA_PROFILE_KEY, JSON.stringify(normalizeStrutturaProfile({ ...profile, updatedAt: new Date().toISOString() })));
 }
 
 export function activePromo(profile: StrutturaProfileMock | null): PromoStrutturaMock[] {
@@ -161,5 +164,55 @@ export function activePromo(profile: StrutturaProfileMock | null): PromoStruttur
 }
 
 export function fotoCopertina(profile: StrutturaProfileMock | null): string {
-    return profile?.foto.find((foto) => foto.copertina)?.url || profile?.foto[0]?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
+    return profile?.foto.find((foto) => foto.copertina || foto.isCover)?.url || profile?.foto[0]?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
+}
+
+export function normalizeProfileStatus(value: string | null | undefined): ProfileStatus {
+    switch (value) {
+        case 'APPROVATA':
+        case 'IN_ATTESA':
+        case 'SOSPESA':
+        case 'BOZZA':
+            return value;
+        case 'RIFIUTATA':
+        case 'RESPINTA':
+            return 'RESPINTA';
+        default:
+            return 'BOZZA';
+    }
+}
+
+export function statusLabelStruttura(status: ProfileStatus): string {
+    const labels: Record<ProfileStatus, string> = {
+        BOZZA: 'Bozza',
+        IN_ATTESA: 'In attesa',
+        APPROVATA: 'Approvata',
+        RESPINTA: 'Respinta',
+        SOSPESA: 'Sospesa'
+    };
+    return labels[status];
+}
+
+export function normalizeStrutturaProfile(profile: Partial<StrutturaProfileMock>): StrutturaProfileMock {
+    const merged: StrutturaProfileMock = {
+        ...STRUTTURA_PROFILE_DEFAULT,
+        ...profile,
+        foto: Array.isArray(profile.foto) ? profile.foto : [],
+        promo: Array.isArray(profile.promo) ? profile.promo : []
+    };
+
+    const foto = merged.foto.map((item, index) => {
+        const isCover = Boolean(item.copertina || item.isCover || (!merged.foto.some((fotoItem) => fotoItem.copertina || fotoItem.isCover) && index === 0));
+        return {
+            ...item,
+            id: item.id || `foto-${index}`,
+            categoria: item.categoria || 'altro',
+            descrizione: item.descrizione || item.categoria || 'Foto struttura',
+            copertina: isCover,
+            isCover,
+            createdAt: item.createdAt || merged.updatedAt || new Date().toISOString()
+        };
+    });
+
+    return { ...merged, foto };
 }
