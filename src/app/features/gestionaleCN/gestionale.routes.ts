@@ -139,6 +139,26 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         data: { breadcrumb: 'Area Catechista' }
     },
         {
+        path: 'catechista/comunita-figlie',
+        component: GestionalePlaceholder,
+        data: { breadcrumb: 'Comunità seguite', title: 'Comunità seguite - in sviluppo' }
+    },
+        {
+        path: 'catechista/convivenze',
+        component: Convivenze,
+        data: { breadcrumb: 'Convivenze catechistiche' }
+    },
+        {
+        path: 'catechista/equipe',
+        component: GestionalePlaceholder,
+        data: { breadcrumb: 'Equipe catechisti', title: 'Equipe catechisti - in sviluppo' }
+    },
+        {
+        path: 'catechista/calendario',
+        component: GestionalePlaceholder,
+        data: { breadcrumb: 'Calendario catechista', title: 'Calendario catechista - in sviluppo' }
+    },
+        {
         path: 'responsabile/dashboard',
         loadComponent: () => import('./responsabile/responsabile-dashboard').then((c) => c.ResponsabileDashboard),
         data: { breadcrumb: 'Area Responsabile' }
