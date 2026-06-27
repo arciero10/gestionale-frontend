@@ -41,9 +41,8 @@ export class PlatformAdminAccess {
 
 export const platformAdminGuard: CanMatchFn = () => {
     const access = inject(PlatformAdminAccess);
-    const authService = inject(AuthService);
     const router = inject(Router);
 
-    return access.isPlatformAdmin() || authService.isAuthenticated() ? true : router.createUrlTree(['/forbidden']);
+    return access.isPlatformAdmin() ? true : router.createUrlTree(['/forbidden']);
 };
 

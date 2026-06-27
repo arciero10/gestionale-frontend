@@ -10,7 +10,8 @@ export const gestionaleAuthGuard: CanMatchFn = (_route, segments) => {
   const router = inject(Router);
   const targetPath = `/${segments.map((segment) => segment.path).join('/')}`;
   const navigationPath = router.getCurrentNavigation()?.finalUrl?.toString().split('?')[0].split('#')[0];
-  const isOnboardingTarget = targetPath === ONBOARDING_URL || navigationPath === ONBOARDING_URL;
+  const requestedPath = navigationPath ?? targetPath;
+  const isOnboardingTarget = requestedPath === ONBOARDING_URL;
 
   const activeAccount = msalService.instance.getActiveAccount();
   const accounts = msalService.instance.getAllAccounts();
@@ -21,12 +22,12 @@ export const gestionaleAuthGuard: CanMatchFn = (_route, segments) => {
       msalService.instance.setActiveAccount(account);
     }
 
-    if (!hasSelectedCommunity() && !isOnboardingTarget) {
+    if (!hasSelectedCommunity() && !isOnboardingTarget && requestedPath === '/gestionale-cn') {
       return router.createUrlTree(['/gestionale-cn/onboarding-comunita']);
     }
 
     return true;
   }
 
-  return router.createUrlTree(['/gestionale-cn/onboarding-comunita']);
+  return router.createUrlTree(['/']);
 };

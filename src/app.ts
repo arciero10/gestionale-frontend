@@ -578,11 +578,41 @@ export class App {
     const userStatus = getAppUserStatus();
     const hasApplicationProfile = hasProfile && Boolean(userStatus);
     const isGlobalAdmin = this.isCurrentGlobalAdmin();
+    const current = this.currentPath();
+    const isAdminRoute = current === '/gestionale-cn/admin' || current.startsWith('/gestionale-cn/admin/');
+    const isSpecificInternalRoute =
+      current.startsWith('/gestionale-cn/') &&
+      current !== '/gestionale-cn' &&
+      current !== '/gestionale-cn/' &&
+      !this.startedFromAuthCallback;
+
     const targetRoute = isGlobalAdmin ? GLOBAL_ADMIN_DASHBOARD_URL : selected || hasApplicationProfile ? DASHBOARD_URL : ONBOARDING_URL;
     console.log('[AUTH] selected community?', selected);
     console.log('[AUTH] app_user_profile?', hasProfile);
     console.log('[AUTH] app_user_status?', userStatus ?? 'missing');
     console.log('[AUTH] global admin?', isGlobalAdmin);
+
+    if (isAdminRoute && !isGlobalAdmin) {
+      console.warn('[AUTH] admin route denied for non global admin', current);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = true;
+      await this.router.navigateByUrl('/forbidden', { replaceUrl: true });
+      return;
+    }
+
+    if (this.authenticated() && isSpecificInternalRoute) {
+      console.log('[AUTH] preserving requested route', current);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = true;
+      return;
+    }
+
     console.log('[AUTH] navigating to', targetRoute === ONBOARDING_URL ? 'onboarding' : targetRoute);
     this.authenticated.set(true);
     this.msalReady.set(true);
