@@ -105,7 +105,17 @@ export const STRUTTURA_PROFILE_DEFAULT: StrutturaProfileMock = {
     updatedAt: ''
 };
 
-const storageAvailable = () => typeof localStorage !== 'undefined';
+const storageAvailable = () => {
+    try {
+        return typeof localStorage !== 'undefined';
+    } catch {
+        return false;
+    }
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
 
 export function readProfileType(): ProfileType {
     if (!storageAvailable()) {
@@ -151,7 +161,7 @@ export function saveStrutturaProfile(profile: StrutturaProfileMock, status: Prof
 }
 
 export function activePromo(profile: StrutturaProfileMock | null): PromoStrutturaMock[] {
-    if (!profile) {
+    if (!profile || !Array.isArray(profile.promo)) {
         return [];
     }
 
@@ -164,7 +174,8 @@ export function activePromo(profile: StrutturaProfileMock | null): PromoStruttur
 }
 
 export function fotoCopertina(profile: StrutturaProfileMock | null): string {
-    return profile?.foto.find((foto) => foto.copertina || foto.isCover)?.url || profile?.foto[0]?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
+    const foto = Array.isArray(profile?.foto) ? profile?.foto : [];
+    return foto?.find((item) => item?.url && (item.copertina || item.isCover))?.url || foto?.find((item) => item?.url)?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
 }
 
 export function normalizeProfileStatus(value: string | null | undefined): ProfileStatus {
@@ -193,26 +204,39 @@ export function statusLabelStruttura(status: ProfileStatus): string {
     return labels[status];
 }
 
-export function normalizeStrutturaProfile(profile: Partial<StrutturaProfileMock>): StrutturaProfileMock {
+export function normalizeStrutturaProfile(profile: Partial<StrutturaProfileMock> | null | undefined): StrutturaProfileMock {
+    const source = asRecord(profile);
     const merged: StrutturaProfileMock = {
         ...STRUTTURA_PROFILE_DEFAULT,
-        ...profile,
-        foto: Array.isArray(profile.foto) ? profile.foto : [],
-        promo: Array.isArray(profile.promo) ? profile.promo : []
+        ...source,
+        foto: Array.isArray(source['foto']) ? source['foto'] as FotoStrutturaMock[] : [],
+        promo: Array.isArray(source['promo']) ? source['promo'] as PromoStrutturaMock[] : []
     };
 
-    const foto = merged.foto.map((item, index) => {
-        const isCover = Boolean(item.copertina || item.isCover || (!merged.foto.some((fotoItem) => fotoItem.copertina || fotoItem.isCover) && index === 0));
+    const fotoSource = merged.foto.filter((item) => item && typeof item === 'object');
+    const hasCover = fotoSource.some((item) => item.copertina || item.isCover);
+    const foto = fotoSource.map((item, index) => {
+        const isCover = Boolean(item.copertina || item.isCover || (!hasCover && index === 0));
         return {
             ...item,
             id: item.id || `foto-${index}`,
             categoria: item.categoria || 'altro',
             descrizione: item.descrizione || item.categoria || 'Foto struttura',
+            url: item.url || '/images/backgrounds/posti-convivenza-bg.jpg',
             copertina: isCover,
             isCover,
             createdAt: item.createdAt || merged.updatedAt || new Date().toISOString()
         };
     });
 
-    return { ...merged, foto };
+    const promo = merged.promo.filter((item) => item && typeof item === 'object').map((item, index) => ({
+        id: item.id || `promo-${index}`,
+        titolo: item.titolo || 'Promo struttura',
+        descrizione: item.descrizione || '',
+        validaDal: item.validaDal || '',
+        validaAl: item.validaAl || '',
+        attiva: Boolean(item.attiva)
+    }));
+
+    return { ...merged, foto, promo };
 }

@@ -195,6 +195,13 @@ type PostoConCensimento = PostoConvivenza & {
                 }
             </section>
 
+            @if (!posti.length) {
+                <section class="empty-state">
+                    <h2>Nessuna struttura disponibile</h2>
+                    <p>Il catalogo mostra solo strutture approvate dal Global Admin. Quando una struttura verrà approvata, comparirà qui.</p>
+                </section>
+            }
+
             @if (struttureSegnalate.length) {
                 <section class="reported-card">
                     <div class="reported-title">
@@ -812,7 +819,7 @@ export class PostiConvivenza implements OnInit {
     filtroTipo: TipoStrutturaMappa | null = null;
     filtroDisponibilita: StatoDisponibilitaPosto | null = null;
     serviziSelezionati: ServizioFiltro[] = [];
-    selected: PostoConCensimento = this.posti[0];
+    selected: PostoConCensimento = this.posti[0] ?? this.createEmptyPosto();
 
     readonly formatDateIt = formatDateIt;
 
@@ -1238,6 +1245,48 @@ ${this.comunitaNome}`;
         const postoProfilo = this.creaPostoDaStrutturaProfile(strutturaProfile, profileStatus);
         const senzaDuplicato = postiBase.filter((posto) => posto.nome.trim().toLowerCase() !== postoProfilo.nome.trim().toLowerCase());
         return [postoProfilo, ...senzaDuplicato].filter((posto) => posto.pubblicata === true);
+    }
+
+    private createEmptyPosto(): PostoConCensimento {
+        return {
+            id: -1,
+            nome: 'Nessuna struttura disponibile',
+            tipo: 'Struttura di accoglienza',
+            tipologia: 'Casa di convivenza',
+            zona: 'Da completare',
+            citta: 'Da completare',
+            regione: 'Da completare',
+            indirizzo: '',
+            indirizzoNormalizzato: '',
+            capienza: null,
+            referente: '',
+            telefono: '',
+            email: '',
+            sitoWeb: '',
+            statoRelazione: 'Da verificare',
+            statoDisponibilita: 'Da verificare',
+            note: 'Il catalogo mostra solo strutture approvate dal Global Admin.',
+            latitudine: null,
+            longitudine: null,
+            lat: 41.9028,
+            lng: 12.4964,
+            placeId: null,
+            googleMapsUrl: '',
+            ultimoContatto: null,
+            storicoConvivenze: [],
+            servizi: {
+                camere: false,
+                salaIncontri: false,
+                cucina: false,
+                parcheggio: false,
+                accessibilita: false,
+                spazioBambini: false
+            },
+            valutazioneInterna: 'non valutato',
+            pubblicata: false,
+            fotoCopertina: '/images/backgrounds/posti-convivenza-bg.jpg',
+            promoAttive: []
+        };
     }
 
     private creaPostoDaStrutturaProfile(profile: StrutturaProfileMock, status: ProfileStatus): PostoConCensimento {

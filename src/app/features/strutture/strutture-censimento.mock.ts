@@ -84,18 +84,35 @@ export const SAN_GAETANO_CENSIMENTO_DEFAULT: CensimentoStrutturaMock = {
 };
 
 export function readStruttureSegnalate(): StrutturaSegnalataMock[] {
+    if (!storageAvailable()) {
+        return [];
+    }
+
     const raw = localStorage.getItem(STRUTTURE_SEGNALATE_STORAGE_KEY);
     if (!raw) {
         return [];
     }
 
     try {
-        return JSON.parse(raw) as StrutturaSegnalataMock[];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === 'object') as StrutturaSegnalataMock[] : [];
     } catch {
         return [];
     }
 }
 
 export function writeStruttureSegnalate(items: StrutturaSegnalataMock[]) {
+    if (!storageAvailable()) {
+        return;
+    }
+
     localStorage.setItem(STRUTTURE_SEGNALATE_STORAGE_KEY, JSON.stringify(items));
+}
+
+function storageAvailable(): boolean {
+    try {
+        return typeof localStorage !== 'undefined';
+    } catch {
+        return false;
+    }
 }
