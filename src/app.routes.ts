@@ -91,6 +91,10 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureDashboard)
   },
   {
+    path: 'area-strutture/accesso',
+    loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureAccesso)
+  },
+  {
     path: 'area-strutture/accreditamento',
     loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureAccreditamento)
   },

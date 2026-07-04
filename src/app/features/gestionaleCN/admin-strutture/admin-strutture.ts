@@ -183,11 +183,11 @@ type AdminStrutturaItem = {
                     <div class="gallery">
                         @for (foto of selectedDetail.profile.foto; track foto.id) {
                             <figure>
-                                <img [src]="foto.url" [alt]="foto.descrizione" />
+                                <img [src]="photoSrc(foto)" [alt]="foto.descrizione" />
                                 <figcaption>{{ foto.copertina || foto.isCover ? 'Copertina · ' : '' }}{{ foto.categoria }} · {{ foto.descrizione }}</figcaption>
                             </figure>
                         } @empty {
-                            <div class="empty-state">Nessuna foto caricata.</div>
+                            <div class="empty-state">Nessuna foto caricata dalla struttura.</div>
                         }
                     </div>
 
@@ -454,6 +454,10 @@ export class AdminStrutture {
 
     cover(struttura: AdminStrutturaItem) {
         return fotoCopertina(struttura.profile);
+    }
+
+    photoSrc(foto: FotoStrutturaMock) {
+        return foto.dataUrl || foto.url || '/images/backgrounds/posti-convivenza-bg.jpg';
     }
 
     serviziPrincipali(profile: StrutturaProfileMock): string[] {

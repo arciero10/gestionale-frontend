@@ -16,6 +16,7 @@ import {
     StrutturaProfileMock,
     activePromo,
     fotoCopertina,
+    markStrutturaAccess,
     normalizeStrutturaProfile,
     readProfileStatus,
     readStrutturaProfile,
@@ -55,10 +56,26 @@ const structurePageStyles = `
     p { margin: 0; color: #334155; line-height: 1.55; font-weight: 650; }
     .actions,
     footer { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; justify-content: flex-end; }
+    .back-row { display: flex; justify-content: flex-start; margin-bottom: 1rem; }
+    .back-row a { min-height: 40px; }
     .hero-profile { display: grid; grid-template-columns: minmax(18rem, 28rem) 1fr; gap: 1rem; margin-top: 1rem; }
     .hero-profile img,
     .photo-card img,
     .preview-modal img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 18px; background: #e2e8f0; }
+    .cover-placeholder,
+    .upload-preview {
+        display: grid;
+        place-items: center;
+        min-height: 12rem;
+        border: 1px dashed #cbd5e1;
+        border-radius: 18px;
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 850;
+        text-align: center;
+    }
+    .upload-preview img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 16px; }
+    .file-input { min-height: 44px; padding: .75rem; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
     .metrics,
     .dashboard-cards,
     .photo-grid,
@@ -141,7 +158,7 @@ const structurePageStyles = `
                 <p>Accredita o gestisci la tua struttura per ricevere richieste di disponibilità per convivenze, incontri e pellegrinaggi.</p>
                 <div class="actions">
                     <a pButton routerLink="/area-strutture/accreditamento" label="Accredita la tua struttura" icon="pi pi-building"></a>
-                    <a pButton routerLink="/area-strutture/dashboard" label="Accedi come struttura" icon="pi pi-sign-in" outlined></a>
+                    <a pButton routerLink="/area-strutture/accesso" label="Accedi come struttura" icon="pi pi-sign-in" outlined></a>
                 </div>
             </section>
         </main>
@@ -151,12 +168,82 @@ const structurePageStyles = `
 export class AreaStruttureHome {}
 
 @Component({
+    selector: 'app-area-strutture-accesso',
+    standalone: true,
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule],
+    template: `
+        <main class="structure-entry">
+            <section class="entry-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture" label="Indietro" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
+                <span>Accesso simulato</span>
+                <h1>Accesso struttura</h1>
+                <p>Inserisci l'email del referente della struttura. In produzione riceverai un codice temporaneo via email. Per ora l'accesso e simulato in ambiente di test.</p>
+                <label>
+                    <span>Email referente</span>
+                    <input pInputText type="email" [(ngModel)]="email" placeholder="referente@struttura.it" />
+                </label>
+                @if (message) {
+                    <div class="status-box" [ngClass]="messageType">{{ message }}</div>
+                }
+                @if (showAccredita) {
+                    <div class="actions">
+                        <a pButton routerLink="/area-strutture/accreditamento" label="Accredita la struttura" icon="pi pi-building"></a>
+                    </div>
+                }
+                <footer>
+                    <a pButton routerLink="/area-strutture" label="Torna indietro" severity="secondary" outlined></a>
+                    <button pButton type="button" label="Continua" icon="pi pi-arrow-right" (click)="continua()"></button>
+                </footer>
+            </section>
+        </main>
+    `,
+    styles: [structurePageStyles]
+})
+export class AreaStruttureAccesso {
+    private readonly router = inject(Router);
+    email = '';
+    message = '';
+    messageType: 'info' | 'success' | 'danger' = 'info';
+    showAccredita = false;
+
+    continua() {
+        const normalizedEmail = this.email.trim().toLowerCase();
+        if (!normalizedEmail) {
+            this.message = 'Inserisci l email del referente.';
+            this.messageType = 'danger';
+            this.showAccredita = false;
+            return;
+        }
+
+        const profile = readStrutturaProfile();
+        if (profile?.email?.trim().toLowerCase() === normalizedEmail) {
+            // Produzione: accesso tramite Microsoft Entra External ID OTP/passwordless.
+            markStrutturaAccess(profile);
+            this.message = 'Profilo struttura trovato. Accesso simulato effettuato.';
+            this.messageType = 'success';
+            this.showAccredita = false;
+            setTimeout(() => void this.router.navigateByUrl('/area-strutture/dashboard'), 350);
+            return;
+        }
+
+        this.message = 'Nessun profilo struttura trovato per questa email. Puoi procedere con l accreditamento.';
+        this.messageType = 'info';
+        this.showAccredita = true;
+    }
+}
+
+@Component({
     selector: 'app-area-strutture-dashboard',
     standalone: true,
     imports: [CommonModule, RouterLink, ButtonModule, TagModule],
     template: `
         <main class="structure-entry">
             <section class="editor-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture" label="Indietro" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 @if (!profile) {
                     <header>
                         <div>
@@ -187,7 +274,11 @@ export class AreaStruttureHome {}
                     </div>
 
                     <div class="hero-profile">
-                        <img [src]="cover" alt="Foto copertina struttura" />
+                        @if (profile.foto.length) {
+                            <img [src]="cover" alt="Foto copertina struttura" />
+                        } @else {
+                            <div class="cover-placeholder">Foto struttura da completare.</div>
+                        }
                         <div class="metrics">
                             <div class="metric"><span>Capienza</span><strong>{{ profile.capienza ?? 'Da completare' }}</strong></div>
                             <div class="metric"><span>Posti letto</span><strong>{{ profile.postiLetto ?? 'Da completare' }}</strong></div>
@@ -268,6 +359,9 @@ export class AreaStruttureDashboard {
     template: `
         <main class="structure-entry">
             <form class="editor-card" (ngSubmit)="submit()">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture" label="Indietro" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 <header>
                     <div>
                         <span>Accreditamento struttura</span>
@@ -278,7 +372,7 @@ export class AreaStruttureDashboard {
                 <ng-container *ngTemplateOutlet="formTemplate"></ng-container>
                 @if (message) { <div class="message status-box info">{{ message }}</div> }
                 <footer>
-                    <a pButton routerLink="/area-strutture" label="Annulla" severity="secondary" outlined></a>
+                    <a pButton routerLink="/area-strutture" label="Indietro" icon="pi pi-arrow-left" severity="secondary" outlined></a>
                     <button pButton type="submit" label="Salva e vai alla dashboard" icon="pi pi-check"></button>
                 </footer>
             </form>
@@ -340,6 +434,9 @@ export class AreaStruttureAccreditamento {
     template: `
         <main class="structure-entry">
             <section class="editor-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture/dashboard" label="Torna alla dashboard" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 <header>
                     <div>
                         <span>Area Strutture</span>
@@ -351,7 +448,11 @@ export class AreaStruttureAccreditamento {
 
                 @if (!editMode) {
                     <div class="hero-profile">
-                        <img [src]="cover" alt="Foto copertina struttura" />
+                        @if (profile.foto.length) {
+                            <img [src]="cover" alt="Foto copertina struttura" />
+                        } @else {
+                            <div class="cover-placeholder">Nessuna foto copertina caricata.</div>
+                        }
                         <dl>
                             <div><dt>Nome</dt><dd>{{ profile.nome }}</dd></div>
                             <div><dt>Tipo</dt><dd>{{ profile.tipo }}</dd></div>
@@ -367,7 +468,7 @@ export class AreaStruttureAccreditamento {
                     <div class="actions">
                         <button pButton type="button" label="Modifica dati" icon="pi pi-pencil" (click)="startEdit()"></button>
                         <a pButton routerLink="/area-strutture/dashboard" label="Vai alla dashboard" icon="pi pi-th-large" outlined></a>
-                        <a pButton routerLink="/area-strutture/foto" label="Vai alle foto" icon="pi pi-images" outlined></a>
+                        <a pButton routerLink="/area-strutture/foto" label="Gestisci foto" icon="pi pi-images" outlined></a>
                         <a pButton routerLink="/area-strutture/richieste" label="Vai alle richieste" icon="pi pi-inbox" outlined></a>
                     </div>
                 } @else {
@@ -448,10 +549,13 @@ export class AreaStruttureProfilo {
 @Component({
     selector: 'app-area-strutture-foto',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TagModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, InputTextModule, SelectModule, TagModule],
     template: `
         <main class="structure-entry">
             <section class="editor-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture/dashboard" label="Torna alla dashboard" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 <header>
                     <div>
                         <span>Area Strutture</span>
@@ -463,12 +567,20 @@ export class AreaStruttureProfilo {
 
                 <div class="form-grid">
                     <label><span>Categoria</span><p-select [options]="categorieFoto" [(ngModel)]="fotoCategoria" appendTo="body"></p-select></label>
-                    <label><span>URL immagine</span><input pInputText [(ngModel)]="fotoUrl" placeholder="/images/backgrounds/posti-convivenza-bg.jpg" /></label>
+                    <label><span>Imposta come copertina</span><p-checkbox [(ngModel)]="fotoIsCover" [binary]="true"></p-checkbox></label>
+                    <label><span>File immagine</span><input class="file-input" type="file" accept="image/*" (change)="onFileSelected($event)" /></label>
+                    <label><span>URL immagine alternativa</span><input pInputText [(ngModel)]="fotoUrl" placeholder="https://..." /></label>
                     <label class="span-2"><span>Descrizione</span><input pInputText [(ngModel)]="fotoDescrizione" /></label>
+                    @if (pendingPreviewSrc) {
+                        <div class="upload-preview span-2">
+                            <img [src]="pendingPreviewSrc" alt="Anteprima foto da aggiungere" />
+                        </div>
+                    }
                 </div>
                 <footer>
                     <button pButton type="button" label="Aggiungi foto" icon="pi pi-plus" (click)="addFoto()"></button>
                 </footer>
+                @if (message) { <div class="message status-box" [ngClass]="messageType">{{ message }}</div> }
 
                 @if (!profile.foto.length) {
                     <div class="empty-state">Nessuna foto caricata. Aggiungi una foto per iniziare la galleria.</div>
@@ -477,7 +589,7 @@ export class AreaStruttureProfilo {
                 <div class="photo-grid">
                     @for (foto of profile.foto; track foto.id) {
                         <article class="photo-card">
-                            <img [src]="foto.url" [alt]="foto.descrizione" />
+                            <img [src]="photoSrc(foto)" [alt]="foto.descrizione" />
                             @if (foto.copertina || foto.isCover) { <span class="badge">Copertina</span> }
                             @if (editingPhotoId === foto.id) {
                                 <p-select [options]="categorieFoto" [(ngModel)]="foto.categoria" appendTo="body"></p-select>
@@ -489,6 +601,7 @@ export class AreaStruttureProfilo {
                             } @else {
                                 <strong>{{ foto.categoria }}</strong>
                                 <span>{{ foto.descrizione }}</span>
+                                <small>{{ formatPhotoDate(foto.createdAt) }}</small>
                                 <div class="photo-actions">
                                     <button pButton type="button" label="Copertina" size="small" outlined (click)="setCover(foto)"></button>
                                     <button pButton type="button" label="Modifica" size="small" severity="secondary" outlined (click)="editingPhotoId = foto.id"></button>
@@ -504,7 +617,7 @@ export class AreaStruttureProfilo {
             @if (preview) {
                 <div class="preview-modal" (click)="preview = null">
                     <article (click)="$event.stopPropagation()">
-                        <img [src]="preview.url" [alt]="preview.descrizione" />
+                        <img [src]="photoSrc(preview)" [alt]="preview.descrizione" />
                         <strong>{{ preview.categoria }}</strong>
                         <p>{{ preview.descrizione }}</p>
                         <button pButton type="button" label="Chiudi anteprima" (click)="preview = null"></button>
@@ -521,52 +634,130 @@ export class AreaStruttureFoto {
     status = readProfileStatus();
     fotoCategoria: CategoriaFotoStruttura = 'copertina';
     fotoUrl = '';
+    fotoDataUrl = '';
+    fotoIsCover = true;
     fotoDescrizione = '';
     editingPhotoId: string | null = null;
     preview: FotoStrutturaMock | null = null;
+    message = '';
+    messageType: 'info' | 'success' | 'danger' = 'info';
+
+    get pendingPreviewSrc() {
+        return this.fotoUrl.trim() || this.fotoDataUrl;
+    }
+
+    onFileSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) {
+            this.fotoDataUrl = '';
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            this.showMessage('Seleziona un file immagine.', 'danger');
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.fotoDataUrl = typeof reader.result === 'string' ? reader.result : '';
+        };
+        reader.onerror = () => this.showMessage('Impossibile leggere il file selezionato.', 'danger');
+        reader.readAsDataURL(file);
+    }
 
     addFoto() {
-        if (!this.fotoUrl.trim()) return;
+        const src = this.fotoUrl.trim() || this.fotoDataUrl;
+        if (!src) {
+            this.showMessage('Carica un file o inserisci un URL immagine.', 'danger');
+            return;
+        }
+
         const isFirst = this.profile.foto.length === 0;
+        const isCover = isFirst || this.fotoCategoria === 'copertina' || this.fotoIsCover;
         const foto: FotoStrutturaMock = {
             id: `foto-${Date.now()}`,
             categoria: this.fotoCategoria,
-            url: this.fotoUrl.trim(),
+            url: this.fotoUrl.trim() || this.fotoDataUrl,
+            dataUrl: this.fotoUrl.trim() ? '' : this.fotoDataUrl,
             descrizione: this.fotoDescrizione.trim() || this.fotoCategoria,
-            copertina: isFirst || this.fotoCategoria === 'copertina',
-            isCover: isFirst || this.fotoCategoria === 'copertina',
+            copertina: isCover,
+            isCover,
             createdAt: new Date().toISOString()
         };
         const nextFoto = foto.isCover ? this.profile.foto.map((item) => ({ ...item, copertina: false, isCover: false })) : this.profile.foto;
         this.profile = normalizeStrutturaProfile({ ...this.profile, foto: [foto, ...nextFoto] });
         this.persist();
         this.fotoUrl = '';
+        this.fotoDataUrl = '';
         this.fotoDescrizione = '';
         this.fotoCategoria = 'copertina';
+        this.fotoIsCover = this.profile.foto.length === 0;
+        this.showMessage('Foto aggiunta.', 'success');
     }
 
     setCover(foto: FotoStrutturaMock) {
         this.profile = normalizeStrutturaProfile({ ...this.profile, foto: this.profile.foto.map((item) => ({ ...item, copertina: item.id === foto.id, isCover: item.id === foto.id })) });
         this.persist();
+        this.showMessage('Copertina aggiornata.', 'success');
     }
 
     savePhotoEdit() {
+        const edited = this.profile.foto.find((item) => item.id === this.editingPhotoId);
+        if (edited?.categoria === 'copertina') {
+            this.profile = normalizeStrutturaProfile({
+                ...this.profile,
+                foto: this.profile.foto.map((item) => ({
+                    ...item,
+                    copertina: item.id === edited.id,
+                    isCover: item.id === edited.id
+                }))
+            });
+        }
         this.profile = normalizeStrutturaProfile(this.profile);
         this.persist();
         this.editingPhotoId = null;
+        this.showMessage('Modifiche foto salvate.', 'success');
     }
 
     deleteFoto(foto: FotoStrutturaMock) {
+        if (!confirm('Eliminare questa foto?')) {
+            return;
+        }
         const remaining = this.profile.foto.filter((item) => item.id !== foto.id);
         if (foto.copertina || foto.isCover) {
             remaining[0] = remaining[0] ? { ...remaining[0], copertina: true, isCover: true } : remaining[0];
         }
         this.profile = normalizeStrutturaProfile({ ...this.profile, foto: remaining.filter(Boolean) as FotoStrutturaMock[] });
         this.persist();
+        this.preview = null;
+        this.showMessage('Foto eliminata.', 'success');
+    }
+
+    photoSrc(foto: FotoStrutturaMock | null) {
+        return foto?.dataUrl || foto?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
+    }
+
+    formatPhotoDate(value: string | undefined) {
+        if (!value) {
+            return '';
+        }
+        try {
+            return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
+        } catch {
+            return value;
+        }
     }
 
     private persist() {
         saveStrutturaProfile(this.profile, this.status);
+    }
+
+    private showMessage(message: string, type: 'info' | 'success' | 'danger') {
+        this.message = message;
+        this.messageType = type;
     }
 }
 
@@ -577,6 +768,9 @@ export class AreaStruttureFoto {
     template: `
         <main class="structure-entry">
             <section class="editor-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture/dashboard" label="Torna alla dashboard" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 <header>
                     <div>
                         <span>Area Strutture</span>
@@ -634,6 +828,9 @@ export class AreaStruttureOfferte {
     template: `
         <main class="structure-entry">
             <section class="editor-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture/dashboard" label="Torna alla dashboard" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 <header>
                     <div>
                         <span>Area Strutture</span>
@@ -657,6 +854,9 @@ export class AreaStruttureRichieste {}
     template: `
         <main class="structure-entry">
             <section class="editor-card">
+                <div class="back-row">
+                    <a pButton routerLink="/area-strutture/dashboard" label="Torna alla dashboard" icon="pi pi-arrow-left" severity="secondary" outlined></a>
+                </div>
                 <header>
                     <div>
                         <span>Area Strutture</span>

@@ -7,6 +7,7 @@ export interface FotoStrutturaMock {
     id: string;
     categoria: CategoriaFotoStruttura;
     url: string;
+    dataUrl?: string;
     descrizione: string;
     copertina?: boolean;
     isCover?: boolean;
@@ -55,6 +56,7 @@ export interface StrutturaProfileMock {
 export const PROFILE_TYPE_KEY = 'profileType';
 export const PROFILE_STATUS_KEY = 'profileStatus';
 export const STRUTTURA_PROFILE_KEY = 'strutturaProfile';
+export const STRUTTURA_ACCESS_KEY = 'strutturaAccessoMock';
 
 export const STRUTTURA_PROFILE_DEFAULT: StrutturaProfileMock = {
     id: 'struttura-demo-local',
@@ -160,6 +162,19 @@ export function saveStrutturaProfile(profile: StrutturaProfileMock, status: Prof
     localStorage.setItem(STRUTTURA_PROFILE_KEY, JSON.stringify(normalizeStrutturaProfile({ ...profile, updatedAt: new Date().toISOString() })));
 }
 
+export function markStrutturaAccess(profile: StrutturaProfileMock) {
+    if (!storageAvailable()) {
+        return;
+    }
+
+    localStorage.setItem(PROFILE_TYPE_KEY, 'struttura');
+    localStorage.setItem(STRUTTURA_ACCESS_KEY, JSON.stringify({
+        profileId: profile.id,
+        email: profile.email,
+        accessedAt: new Date().toISOString()
+    }));
+}
+
 export function activePromo(profile: StrutturaProfileMock | null): PromoStrutturaMock[] {
     if (!profile || !Array.isArray(profile.promo)) {
         return [];
@@ -175,7 +190,9 @@ export function activePromo(profile: StrutturaProfileMock | null): PromoStruttur
 
 export function fotoCopertina(profile: StrutturaProfileMock | null): string {
     const foto = Array.isArray(profile?.foto) ? profile?.foto : [];
-    return foto?.find((item) => item?.url && (item.copertina || item.isCover))?.url || foto?.find((item) => item?.url)?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
+    const cover = foto?.find((item) => (item?.url || item?.dataUrl) && (item.copertina || item.isCover));
+    const first = foto?.find((item) => item?.url || item?.dataUrl);
+    return cover?.dataUrl || cover?.url || first?.dataUrl || first?.url || '/images/backgrounds/posti-convivenza-bg.jpg';
 }
 
 export function normalizeProfileStatus(value: string | null | undefined): ProfileStatus {
@@ -222,7 +239,8 @@ export function normalizeStrutturaProfile(profile: Partial<StrutturaProfileMock>
             id: item.id || `foto-${index}`,
             categoria: item.categoria || 'altro',
             descrizione: item.descrizione || item.categoria || 'Foto struttura',
-            url: item.url || '/images/backgrounds/posti-convivenza-bg.jpg',
+            dataUrl: item.dataUrl || '',
+            url: item.url || item.dataUrl || '/images/backgrounds/posti-convivenza-bg.jpg',
             copertina: isCover,
             isCover,
             createdAt: item.createdAt || merged.updatedAt || new Date().toISOString()
