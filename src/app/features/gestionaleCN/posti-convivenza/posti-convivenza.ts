@@ -624,15 +624,6 @@ type PostoConCensimento = PostoConvivenza & {
                 color: #9a3412;
                 font-weight: 800;
             }
-            .posto-thumb,
-            .detail-cover,
-            .structure-gallery img { width: 100%; object-fit: cover; border-radius: 14px; background: #f1f5f9; }
-            .posto-thumb,
-            .detail-cover { aspect-ratio: 16 / 9; }
-            .detail-cover { margin: 1rem 0; }
-            .placeholder-cover { display: grid; place-items: center; min-height: 12rem; border: 1px dashed #cbd5e1; color: #475569; font-weight: 900; text-align: center; }
-            .structure-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: 1rem; }
-            .structure-gallery img { aspect-ratio: 16 / 10; }
             .detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin: 0; }
             .detail-grid div { border: 1px solid #e5e7eb; border-radius: 12px; padding: .78rem; background: #fbfbf8; }
             .detail-grid dt { color: #64748b; font-size: .8rem; }
@@ -708,7 +699,6 @@ type PostoConCensimento = PostoConvivenza & {
                 font-weight: 700;
                 font-size: .82rem;
                 cursor: pointer;
-                transition: background 120ms, color 120ms;
             }
             .seleziona-btn.selezionato { background: #dcfce7; border-color: #16a34a; color: #166534; }
             .seleziona-btn:disabled { border-color: #cbd5e1; color: #64748b; background: #f1f5f9; cursor: not-allowed; }
