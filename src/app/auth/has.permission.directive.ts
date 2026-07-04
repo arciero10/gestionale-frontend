@@ -1,42 +1,19 @@
-import { Directive, Input, OnDestroy, OnInit, TemplateRef, ViewContainerRef, inject } from '@angular/core';
-import Keycloak from 'keycloak-js';
-import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType, ReadyArgs, typeEventArgs } from 'keycloak-angular';
-import { effect } from '@angular/core';
+import { Directive, Input, OnInit, TemplateRef, ViewContainerRef, inject } from '@angular/core';
+import { AuthService } from './auth.service';
 
 @Directive({
-    selector: '[hasPermission]', // Come usarla: *hasPermission="'canCreate'"
-    standalone: true,
+    selector: '[hasPermission]',
+    standalone: true
 })
 export class HasPermissionDirective implements OnInit {
-
-    private readonly keycloak = inject(Keycloak);
-    // Reagisce ai cambiamenti (login, token refresh)
-    private readonly keycloakEventSignal = inject(KEYCLOAK_EVENT_SIGNAL);
-
-    private requiredPermission: string = '';
+    private readonly authService = inject(AuthService);
+    private requiredPermission = '';
     private hasView = false;
 
     constructor(
-        private templateRef: TemplateRef<any>,
-        private viewContainer: ViewContainerRef
-    ) {
-        // Reagisce ai cambiamenti di stato di Keycloak
-        effect(() => {
-            const keycloakEvent = this.keycloakEventSignal();
-
-            // Se il token è pronto o si è aggiornato, rivaluta i permessi
-            if (keycloakEvent.type === KeycloakEventType.Ready ||
-                keycloakEvent.type === KeycloakEventType.AuthRefreshSuccess) {
-                this.checkPermission();
-            }
-
-            // Se l'utente fa logout, pulisci la vista
-            if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
-                this.viewContainer.clear();
-                this.hasView = false;
-            }
-        });
-    }
+        private readonly templateRef: TemplateRef<unknown>,
+        private readonly viewContainer: ViewContainerRef
+    ) {}
 
     @Input()
     set hasPermission(permission: string) {
@@ -49,16 +26,15 @@ export class HasPermissionDirective implements OnInit {
     }
 
     private checkPermission(): void {
-        // Ottieni i permessi dall'Access Token (tokenParsed)
-        const permissions = (this.keycloak.tokenParsed as any)?.permissions || [];
+        const canView = !this.requiredPermission || this.authService.hasPermission(this.requiredPermission);
 
-        // Controlla se l'utente ha il permesso e se la vista non è già stata creata
-        if (permissions.includes(this.requiredPermission) && !this.hasView) {
+        if (canView && !this.hasView) {
             this.hasView = true;
             this.viewContainer.createEmbeddedView(this.templateRef);
+            return;
         }
-        // Se non ha il permesso e la vista esiste, distruggila
-        else if (!permissions.includes(this.requiredPermission) && this.hasView) {
+
+        if (!canView && this.hasView) {
             this.hasView = false;
             this.viewContainer.clear();
         }

@@ -4,7 +4,6 @@ import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterModule } from '@an
 
 import { BehaviorSubject, filter } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
-import Keycloak from 'keycloak-js';
 import { AuthService } from '@/auth/auth.service';
 interface Breadcrumb {
     label: string;
