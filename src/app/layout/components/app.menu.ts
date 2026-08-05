@@ -284,7 +284,7 @@ export class AppMenu implements OnDestroy {
     private buildResponsabileMenu(): any[] {
         const sections = [
             this.section('Gestionale', 'pi pi-fw pi-briefcase', [
-                this.link('Dashboard', 'pi pi-fw pi-home', '/gestionale-cn/dashboard'),
+                this.link('Dashboard', 'pi pi-fw pi-home', '/gestionale-cn/responsabile/dashboard'),
                 this.link('La tua Comunità', 'pi pi-fw pi-users', '/gestionale-cn/comunita'),
                 this.link('Convivenze attive', 'pi pi-fw pi-calendar', '/gestionale-cn/convivenze'),
                 this.link('Storico convivenze', 'pi pi-fw pi-history', '/gestionale-cn/convivenze/storico'),
@@ -323,7 +323,7 @@ export class AppMenu implements OnDestroy {
 
         if (this.userContext.isResponsabile) {
             sections.push(this.section('Contesti', 'pi pi-fw pi-compass', [
-                this.link('Vai ad Area Responsabile', 'pi pi-fw pi-id-card', '/gestionale-cn/dashboard')
+                this.link('Vai ad Area Responsabile', 'pi pi-fw pi-id-card', '/gestionale-cn/responsabile/dashboard')
             ]));
         }
 
