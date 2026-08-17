@@ -286,6 +286,7 @@ export class AppMenu implements OnDestroy {
             this.section('Gestionale', 'pi pi-fw pi-briefcase', [
                 this.link('Dashboard', 'pi pi-fw pi-home', '/gestionale-cn/responsabile/dashboard'),
                 this.link('La tua Comunità', 'pi pi-fw pi-users', '/gestionale-cn/comunita'),
+                this.link('Membri comunità', 'pi pi-fw pi-user-plus', '/gestionale-cn/membri-comunita'),
                 this.link('Convivenze attive', 'pi pi-fw pi-calendar', '/gestionale-cn/convivenze'),
                 this.link('Storico convivenze', 'pi pi-fw pi-history', '/gestionale-cn/convivenze/storico'),
                 this.link('Posti di Convivenza', 'pi pi-fw pi-building', '/gestionale-cn/posti-convivenza'),
@@ -294,6 +295,7 @@ export class AppMenu implements OnDestroy {
             ]),
             this.section('Azioni rapide', 'pi pi-fw pi-plus-circle', [
                 this.link('Nuova convivenza', 'pi pi-fw pi-calendar-plus', '/gestionale-cn/convivenze', canPerformAction('nuova-convivenza', this.userContext)),
+                this.link('Invita fratello', 'pi pi-fw pi-user-plus', '/gestionale-cn/membri-comunita', canPerformAction('aggiungi-membro', this.userContext)),
                 this.link('Nuova richiesta struttura', 'pi pi-fw pi-send', '/gestionale-cn/richieste-strutture/nuova', canPerformAction('invia-richiesta-struttura', this.userContext)),
                 this.link('Invita struttura', 'pi pi-fw pi-building', '/gestionale-cn/posti-convivenza', canPerformAction('nuovo-posto', this.userContext))
             ])

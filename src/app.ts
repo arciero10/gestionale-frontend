@@ -471,6 +471,7 @@ export class App {
       path === '/faq' ||
       path === '/privacy' ||
       path === '/completa-profilo' ||
+      path === '/registrazione-fratello' ||
       path.startsWith('/completa-anagrafica/') ||
       path === '/area-strutture' ||
       path.startsWith('/area-strutture/')

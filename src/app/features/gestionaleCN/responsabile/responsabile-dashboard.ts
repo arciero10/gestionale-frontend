@@ -285,7 +285,7 @@ export class ResponsabileDashboard {
                     title: 'Membri comunità',
                     description: 'Censimento, inviti e anagrafica',
                     icon: 'pi pi-user-plus',
-                    route: '/gestionale-cn/comunita'
+                    route: '/gestionale-cn/membri-comunita'
                 },
                 {
                     title: 'Permessi assegnati',

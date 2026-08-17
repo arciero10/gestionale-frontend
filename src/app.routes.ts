@@ -79,6 +79,10 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/gestionaleCN/censimento-comunita/completa-anagrafica').then((c) => c.CompletaAnagrafica)
   },
   {
+    path: 'registrazione-fratello',
+    loadComponent: () => import('@/features/gestionaleCN/responsabile/registrazione-fratello').then((c) => c.RegistrazioneFratello)
+  },
+  {
     path: 'strutture/censimento',
     loadComponent: () => import('@/features/strutture/censimento-struttura').then((c) => c.CensimentoStruttura)
   },

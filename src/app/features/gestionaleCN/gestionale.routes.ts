@@ -48,6 +48,11 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         data: { breadcrumb: 'La tua Comunità' }
     },
         {
+        path: 'membri-comunita',
+        loadComponent: () => import('./responsabile/membri-comunita').then((c) => c.MembriComunita),
+        data: { breadcrumb: 'Membri comunità' }
+    },
+        {
         path: 'censimento-comunita',
         loadComponent: () => import('./censimento-comunita/censimento-comunita').then((c) => c.CensimentoComunita),
         data: { breadcrumb: 'Censimento comunità' }
