@@ -39,9 +39,17 @@ type FlowSection = {
                 <div class="hero-actions" aria-label="Azioni principali responsabile">
                     <a pButton routerLink="/gestionale-cn/convivenze" label="Nuova convivenza" icon="pi pi-calendar-plus"></a>
                     <a pButton routerLink="/gestionale-cn/richieste-strutture/nuova" label="Nuova richiesta struttura" icon="pi pi-send" severity="secondary"></a>
-                    <a pButton routerLink="/gestionale-cn/posti-convivenza" label="Invita struttura" icon="pi pi-building" outlined></a>
+                    <button pButton type="button" label="Invita struttura" icon="pi pi-building" outlined (click)="copyStructureInviteLink()"></button>
                 </div>
             </header>
+
+            @if (inviteStructureFeedback) {
+                <section class="invite-feedback">
+                    <i class="pi pi-link"></i>
+                    <span>{{ inviteStructureFeedback }}</span>
+                    <code>{{ publicStructureInviteUrl }}</code>
+                </section>
+            }
 
             <section class="flow-grid" aria-label="Macro aree operative">
                 @for (section of sections; track section.title) {
@@ -141,7 +149,24 @@ type FlowSection = {
                 min-width: min(100%, 17rem);
             }
 
-            .hero-actions a[pButton] { justify-content: center; min-height: 42px; }
+            .hero-actions a[pButton],
+            .hero-actions button[pButton] { justify-content: center; min-height: 42px; }
+
+            .invite-feedback {
+                display: flex;
+                flex-wrap: wrap;
+                gap: .55rem;
+                align-items: center;
+                padding: .75rem .95rem;
+                border-radius: 14px;
+                color: #0f172a;
+                background: rgba(236, 253, 245, .96);
+                border: 1px solid #bbf7d0;
+                font-weight: 820;
+            }
+
+            .invite-feedback i { color: #15803d; }
+            .invite-feedback code { color: #14532d; overflow-wrap: anywhere; }
 
             .flow-grid {
                 display: grid;
@@ -268,6 +293,19 @@ type FlowSection = {
 })
 export class ResponsabileDashboard {
     readonly community = getCurrentCommunity();
+    readonly publicStructureInvitePath = '/area-strutture';
+    inviteStructureFeedback = '';
+
+    get publicStructureInviteUrl(): string {
+        return `${window.location.origin}${this.publicStructureInvitePath}`;
+    }
+
+    copyStructureInviteLink(): void {
+        void navigator.clipboard?.writeText(this.publicStructureInviteUrl);
+        this.inviteStructureFeedback = 'Invia questo link alla struttura per accreditarsi';
+        window.setTimeout(() => (this.inviteStructureFeedback = ''), 4500);
+    }
+
     readonly sections: FlowSection[] = [
         {
             title: 'Comunità',
@@ -282,7 +320,7 @@ export class ResponsabileDashboard {
                     route: '/gestionale-cn/comunita'
                 },
                 {
-                    title: 'Membri comunità',
+                    title: 'Membri comunità / Censimento fratelli',
                     description: 'Censimento, inviti e anagrafica',
                     icon: 'pi pi-user-plus',
                     route: '/gestionale-cn/membri-comunita'

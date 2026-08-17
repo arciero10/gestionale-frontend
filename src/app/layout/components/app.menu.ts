@@ -296,8 +296,7 @@ export class AppMenu implements OnDestroy {
             this.section('Azioni rapide', 'pi pi-fw pi-plus-circle', [
                 this.link('Nuova convivenza', 'pi pi-fw pi-calendar-plus', '/gestionale-cn/convivenze', canPerformAction('nuova-convivenza', this.userContext)),
                 this.link('Invita fratello', 'pi pi-fw pi-user-plus', '/gestionale-cn/membri-comunita', canPerformAction('aggiungi-membro', this.userContext)),
-                this.link('Nuova richiesta struttura', 'pi pi-fw pi-send', '/gestionale-cn/richieste-strutture/nuova', canPerformAction('invia-richiesta-struttura', this.userContext)),
-                this.link('Invita struttura', 'pi pi-fw pi-building', '/gestionale-cn/posti-convivenza', canPerformAction('nuovo-posto', this.userContext))
+                this.link('Nuova richiesta struttura', 'pi pi-fw pi-send', '/gestionale-cn/richieste-strutture/nuova', canPerformAction('invia-richiesta-struttura', this.userContext))
             ])
         ];
 
