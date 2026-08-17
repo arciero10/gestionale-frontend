@@ -30,12 +30,30 @@ import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-comunita/censimento-comunita.storage';
 import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
+import {
+    CommunityMemberMock,
+    addManualCommunityMember,
+    inviteCommunityMember,
+    readCommunityMembers,
+    resendInvite
+} from '../data/community-members.mock';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
 type AccessoApp = MembroComunitaPilota['accessoApp'];
 type MembroForm = Pick<MembroComunitaPilota, 'nome' | 'cognome' | 'ruolo' | 'telefono' | 'indirizzo' | 'email' | 'accessoApp' | 'statoMembro' | 'consensoPrivacyStato' | 'moduloPrivacyInviato' | 'moduloPrivacyRicevuto' | 'note'>;
+type CensimentoFratelloMode = 'censisci' | 'invita' | null;
 type PermessoOperativoRichiedibile = 'Collaboratore convivenze' | 'Collaboratore segreteria' | 'Supporto privacy/moduli' | 'Supporto anagrafica';
 type StatoRichiestaPermesso = 'In attesa approvazione responsabile' | 'Approvata' | 'Rifiutata';
+
+interface FratelloQuickForm {
+    nome: string;
+    cognome: string;
+    email: string;
+    telefono: string;
+    dataNascita: string;
+    ruoloComunitario: MembroComunitaPilota['ruolo'];
+    note: string;
+}
 
 interface RichiestaPermessoOperativo {
     id: string;
@@ -51,6 +69,7 @@ interface RichiestaPermessoOperativo {
 }
 
 const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
+const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
 @Component({
     selector: 'app-comunita',
@@ -128,6 +147,68 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                 <section class="action-message">
                     <i class="pi pi-info-circle"></i>
                     <span>{{ messaggio }}</span>
+                </section>
+            }
+
+            @if (!isDemo && canAddMember) {
+                <section class="controls-card">
+                    <div class="search-box">
+                        <strong>Censimento fratelli</strong>
+                        <small>Il responsabile inserisce i dati base; ogni fratello completa personalmente privacy e consensi.</small>
+                    </div>
+                    <a pButton routerLink="/gestionale-cn/membri-comunita" label="Gestisci censimento fratelli" icon="pi pi-users"></a>
+                    <button pButton type="button" label="Censisci fratello" icon="pi pi-user-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
+                    <button pButton type="button" label="Invita fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
+                    <button pButton type="button" label="Invio massivo inviti" icon="pi pi-send" severity="success" outlined (click)="inviaInvitiMassiviFratelli()"></button>
+                    <button pButton type="button" label="Copia link invito demo" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoDemo()"></button>
+                </section>
+
+                <section class="action-message">
+                    <i class="pi pi-shield"></i>
+                    <span>Il responsabile può inserire i dati base, ma ogni fratello deve completare personalmente privacy e consensi.</span>
+                </section>
+            }
+
+            @if (quickMode) {
+                <section class="card p-6">
+                    <h2 class="form-title">{{ quickMode === 'censisci' ? 'Censisci fratello' : 'Invita fratello' }}</h2>
+                    <form class="member-form" #quickBrotherForm="ngForm" (ngSubmit)="salvaFlussoFratelloRapido()">
+                        <div>
+                            <label for="quickNome">Nome</label>
+                            <input id="quickNome" name="quickNome" pInputText [(ngModel)]="quickBrother.nome" required />
+                        </div>
+                        <div>
+                            <label for="quickCognome">Cognome</label>
+                            <input id="quickCognome" name="quickCognome" pInputText [(ngModel)]="quickBrother.cognome" required />
+                        </div>
+                        <div>
+                            <label for="quickEmail">Email</label>
+                            <input id="quickEmail" name="quickEmail" pInputText type="email" [(ngModel)]="quickBrother.email" required />
+                        </div>
+                        <div>
+                            <label for="quickTelefono">Telefono</label>
+                            <input id="quickTelefono" name="quickTelefono" pInputText [(ngModel)]="quickBrother.telefono" />
+                        </div>
+                        @if (quickMode === 'censisci') {
+                            <div>
+                                <label for="quickDataNascita">Data nascita</label>
+                                <input id="quickDataNascita" name="quickDataNascita" pInputText type="date" [(ngModel)]="quickBrother.dataNascita" />
+                            </div>
+                            <div>
+                                <label for="quickRuolo">Carisma / ruolo comunitario</label>
+                                <p-select inputId="quickRuolo" name="quickRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiForm" optionLabel="label" optionValue="value" [(ngModel)]="quickBrother.ruoloComunitario"></p-select>
+                            </div>
+                            <div class="form-notes">
+                                <label for="quickNote">Note</label>
+                                <textarea id="quickNote" name="quickNote" pTextarea rows="3" [(ngModel)]="quickBrother.note"></textarea>
+                            </div>
+                        }
+                        <p class="form-helper">{{ quickMode === 'censisci' ? 'Il profilo sarà salvato come da completare e la privacy come mancante.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
+                        <div class="form-actions">
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiFlussoFratelloRapido()"></button>
+                            <button pButton type="submit" icon="pi pi-check" [label]="quickMode === 'censisci' ? 'Salva censimento' : 'Genera invito'" [disabled]="quickBrotherForm.invalid"></button>
+                        </div>
+                    </form>
                 </section>
             }
 
@@ -313,6 +394,12 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                                             <button pButton type="button" icon="pi pi-trash" severity="danger" text ariaLabel="Elimina" (click)="eliminaMembro(membro.id)"></button>
                                         }
                                         @if (canManagePrivacy) {
+                                            @if (isDaInvitare(membro)) {
+                                                <button pButton type="button" label="Invia invito" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                                <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoFratello(membro)"></button>
+                                                <button pButton type="button" label="WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoFratello(membro)"></button>
+                                                <button pButton type="button" label="Dettaglio" icon="pi pi-eye" severity="secondary" text (click)="apriDettaglioFratello(membro)"></button>
+                                            }
                                             <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
                                             <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
                                             <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
@@ -358,6 +445,12 @@ const RICHIESTE_PERMESSI_OPERATIVI_KEY = 'richieste-permessi-operativi';
                                     <button pButton type="button" icon="pi pi-address-book" label="Contatti" severity="secondary" outlined (click)="apriModificaContattiMembro(membro)"></button>
                                 }
                                 @if (canManagePrivacy) {
+                                    @if (isDaInvitare(membro)) {
+                                        <button pButton type="button" icon="pi pi-send" label="Invia invito" severity="success" outlined (click)="inviaInvitoFratello(membro)"></button>
+                                        <button pButton type="button" icon="pi pi-copy" label="Copia link" severity="secondary" outlined (click)="copiaLinkInvitoFratello(membro)"></button>
+                                        <button pButton type="button" icon="pi pi-whatsapp" label="WhatsApp" severity="secondary" outlined (click)="apriWhatsappInvitoFratello(membro)"></button>
+                                        <button pButton type="button" icon="pi pi-eye" label="Dettaglio" severity="secondary" outlined (click)="apriDettaglioFratello(membro)"></button>
+                                    }
                                     <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
                                     <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
                                     <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="apriInvioPrivacy(membro)"></button>
@@ -1203,6 +1296,8 @@ export class Comunita {
     membroInModifica: MembroComunitaPilota | null = null;
     tipoInserimentoMembro: TipoUnitaMembroComunita = 'Fratello singolo';
     nuovoMembroMinimo = this.creaNuovoMembroMinimo();
+    quickMode: CensimentoFratelloMode = null;
+    quickBrother: FratelloQuickForm = this.creaQuickBrotherForm();
     messaggio = '';
     permessoRichiesto: PermessoOperativoRichiedibile = 'Collaboratore convivenze';
     motivazionePermesso = '';
@@ -1374,6 +1469,94 @@ export class Comunita {
             return;
         }
         this.formVisibile = true;
+    }
+
+    apriCensimentoFratello() {
+        this.quickMode = 'censisci';
+        this.quickBrother = this.creaQuickBrotherForm();
+        this.formVisibile = false;
+    }
+
+    apriInvitoFratello() {
+        this.quickMode = 'invita';
+        this.quickBrother = this.creaQuickBrotherForm();
+        this.formVisibile = false;
+    }
+
+    chiudiFlussoFratelloRapido() {
+        this.quickMode = null;
+        this.quickBrother = this.creaQuickBrotherForm();
+    }
+
+    salvaFlussoFratelloRapido() {
+        const payload = {
+            nome: this.quickBrother.nome.trim(),
+            cognome: this.quickBrother.cognome.trim(),
+            email: this.quickBrother.email.trim(),
+            telefono: this.quickBrother.telefono.trim(),
+            dataNascita: this.quickBrother.dataNascita,
+            ruoloComunitario: this.quickBrother.ruoloComunitario,
+            note: this.quickBrother.note.trim()
+        };
+
+        if (!payload.nome || !payload.cognome || !payload.email) {
+            this.messaggio = 'Compila nome, cognome ed email prima di continuare.';
+            return;
+        }
+
+        const member = this.quickMode === 'invita' ? inviteCommunityMember(payload) : addManualCommunityMember(payload);
+        this.upsertMembroVisualeDaCommunityMember(member);
+        this.messaggio =
+            this.quickMode === 'invita'
+                ? `Invito simulato inviato. Link: ${this.publicInviteUrl(member)}`
+                : 'Fratello censito in modalità mock. Privacy e consensi restano da completare personalmente.';
+        this.chiudiFlussoFratelloRapido();
+    }
+
+    inviaInvitoFratello(membro: MembroComunitaPilota) {
+        const member = this.ensureInviteMember(membro);
+        this.aggiornaRigaInvitata(membro);
+        this.messaggio = `Invito simulato inviato. Link: ${this.publicInviteUrl(member)}`;
+    }
+
+    copiaLinkInvitoFratello(membro: MembroComunitaPilota) {
+        const member = this.ensureInviteMember(membro);
+        navigator.clipboard?.writeText(this.publicInviteUrl(member));
+        this.aggiornaRigaInvitata(membro);
+        this.messaggio = 'Link invito copiato.';
+    }
+
+    apriWhatsappInvitoFratello(membro: MembroComunitaPilota) {
+        const member = this.ensureInviteMember(membro);
+        const link = this.publicInviteUrl(member);
+        const text = encodeURIComponent(`Sei stato invitato dal responsabile della tua comunità a completare la tua scheda personale e i consensi privacy: ${link}`);
+        this.aggiornaRigaInvitata(membro);
+        window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+    }
+
+    apriDettaglioFratello(membro: MembroComunitaPilota) {
+        this.modificaMembro(membro);
+    }
+
+    inviaInvitiMassiviFratelli() {
+        const candidati = this.membri.filter((membro) => membro.email.trim() && this.isDaInvitare(membro));
+        const senzaEmail = this.membri.filter((membro) => !membro.email.trim() && this.isDaInvitare(membro)).length;
+        const giaCompletati = this.membri.filter((membro) => membro.accessoApp === 'Attivo' || membro.consensoPrivacyStato === 'Raccolto').length;
+
+        candidati.forEach((membro) => this.ensureInviteMember(membro));
+        const ids = new Set(candidati.map((membro) => membro.id));
+        this.membri = this.membri.map((membro) => (ids.has(membro.id) ? this.rigaInvitata(membro) : membro));
+        this.messaggio = `Invio massivo mock: ${candidati.length} inviti simulati inviati, ${senzaEmail} fratelli senza email, ${giaCompletati} già completati.`;
+    }
+
+    copiaLinkInvitoDemo() {
+        const link = `${PUBLIC_INVITE_BASE_URL}/registrazione-fratello?token=demo`;
+        navigator.clipboard?.writeText(link);
+        this.messaggio = `Link invito demo copiato: ${link}`;
+    }
+
+    isDaInvitare(membro: MembroComunitaPilota) {
+        return membro.accessoApp === 'Da invitare' || membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Da completare';
     }
 
     salvaMembro() {
@@ -1592,6 +1775,69 @@ export class Comunita {
 
     linkPrivacy(membro: MembroComunitaPilota) {
         return `${window.location.origin}/gestionale-cn/privacy/compila?membroId=${membro.id}`;
+    }
+
+    private ensureInviteMember(membro: MembroComunitaPilota): CommunityMemberMock {
+        const existing = this.findCommunityMemberForMembro(membro);
+        const member = existing
+            ? resendInvite(existing)
+            : inviteCommunityMember({
+                  nome: membro.nome,
+                  cognome: membro.cognome,
+                  email: membro.email,
+                  telefono: membro.telefono,
+                  ruoloComunitario: membro.ruolo,
+                  note: membro.note
+              });
+
+        this.upsertMembroVisualeDaCommunityMember(member);
+        return member;
+    }
+
+    private findCommunityMemberForMembro(membro: MembroComunitaPilota): CommunityMemberMock | null {
+        const email = membro.email.trim().toLowerCase();
+        const nome = membro.nome.trim().toLowerCase();
+        const cognome = membro.cognome.trim().toLowerCase();
+        return (
+            readCommunityMembers().find((member) => {
+                const sameEmail = email && member.email.trim().toLowerCase() === email;
+                const sameName = member.nome.trim().toLowerCase() === nome && member.cognome.trim().toLowerCase() === cognome;
+                return sameEmail || sameName;
+            }) ?? null
+        );
+    }
+
+    private publicInviteUrl(member: CommunityMemberMock) {
+        const token = member.token || 'demo';
+        return `${PUBLIC_INVITE_BASE_URL}/registrazione-fratello?token=${encodeURIComponent(token)}`;
+    }
+
+    private aggiornaRigaInvitata(membro: MembroComunitaPilota) {
+        this.membri = this.membri.map((item) => (item.id === membro.id ? this.rigaInvitata(item) : item));
+    }
+
+    private rigaInvitata(membro: MembroComunitaPilota): MembroComunitaPilota {
+        return {
+            ...membro,
+            accessoApp: 'Invito inviato',
+            statoMembro: membro.statoMembro === 'Non attivo' ? membro.statoMembro : 'Invitato',
+            consensoPrivacyStato: membro.consensoPrivacyStato === 'Raccolto' ? membro.consensoPrivacyStato : 'Da completare',
+            moduloPrivacyInviato: true,
+            dataInvioModuloPrivacy: this.oggiIso()
+        };
+    }
+
+    private upsertMembroVisualeDaCommunityMember(member: CommunityMemberMock) {
+        const mapped = this.creaMembroDaCommunityMember(member, this.prossimoId++);
+        const email = mapped.email.trim().toLowerCase();
+        const index = this.membri.findIndex((item) => (email && item.email.trim().toLowerCase() === email) || (item.nome === mapped.nome && item.cognome === mapped.cognome));
+
+        if (index >= 0) {
+            this.membri = this.membri.map((item, itemIndex) => (itemIndex === index ? { ...item, ...mapped, id: item.id } : item));
+            return;
+        }
+
+        this.membri = [...this.membri, mapped];
     }
 
     eliminaMembro(id: number) {
@@ -1877,9 +2123,66 @@ export class Comunita {
     private creaMembriGestionali(): MembroComunitaPilota[] {
         const base = this.currentCommunity.isPilot ? UNITA_MEMBRI_COMUNITA_PILOTA.map((unita) => this.creaMembroDaUnitaPilota(unita)) : [];
         const censiti = leggiUnitaCensimento().flatMap((unita) => this.creaMembriDaUnitaCensimento(unita));
-        const chiaviEsistenti = new Set(base.map((membro) => `${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`));
-        const nuovi = censiti.filter((membro) => !chiaviEsistenti.has(`${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`));
-        return [...base, ...nuovi.map((membro, index) => ({ ...membro, id: base.length + index + 1 }))];
+        const fratelliMock = readCommunityMembers().map((member, index) => this.creaMembroDaCommunityMember(member, base.length + censiti.length + index + 1));
+        const chiaviEsistenti = new Set(base.map((membro) => this.memberKey(membro)));
+        const nuoviCensiti = censiti.filter((membro) => !chiaviEsistenti.has(this.memberKey(membro)));
+        nuoviCensiti.forEach((membro) => chiaviEsistenti.add(this.memberKey(membro)));
+        const nuoviMock = fratelliMock.filter((membro) => !chiaviEsistenti.has(this.memberKey(membro)));
+        return [...base, ...nuoviCensiti.map((membro, index) => ({ ...membro, id: base.length + index + 1 })), ...nuoviMock];
+    }
+
+    private creaMembroDaCommunityMember(member: CommunityMemberMock, id: number): MembroComunitaPilota {
+        const nomeCompleto = `${member.nome} ${member.cognome}`.trim();
+        return {
+            id,
+            nome: member.nome,
+            cognome: member.cognome,
+            nomeCompleto,
+            ruolo: normalizeCarismaComunitario(member.ruoloComunitario),
+            accessoApp: this.mapAccessoDaCommunityMember(member),
+            statoMembro: this.mapStatoDaCommunityMember(member),
+            consensoPrivacyStato: this.mapPrivacyDaCommunityMember(member),
+            moduloPrivacyInviato: member.statoInvito === 'INVIATO',
+            moduloPrivacyRicevuto: member.statoPrivacy === 'COMPLETATA',
+            dataInvioModuloPrivacy: member.invitedAt ? member.invitedAt.slice(0, 10) : '',
+            telefono: member.telefono || '',
+            indirizzo: member.indirizzo || '',
+            email: member.email || '',
+            note: member.note || 'Scheda mock censimento fratelli'
+        };
+    }
+
+    private mapAccessoDaCommunityMember(member: CommunityMemberMock): AccessoApp {
+        if (member.statoProfilo === 'COMPLETATO') return 'Attivo';
+        if (member.statoInvito === 'INVIATO') return 'Invito inviato';
+        if (member.statoProfilo === 'ARCHIVIATO') return 'Non attivo';
+        return 'Da invitare';
+    }
+
+    private mapStatoDaCommunityMember(member: CommunityMemberMock): StatoMembro {
+        if (member.statoProfilo === 'COMPLETATO') return 'Attivo';
+        if (member.statoInvito === 'INVIATO') return 'Invitato';
+        if (member.statoProfilo === 'ARCHIVIATO') return 'Non attivo';
+        return 'Da completare';
+    }
+
+    private mapPrivacyDaCommunityMember(member: CommunityMemberMock): ConsensoPrivacyPilota {
+        switch (member.statoPrivacy) {
+            case 'COMPLETATA':
+                return 'Raccolto';
+            case 'INVIATA':
+                return 'Inviato';
+            case 'PARZIALE':
+                return 'Parziale';
+            case 'REVOCATA':
+                return 'Revocato';
+            default:
+                return 'Da completare';
+        }
+    }
+
+    private memberKey(membro: MembroComunitaPilota) {
+        return `${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`;
     }
 
     private creaMembroDaUnitaPilota(unita: UnitaMembroComunita): MembroComunitaPilota {
@@ -2048,6 +2351,18 @@ export class Comunita {
             consensoPrivacyStato: 'Da inviare',
             moduloPrivacyInviato: false,
             moduloPrivacyRicevuto: false,
+            note: ''
+        };
+    }
+
+    private creaQuickBrotherForm(): FratelloQuickForm {
+        return {
+            nome: '',
+            cognome: '',
+            email: '',
+            telefono: '',
+            dataNascita: '',
+            ruoloComunitario: '',
             note: ''
         };
     }
