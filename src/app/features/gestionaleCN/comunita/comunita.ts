@@ -78,61 +78,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
     imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule],
     template: `
         <div class="community-page">
-            <header class="community-content-header">
-                <div>
-                    <h1>La mia comunità</h1>
-                    <p>Censisci i fratelli, invia gli inviti e raccogli privacy e consensi.</p>
-                </div>
-            </header>
-
-            @if (!isDemo) {
-                <section class="catechisti-card">
-                    <div class="section-title">
-                        <div>
-                            <span>Riferimenti collegati</span>
-                            <h2>Equipe dei catechisti</h2>
-                            <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
-                            @if (!haCapoEquipe) {
-                                <small>Capo equipe non ancora indicato</small>
-                            }
-                        </div>
-                        <strong>{{ equipeCatechisti.length }}</strong>
-                    </div>
-                    @if (equipeCatechisti.length) {
-                        <div class="catechisti-grid">
-                            @for (unita of equipeCatechisti; track unita.id) {
-                            <article>
-                                <strong>{{ unita.nomeVisualizzato }}</strong>
-                                @if (unita.capoEquipe) {
-                                    <div class="unit-badges">
-                                        <span class="role-badge role-responsabile">Capo equipe</span>
-                                    </div>
-                                }
-                                <dl class="contact-list">
-                                    <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
-                                    <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
-                                </dl>
-                                @if (canEditMembers) {
-                                    <div class="unit-actions">
-                                        <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
-                                        <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
-                                    </div>
-                                }
-                            </article>
-                            }
-                        </div>
-                    } @else {
-                        <div class="empty-community-state">
-                            <span>Equipe dei catechisti da associare.</span>
-                            @if (canEditMembers) {
-                                <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
-                            }
-                        </div>
-                    }
-                </section>
-
-            }
-
             @if (messaggio) {
                 <section class="action-message">
                     <i class="pi pi-info-circle"></i>
@@ -144,15 +89,13 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 <section class="census-actions-card">
                     <div class="search-box">
                         <strong>Censimento fratelli</strong>
-                        <small>Avvia il censimento della comunità partendo dai dati base o da un invito personale.</small>
+                        <small>Aggiungi i fratelli della comunità, invia gli inviti personali e raccogli privacy e consensi.</small>
                     </div>
-                    <a pButton routerLink="/gestionale-cn/membri-comunita" label="Gestisci censimento fratelli" icon="pi pi-users"></a>
-                    <button pButton type="button" label="Censisci fratello" icon="pi pi-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
+                    <button pButton type="button" label="+ Aggiungi fratello" icon="pi pi-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
                     <button pButton type="button" label="Invita fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
                     <button pButton type="button" label="Importa elenco" icon="pi pi-file-import" severity="secondary" outlined (click)="apriImportaElenco()"></button>
                     <button pButton type="button" label="Invio massivo inviti" icon="pi pi-send" severity="success" outlined (click)="inviaInvitiMassiviFratelli()"></button>
-                    <button pButton type="button" label="Copia link invito" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoDemo()"></button>
-                    <button pButton type="button" label="Invia WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoDemo()"></button>
+                    <button pButton type="button" label="Reset demo" icon="pi pi-trash" severity="danger" outlined (click)="svuotaElencoFratelli()"></button>
                 </section>
 
                 <section class="action-message">
@@ -173,10 +116,10 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
             @if (quickMode) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiFlussoFratelloRapido()">
-                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" [attr.aria-label]="quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita via email'" (click)="$event.stopPropagation()">
+                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" [attr.aria-label]="quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita fratello'" (click)="$event.stopPropagation()">
                         <header>
                             <span>Censimento fratelli</span>
-                            <h2>{{ quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita via email' }}</h2>
+                            <h2>{{ quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita fratello' }}</h2>
                         </header>
                         <form class="member-form" #quickBrotherForm="ngForm" (ngSubmit)="salvaFlussoFratelloRapido()">
                             <div>
@@ -199,14 +142,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                 <div>
                                     <label for="quickRuolo">Carisma / ruolo comunitario</label>
                                     <p-select inputId="quickRuolo" name="quickRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiForm" optionLabel="label" optionValue="value" [(ngModel)]="quickBrother.ruoloComunitario"></p-select>
-                                </div>
-                                <div>
-                                    <label for="quickIndirizzo">Indirizzo</label>
-                                    <input id="quickIndirizzo" name="quickIndirizzo" pInputText [(ngModel)]="quickBrother.indirizzo" />
-                                </div>
-                                <div>
-                                    <label for="quickDataNascita">Data nascita</label>
-                                    <input id="quickDataNascita" name="quickDataNascita" pInputText type="date" [(ngModel)]="quickBrother.dataNascita" />
                                 </div>
                                 <div class="form-notes">
                                     <label for="quickNote">Note</label>
@@ -354,10 +289,10 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 <section class="empty-community-state empty-members-state">
                     <i class="pi pi-users"></i>
                     <h2>Nessun fratello censito</h2>
-                    <p>Inizia inserendo manualmente un fratello oppure inviando un invito per far compilare direttamente i dati e i consensi.</p>
+                    <p>Inizia aggiungendo manualmente un fratello oppure inviando un invito personale.</p>
                     @if (!isDemo && canAddMember) {
                         <div class="empty-actions">
-                            <button pButton type="button" label="Censisci primo fratello" icon="pi pi-plus" (click)="apriCensimentoFratello()"></button>
+                            <button pButton type="button" label="Aggiungi primo fratello" icon="pi pi-plus" (click)="apriCensimentoFratello()"></button>
                             <button pButton type="button" label="Invita primo fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
                         </div>
                     }
@@ -390,7 +325,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 <p-table [value]="membriFiltrati" dataKey="id" responsiveLayout="scroll" [paginator]="membriFiltrati.length > 12" [rows]="12">
                     <ng-template #caption>
                         <div class="table-caption">
-                            <strong>Membri comunitÃ </strong>
+                            <strong>Membri comunità</strong>
                             <span>{{ membri.length }} membri totali</span>
                         </div>
                     </ng-template>
@@ -450,7 +385,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                             <button pButton type="button" label="Invia invito" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
                                             <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoFratello(membro)"></button>
                                             <button pButton type="button" label="WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoFratello(membro)"></button>
-                                            <button pButton type="button" label="Archivia" icon="pi pi-archive" severity="danger" text (click)="archiviaFratello(membro)"></button>
                                         }
                                     </div>
                                 </td>
@@ -467,7 +401,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             }
 
             @if (membri.length) {
-            <section class="member-cards" aria-label="Membri comunitÃ ">
+            <section class="member-cards" aria-label="Membri comunità">
                 @for (membro of membriFiltrati; track membro.id) {
                     <article class="member-card">
                         <div class="member-card-head">
@@ -516,13 +450,59 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                     <button pButton type="button" icon="pi pi-send" label="Invia invito" severity="success" outlined (click)="inviaInvitoFratello(membro)"></button>
                                     <button pButton type="button" icon="pi pi-copy" label="Copia link" severity="secondary" outlined (click)="copiaLinkInvitoFratello(membro)"></button>
                                     <button pButton type="button" icon="pi pi-whatsapp" label="WhatsApp" severity="secondary" outlined (click)="apriWhatsappInvitoFratello(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-archive" label="Archivia" severity="danger" outlined (click)="archiviaFratello(membro)"></button>
                                 }
                             </div>
                         }
                     </article>
                 }
             </section>
+            }
+
+            @if (!isDemo) {
+                <section class="catechisti-card">
+                    <div class="section-title">
+                        <div>
+                            <span>Riferimenti collegati</span>
+                            <h2>Equipe dei catechisti</h2>
+                            <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
+                            @if (!haCapoEquipe) {
+                                <small>Capo equipe non ancora indicato</small>
+                            }
+                        </div>
+                        <strong>{{ equipeCatechisti.length }}</strong>
+                    </div>
+                    @if (equipeCatechisti.length) {
+                        <div class="catechisti-grid">
+                            @for (unita of equipeCatechisti; track unita.id) {
+                            <article>
+                                <strong>{{ unita.nomeVisualizzato }}</strong>
+                                @if (unita.capoEquipe) {
+                                    <div class="unit-badges">
+                                        <span class="role-badge role-responsabile">Capo equipe</span>
+                                    </div>
+                                }
+                                <dl class="contact-list">
+                                    <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
+                                    <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
+                                </dl>
+                                @if (canEditMembers) {
+                                    <div class="unit-actions">
+                                        <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
+                                        <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
+                                    </div>
+                                }
+                            </article>
+                            }
+                        </div>
+                    } @else {
+                        <div class="empty-community-state">
+                            <span>Equipe dei catechisti da associare.</span>
+                            @if (canEditMembers) {
+                                <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
+                            }
+                        </div>
+                    }
+                </section>
             }
 
             @if (ruoloModalMembro) {
@@ -752,7 +732,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 gap: 1.5rem;
             }
 
-            .community-content-header,
             .table-caption,
             .row-actions,
             .card-actions,
@@ -764,19 +743,16 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 gap: 1rem;
             }
 
-            .community-content-header,
             .table-caption,
             .section-title {
                 justify-content: space-between;
                 align-items: center;
             }
 
-            .community-content-header h1,
             .section-title h2 {
                 margin: 0 0 0.35rem;
             }
 
-            .community-content-header p,
             .section-title p,
             .identity-card p,
             .identity-meta small {
@@ -786,7 +762,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
             .identity-card,
             .controls-card,
-            .community-content-header,
             .census-actions-card,
             .demo-data-banner,
             .member-card,
@@ -1280,7 +1255,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     overflow-x: hidden;
                 }
 
-                .community-content-header,
                 .census-actions-card,
                 .identity-card,
                 .controls-card,
@@ -2302,7 +2276,7 @@ export class Comunita {
         if (member.statoProfilo === 'COMPLETATO') return 'Attivo';
         if (member.statoInvito === 'INVIATO') return 'Invitato';
         if (member.statoProfilo === 'ARCHIVIATO') return 'Non attivo';
-        return 'Da completare';
+        return member.origine === 'INSERITO_DAL_RESPONSABILE' ? 'Attivo' : 'Da completare';
     }
 
     private mapPrivacyDaCommunityMember(member: CommunityMemberMock): ConsensoPrivacyPilota {
