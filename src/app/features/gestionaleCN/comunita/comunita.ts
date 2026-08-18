@@ -52,6 +52,7 @@ interface FratelloQuickForm {
     telefono: string;
     dataNascita: string;
     ruoloComunitario: MembroComunitaPilota['ruolo'];
+    indirizzo: string;
     note: string;
 }
 
@@ -77,21 +78,10 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
     imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule],
     template: `
         <div class="community-page">
-            <header class="page-heading">
+            <header class="community-content-header">
                 <div>
-                    <h1>La tua ComunitÃ </h1>
-                    <p>Anagrafica comunitÃ  e gestione iniziale dei consensi.</p>
-                </div>
-                <div class="heading-actions">
-                    @if (!isDemo) {
-                        @if (canCensireComunita) {
-                            <a pButton routerLink="/gestionale-cn/censimento-comunita" icon="pi pi-list-check" label="Censisci comunità" severity="secondary" outlined></a>
-                        }
-                        <a class="preview-link" routerLink="/gestionale-cn/onboarding-comunita-preview">Anteprima primo accesso utente</a>
-                    }
-                    @if (canAddMember) {
-                        <button pButton type="button" [icon]="formVisibile ? 'pi pi-times' : 'pi pi-user-plus'" [label]="formVisibile ? 'Annulla' : 'Aggiungi membro'" (click)="toggleForm()"></button>
-                    }
+                    <h1>La mia comunità</h1>
+                    <p>Anagrafica, censimento fratelli, consensi e inviti</p>
                 </div>
             </header>
 
@@ -151,16 +141,17 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             }
 
             @if (!isDemo && canAddMember) {
-                <section class="controls-card">
+                <section class="census-actions-card">
                     <div class="search-box">
                         <strong>Censimento fratelli</strong>
                         <small>Il responsabile inserisce i dati base; ogni fratello completa personalmente privacy e consensi.</small>
                     </div>
                     <a pButton routerLink="/gestionale-cn/membri-comunita" label="Gestisci censimento fratelli" icon="pi pi-users"></a>
-                    <button pButton type="button" label="Censisci fratello" icon="pi pi-user-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
-                    <button pButton type="button" label="Invita fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
+                    <button pButton type="button" label="Aggiungi fratello" icon="pi pi-user-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
+                    <button pButton type="button" label="Invita via email" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
                     <button pButton type="button" label="Invio massivo inviti" icon="pi pi-send" severity="success" outlined (click)="inviaInvitiMassiviFratelli()"></button>
-                    <button pButton type="button" label="Copia link invito demo" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoDemo()"></button>
+                    <button pButton type="button" label="Copia link invito" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoDemo()"></button>
+                    <button pButton type="button" label="Invia WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoDemo()"></button>
                 </section>
 
                 <section class="action-message">
@@ -170,46 +161,55 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             }
 
             @if (quickMode) {
-                <section class="card p-6">
-                    <h2 class="form-title">{{ quickMode === 'censisci' ? 'Censisci fratello' : 'Invita fratello' }}</h2>
-                    <form class="member-form" #quickBrotherForm="ngForm" (ngSubmit)="salvaFlussoFratelloRapido()">
-                        <div>
-                            <label for="quickNome">Nome</label>
-                            <input id="quickNome" name="quickNome" pInputText [(ngModel)]="quickBrother.nome" required />
-                        </div>
-                        <div>
-                            <label for="quickCognome">Cognome</label>
-                            <input id="quickCognome" name="quickCognome" pInputText [(ngModel)]="quickBrother.cognome" required />
-                        </div>
-                        <div>
-                            <label for="quickEmail">Email</label>
-                            <input id="quickEmail" name="quickEmail" pInputText type="email" [(ngModel)]="quickBrother.email" required />
-                        </div>
-                        <div>
-                            <label for="quickTelefono">Telefono</label>
-                            <input id="quickTelefono" name="quickTelefono" pInputText [(ngModel)]="quickBrother.telefono" />
-                        </div>
-                        @if (quickMode === 'censisci') {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiFlussoFratelloRapido()">
+                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" [attr.aria-label]="quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita via email'" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Censimento fratelli</span>
+                            <h2>{{ quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita via email' }}</h2>
+                        </header>
+                        <form class="member-form" #quickBrotherForm="ngForm" (ngSubmit)="salvaFlussoFratelloRapido()">
                             <div>
-                                <label for="quickDataNascita">Data nascita</label>
-                                <input id="quickDataNascita" name="quickDataNascita" pInputText type="date" [(ngModel)]="quickBrother.dataNascita" />
+                                <label for="quickNome">Nome</label>
+                                <input id="quickNome" name="quickNome" pInputText [(ngModel)]="quickBrother.nome" required />
                             </div>
                             <div>
-                                <label for="quickRuolo">Carisma / ruolo comunitario</label>
-                                <p-select inputId="quickRuolo" name="quickRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiForm" optionLabel="label" optionValue="value" [(ngModel)]="quickBrother.ruoloComunitario"></p-select>
+                                <label for="quickCognome">Cognome</label>
+                                <input id="quickCognome" name="quickCognome" pInputText [(ngModel)]="quickBrother.cognome" required />
                             </div>
-                            <div class="form-notes">
-                                <label for="quickNote">Note</label>
-                                <textarea id="quickNote" name="quickNote" pTextarea rows="3" [(ngModel)]="quickBrother.note"></textarea>
+                            <div>
+                                <label for="quickEmail">Email</label>
+                                <input id="quickEmail" name="quickEmail" pInputText type="email" [(ngModel)]="quickBrother.email" required />
                             </div>
-                        }
-                        <p class="form-helper">{{ quickMode === 'censisci' ? 'Il profilo sarà salvato come da completare e la privacy come mancante.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
-                        <div class="form-actions">
-                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiFlussoFratelloRapido()"></button>
-                            <button pButton type="submit" icon="pi pi-check" [label]="quickMode === 'censisci' ? 'Salva censimento' : 'Genera invito'" [disabled]="quickBrotherForm.invalid"></button>
-                        </div>
-                    </form>
-                </section>
+                            <div>
+                                <label for="quickTelefono">Telefono</label>
+                                <input id="quickTelefono" name="quickTelefono" pInputText [(ngModel)]="quickBrother.telefono" />
+                            </div>
+                            @if (quickMode === 'censisci') {
+                                <div>
+                                    <label for="quickRuolo">Carisma / ruolo comunitario</label>
+                                    <p-select inputId="quickRuolo" name="quickRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiForm" optionLabel="label" optionValue="value" [(ngModel)]="quickBrother.ruoloComunitario"></p-select>
+                                </div>
+                                <div>
+                                    <label for="quickIndirizzo">Indirizzo</label>
+                                    <input id="quickIndirizzo" name="quickIndirizzo" pInputText [(ngModel)]="quickBrother.indirizzo" />
+                                </div>
+                                <div>
+                                    <label for="quickDataNascita">Data nascita</label>
+                                    <input id="quickDataNascita" name="quickDataNascita" pInputText type="date" [(ngModel)]="quickBrother.dataNascita" />
+                                </div>
+                                <div class="form-notes">
+                                    <label for="quickNote">Note</label>
+                                    <textarea id="quickNote" name="quickNote" pTextarea rows="3" [(ngModel)]="quickBrother.note"></textarea>
+                                </div>
+                            }
+                            <p class="form-helper">{{ quickMode === 'censisci' ? 'Il profilo sarà salvato come da completare e la privacy come mancante.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
+                            <footer class="form-actions">
+                                <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiFlussoFratelloRapido()"></button>
+                                <button pButton type="submit" icon="pi pi-check" [label]="quickMode === 'censisci' ? 'Salva censimento' : 'Genera invito'" [disabled]="quickBrotherForm.invalid"></button>
+                            </footer>
+                        </form>
+                    </section>
+                </div>
             }
 
             @if (formVisibile) {
@@ -382,8 +382,20 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <td class="multiline-cell">{{ displayContact(membro.telefono) }}</td>
                             <td>{{ displayContact(membro.indirizzo) }}</td>
                             <td>{{ displayContact(membro.email) }}</td>
-                            <td><p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" /></td>
-                            <td><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></td>
+                            <td>
+                                @if (canManagePrivacy && membro.accessoApp === 'Da invitare') {
+                                    <button pButton type="button" label="Invita" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                } @else {
+                                    <p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" />
+                                }
+                            </td>
+                            <td>
+                                @if (canManagePrivacy && membro.consensoPrivacyStato === 'Da inviare') {
+                                    <button pButton type="button" label="Invia consenso" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
+                                } @else {
+                                    <span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span>
+                                }
+                            </td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
                             @if (canEditMembers || canManagePrivacy) {
                                 <td>
@@ -433,8 +445,26 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <div><dt>Telefono</dt><dd class="multiline-cell">{{ displayContact(membro.telefono) }}</dd></div>
                             <div><dt>Indirizzo</dt><dd>{{ displayContact(membro.indirizzo) }}</dd></div>
                             <div><dt>Email</dt><dd>{{ displayContact(membro.email) }}</dd></div>
-                            <div><dt>Accesso app</dt><dd>{{ membro.accessoApp }}</dd></div>
-                            <div><dt>Privacy</dt><dd><span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span></dd></div>
+                            <div>
+                                <dt>Accesso app</dt>
+                                <dd>
+                                    @if (canManagePrivacy && membro.accessoApp === 'Da invitare') {
+                                        <button pButton type="button" label="Invita" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                    } @else {
+                                        {{ membro.accessoApp }}
+                                    }
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Privacy</dt>
+                                <dd>
+                                    @if (canManagePrivacy && membro.consensoPrivacyStato === 'Da inviare') {
+                                        <button pButton type="button" label="Invia consenso" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
+                                    } @else {
+                                        <span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span>
+                                    }
+                                </dd>
+                            </div>
                             <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'SÃ¬' : 'No' }}</dd></div>
                             <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'SÃ¬' : 'No' }}</dd></div>
                         </dl>
@@ -688,37 +718,31 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 gap: 1.5rem;
             }
 
-            .page-heading,
+            .community-content-header,
             .table-caption,
             .row-actions,
             .card-actions,
             .identity-card,
             .controls-card,
+            .census-actions-card,
             .section-title {
                 display: flex;
                 gap: 1rem;
             }
 
-            .page-heading,
+            .community-content-header,
             .table-caption,
             .section-title {
                 justify-content: space-between;
                 align-items: center;
             }
 
-            .heading-actions {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: flex-end;
-                gap: 0.65rem;
-            }
-
-            .page-heading h1,
+            .community-content-header h1,
             .section-title h2 {
                 margin: 0 0 0.35rem;
             }
 
-            .page-heading p,
+            .community-content-header p,
             .section-title p,
             .identity-card p,
             .identity-meta small {
@@ -728,6 +752,8 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
             .identity-card,
             .controls-card,
+            .community-content-header,
+            .census-actions-card,
             .member-card,
             .action-message,
             .catechisti-card {
@@ -736,6 +762,20 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 background: #fff;
                 border: 1px solid #e5e7eb;
                 box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            }
+
+            .census-actions-card {
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            .census-actions-card .search-box {
+                flex: 1 1 18rem;
+            }
+
+            .census-actions-card a,
+            .census-actions-card button {
+                min-height: 44px;
             }
 
             .identity-card,
@@ -1219,7 +1259,8 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     overflow-x: hidden;
                 }
 
-                .page-heading,
+                .community-content-header,
+                .census-actions-card,
                 .identity-card,
                 .controls-card,
                 .section-title {
@@ -1257,7 +1298,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 }
 
                 .card-actions button,
-                .page-heading button,
                 .form-actions button,
                 .app-modal footer button {
                     width: 100%;
@@ -1496,6 +1536,7 @@ export class Comunita {
             telefono: this.quickBrother.telefono.trim(),
             dataNascita: this.quickBrother.dataNascita,
             ruoloComunitario: this.quickBrother.ruoloComunitario,
+            indirizzo: this.quickBrother.indirizzo.trim(),
             note: this.quickBrother.note.trim()
         };
 
@@ -1553,6 +1594,12 @@ export class Comunita {
         const link = `${PUBLIC_INVITE_BASE_URL}/registrazione-fratello?token=demo`;
         navigator.clipboard?.writeText(link);
         this.messaggio = `Link invito demo copiato: ${link}`;
+    }
+
+    apriWhatsappInvitoDemo() {
+        const link = `${PUBLIC_INVITE_BASE_URL}/registrazione-fratello?token=demo`;
+        const text = encodeURIComponent(`Sei stato invitato dal responsabile della tua comunità a completare la tua scheda personale e i consensi privacy: ${link}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
     }
 
     isDaInvitare(membro: MembroComunitaPilota) {
@@ -2363,6 +2410,7 @@ export class Comunita {
             telefono: '',
             dataNascita: '',
             ruoloComunitario: '',
+            indirizzo: '',
             note: ''
         };
     }
