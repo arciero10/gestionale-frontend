@@ -85,13 +85,13 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 </section>
             }
 
-            @if (!isDemo && canAddMember) {
+            @if (!isDemo) {
                 <section class="census-actions-card">
                     <div class="search-box">
                         <strong>Censimento fratelli</strong>
-                        <small>Aggiungi i fratelli della comunità, invia gli inviti personali e raccogli privacy e consensi.</small>
+                        <small>Gestisci l'elenco dei fratelli della comunità, inserisci i dati base o invia un link personale per far completare privacy e consensi.</small>
                     </div>
-                    <button pButton type="button" label="+ Aggiungi fratello" icon="pi pi-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
+                    <button pButton type="button" label="+ Inserisci fratello" icon="pi pi-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
                     <button pButton type="button" label="Invita fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
                     <button pButton type="button" label="Importa elenco" icon="pi pi-file-import" severity="secondary" outlined (click)="apriImportaElenco()"></button>
                     <button pButton type="button" label="Invio massivo inviti" icon="pi pi-send" severity="success" outlined (click)="inviaInvitiMassiviFratelli()"></button>
@@ -116,10 +116,10 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
             @if (quickMode) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiFlussoFratelloRapido()">
-                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" [attr.aria-label]="quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita fratello'" (click)="$event.stopPropagation()">
+                    <section class="app-modal app-modal-wide" role="dialog" aria-modal="true" [attr.aria-label]="quickMode === 'censisci' ? 'Inserisci fratello' : 'Invita fratello'" (click)="$event.stopPropagation()">
                         <header>
                             <span>Censimento fratelli</span>
-                            <h2>{{ quickMode === 'censisci' ? 'Aggiungi fratello' : 'Invita fratello' }}</h2>
+                            <h2>{{ quickMode === 'censisci' ? 'Inserisci fratello' : 'Invita fratello' }}</h2>
                         </header>
                         <form class="member-form" #quickBrotherForm="ngForm" (ngSubmit)="salvaFlussoFratelloRapido()">
                             <div>
@@ -148,7 +148,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                     <textarea id="quickNote" name="quickNote" pTextarea rows="3" [(ngModel)]="quickBrother.note"></textarea>
                                 </div>
                             }
-                            <p class="form-helper">{{ quickMode === 'censisci' ? 'Il profilo sarà salvato come da completare, con accesso da invitare e privacy da inviare.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
+                            <p class="form-helper">{{ quickMode === 'censisci' ? 'Il fratello sarà salvato come attivo, con accesso app da invitare e privacy da inviare.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
                             <footer class="form-actions">
                                 <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiFlussoFratelloRapido()"></button>
                                 <button pButton type="submit" icon="pi pi-check" [label]="quickMode === 'censisci' ? 'Salva censimento' : 'Genera invito'" [disabled]="quickBrotherForm.invalid"></button>
@@ -289,10 +289,10 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 <section class="empty-community-state empty-members-state">
                     <i class="pi pi-users"></i>
                     <h2>Nessun fratello censito</h2>
-                    <p>Inizia aggiungendo manualmente un fratello oppure inviando un invito personale.</p>
-                    @if (!isDemo && canAddMember) {
+                    <p>Inizia inserendo manualmente un fratello oppure inviando un invito personale.</p>
+                    @if (!isDemo) {
                         <div class="empty-actions">
-                            <button pButton type="button" label="Aggiungi primo fratello" icon="pi pi-plus" (click)="apriCensimentoFratello()"></button>
+                            <button pButton type="button" label="Inserisci primo fratello" icon="pi pi-plus" (click)="apriCensimentoFratello()"></button>
                             <button pButton type="button" label="Invita primo fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
                         </div>
                     }
@@ -340,7 +340,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <th>Accesso app</th>
                             <th>Privacy</th>
                             <th>Stato</th>
-                            @if (canEditMembers || canManagePrivacy) {
+                            @if (!isDemo) {
                                 <th class="text-right">Azioni</th>
                             }
                         </tr>
@@ -360,32 +360,30 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <td>{{ displayContact(membro.indirizzo) }}</td>
                             <td>{{ displayContact(membro.email) }}</td>
                             <td>
-                                @if (canManagePrivacy && membro.accessoApp === 'Da invitare') {
+                                @if (!isDemo && membro.accessoApp === 'Da invitare') {
                                     <button pButton type="button" label="Da invitare" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
                                 } @else {
                                     <p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" />
                                 }
                             </td>
                             <td>
-                                @if (canManagePrivacy && membro.consensoPrivacyStato === 'Da inviare') {
+                                @if (!isDemo && membro.consensoPrivacyStato === 'Da inviare') {
                                     <button pButton type="button" label="Da inviare" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
                                 } @else {
                                     <span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span>
                                 }
                             </td>
                             <td><p-tag [value]="membro.statoMembro" [severity]="getStatoSeverity(membro.statoMembro)" /></td>
-                            @if (canEditMembers || canManagePrivacy) {
+                            @if (!isDemo) {
                                 <td>
                                     <div class="row-actions">
+                                        <button pButton type="button" label="Dettaglio" icon="pi pi-eye" severity="secondary" text (click)="apriDettaglioFratello(membro)"></button>
                                         @if (canEditMembers) {
-                                            <button pButton type="button" label="Dettaglio" icon="pi pi-eye" severity="secondary" text (click)="apriDettaglioFratello(membro)"></button>
                                             <button pButton type="button" label="Modifica" icon="pi pi-pencil" severity="info" text (click)="modificaMembro(membro)"></button>
                                         }
-                                        @if (canManagePrivacy) {
-                                            <button pButton type="button" label="Invia invito" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
-                                            <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoFratello(membro)"></button>
-                                            <button pButton type="button" label="WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoFratello(membro)"></button>
-                                        }
+                                        <button pButton type="button" label="Invita" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                        <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoFratello(membro)"></button>
+                                        <button pButton type="button" label="WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoFratello(membro)"></button>
                                     </div>
                                 </td>
                             }
@@ -393,7 +391,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     </ng-template>
                     <ng-template #emptymessage>
                         <tr>
-                            <td [attr.colspan]="canEditMembers || canManagePrivacy ? 10 : 9">Nessun membro trovato con i filtri attuali.</td>
+                            <td [attr.colspan]="!isDemo ? 10 : 9">Nessun membro trovato con i filtri attuali.</td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -420,7 +418,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <div>
                                 <dt>Accesso app</dt>
                                 <dd>
-                                    @if (canManagePrivacy && membro.accessoApp === 'Da invitare') {
+                                    @if (!isDemo && membro.accessoApp === 'Da invitare') {
                                         <button pButton type="button" label="Da invitare" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
                                     } @else {
                                         {{ membro.accessoApp }}
@@ -430,7 +428,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <div>
                                 <dt>Privacy</dt>
                                 <dd>
-                                    @if (canManagePrivacy && membro.consensoPrivacyStato === 'Da inviare') {
+                                    @if (!isDemo && membro.consensoPrivacyStato === 'Da inviare') {
                                         <button pButton type="button" label="Da inviare" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
                                     } @else {
                                         <span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span>
@@ -440,17 +438,15 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'SÃ¬' : 'No' }}</dd></div>
                             <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'SÃ¬' : 'No' }}</dd></div>
                         </dl>
-                        @if (canEditMembers || canManagePrivacy) {
+                        @if (!isDemo) {
                             <div class="card-actions">
+                                <button pButton type="button" icon="pi pi-eye" label="Dettaglio" severity="secondary" outlined (click)="apriDettaglioFratello(membro)"></button>
                                 @if (canEditMembers) {
-                                    <button pButton type="button" icon="pi pi-eye" label="Dettaglio" severity="secondary" outlined (click)="apriDettaglioFratello(membro)"></button>
                                     <button pButton type="button" icon="pi pi-pencil" label="Modifica" severity="info" outlined (click)="modificaMembro(membro)"></button>
                                 }
-                                @if (canManagePrivacy) {
-                                    <button pButton type="button" icon="pi pi-send" label="Invia invito" severity="success" outlined (click)="inviaInvitoFratello(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-copy" label="Copia link" severity="secondary" outlined (click)="copiaLinkInvitoFratello(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-whatsapp" label="WhatsApp" severity="secondary" outlined (click)="apriWhatsappInvitoFratello(membro)"></button>
-                                }
+                                <button pButton type="button" icon="pi pi-send" label="Invita" severity="success" outlined (click)="inviaInvitoFratello(membro)"></button>
+                                <button pButton type="button" icon="pi pi-copy" label="Copia link" severity="secondary" outlined (click)="copiaLinkInvitoFratello(membro)"></button>
+                                <button pButton type="button" icon="pi pi-whatsapp" label="WhatsApp" severity="secondary" outlined (click)="apriWhatsappInvitoFratello(membro)"></button>
                             </div>
                         }
                     </article>
@@ -1541,11 +1537,12 @@ export class Comunita {
     }
 
     caricaDatiDemoFratelli() {
-        const demo = loadDemoCommunityMembers();
+        const demo = loadDemoCommunityMembers().slice(0, 2);
+        saveCommunityMembers(demo);
         this.membri = demo.map((member, index) => this.creaMembroDaCommunityMember(member, index + 1));
         this.prossimoId = this.membri.length + 1;
         this.importMode = false;
-        this.messaggio = 'Caricati 3 fratelli demo per provare il flusso di censimento.';
+        this.messaggio = 'Caricati 2 fratelli demo per provare il flusso di censimento.';
     }
 
     svuotaElencoFratelli() {
@@ -2241,7 +2238,24 @@ export class Comunita {
     }
 
     private creaMembriGestionali(): MembroComunitaPilota[] {
-        return readCommunityMembers().map((member, index) => this.creaMembroDaCommunityMember(member, index + 1));
+        const members = this.normalizzaElencoMembriIniziale(readCommunityMembers());
+        return members.map((member, index) => this.creaMembroDaCommunityMember(member, index + 1));
+    }
+
+    private normalizzaElencoMembriIniziale(members: CommunityMemberMock[]): CommunityMemberMock[] {
+        if (members.length > 30) {
+            saveCommunityMembers([]);
+            return [];
+        }
+
+        const sembraDemo = members.length > 2 && members.every((member) => member.id.includes('demo') || member.email.endsWith('@example.test') || member.note?.toLowerCase().includes('demo'));
+        if (sembraDemo) {
+            const ridotti = members.slice(0, 2);
+            saveCommunityMembers(ridotti);
+            return ridotti;
+        }
+
+        return members;
     }
 
     private creaMembroDaCommunityMember(member: CommunityMemberMock, id: number): MembroComunitaPilota {
