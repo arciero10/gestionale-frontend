@@ -78,6 +78,53 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
     imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule],
     template: `
         <div class="community-page">
+            @if (!isDemo) {
+                <section class="catechisti-card">
+                    <div class="section-title">
+                        <div>
+                            <span>Riferimenti collegati</span>
+                            <h2>Equipe dei catechisti</h2>
+                            <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
+                            @if (!haCapoEquipe) {
+                                <small>Capo equipe non ancora indicato</small>
+                            }
+                        </div>
+                        <strong>{{ equipeCatechisti.length }}</strong>
+                    </div>
+                    @if (equipeCatechisti.length) {
+                        <div class="catechisti-grid">
+                            @for (unita of equipeCatechisti; track unita.id) {
+                            <article>
+                                <strong>{{ unita.nomeVisualizzato }}</strong>
+                                @if (unita.capoEquipe) {
+                                    <div class="unit-badges">
+                                        <span class="role-badge role-responsabile">Capo equipe</span>
+                                    </div>
+                                }
+                                <dl class="contact-list">
+                                    <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
+                                    <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
+                                </dl>
+                                @if (canEditMembers) {
+                                    <div class="unit-actions">
+                                        <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
+                                        <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
+                                    </div>
+                                }
+                            </article>
+                            }
+                        </div>
+                    } @else {
+                        <div class="empty-community-state">
+                            <span>Equipe dei catechisti da associare.</span>
+                            @if (canEditMembers) {
+                                <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+
             @if (messaggio) {
                 <section class="action-message">
                     <i class="pi pi-info-circle"></i>
@@ -297,27 +344,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                         </div>
                     }
                 </section>
-            } @else {
-                <section class="controls-card">
-                    <div class="search-box">
-                        <label for="ricerca">Cerca membro</label>
-                        <input id="ricerca" pInputText type="search" placeholder="Nome o cognome" [(ngModel)]="ricerca" />
-                    </div>
-                    <div class="search-box">
-                        <label for="filtroRuolo">Filtra carisma</label>
-                        <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiFiltro" optionLabel="label" optionValue="value" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i carismi"></p-select>
-                    </div>
-                    @if (canManagePrivacy) {
-                        <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
-                    }
-                    <div class="totals">
-                        <strong>{{ membriFiltrati.length }}</strong>
-                        <span>membri visualizzati su {{ membri.length }}</span>
-                        @if (!isDemo) {
-                            <small>Equipe dei catechisti: {{ equipeCatechisti.length }}</small>
-                        }
-                    </div>
-                </section>
             }
 
             @if (membri.length) {
@@ -391,7 +417,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     </ng-template>
                     <ng-template #emptymessage>
                         <tr>
-                            <td [attr.colspan]="!isDemo ? 10 : 9">Nessun membro trovato con i filtri attuali.</td>
+                            <td [attr.colspan]="!isDemo ? 10 : 9">Nessun membro presente.</td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -435,8 +461,8 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                     }
                                 </dd>
                             </div>
-                            <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'SÃ¬' : 'No' }}</dd></div>
-                            <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'SÃ¬' : 'No' }}</dd></div>
+                            <div><dt>Modulo inviato</dt><dd>{{ membro.moduloPrivacyInviato ? 'Sì' : 'No' }}</dd></div>
+                            <div><dt>Modulo ricevuto</dt><dd>{{ membro.moduloPrivacyRicevuto ? 'Sì' : 'No' }}</dd></div>
                         </dl>
                         @if (!isDemo) {
                             <div class="card-actions">
@@ -452,53 +478,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     </article>
                 }
             </section>
-            }
-
-            @if (!isDemo) {
-                <section class="catechisti-card">
-                    <div class="section-title">
-                        <div>
-                            <span>Riferimenti collegati</span>
-                            <h2>Equipe dei catechisti</h2>
-                            <p>Specchietto separato: non sono inclusi nei conteggi dei membri operativi.</p>
-                            @if (!haCapoEquipe) {
-                                <small>Capo equipe non ancora indicato</small>
-                            }
-                        </div>
-                        <strong>{{ equipeCatechisti.length }}</strong>
-                    </div>
-                    @if (equipeCatechisti.length) {
-                        <div class="catechisti-grid">
-                            @for (unita of equipeCatechisti; track unita.id) {
-                            <article>
-                                <strong>{{ unita.nomeVisualizzato }}</strong>
-                                @if (unita.capoEquipe) {
-                                    <div class="unit-badges">
-                                        <span class="role-badge role-responsabile">Capo equipe</span>
-                                    </div>
-                                }
-                                <dl class="contact-list">
-                                    <div><dt>Telefono</dt><dd>{{ displayContact(unita.telefono) }}</dd></div>
-                                    <div><dt>Email</dt><dd>{{ displayContact(unita.email) }}</dd></div>
-                                </dl>
-                                @if (canEditMembers) {
-                                    <div class="unit-actions">
-                                        <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" outlined (click)="apriModificaContattiEquipe(unita)"></button>
-                                        <button pButton type="button" label="Modifica unità" icon="pi pi-pencil" severity="info" outlined (click)="apriModificaUnitaEquipe(unita)"></button>
-                                    </div>
-                                }
-                            </article>
-                            }
-                        </div>
-                    } @else {
-                        <div class="empty-community-state">
-                            <span>Equipe dei catechisti da associare.</span>
-                            @if (canEditMembers) {
-                                <button pButton type="button" label="Associa equipe catechisti" icon="pi pi-users" (click)="apriAssociaEquipe()"></button>
-                            }
-                        </div>
-                    }
-                </section>
             }
 
             @if (ruoloModalMembro) {
@@ -732,7 +711,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             .row-actions,
             .card-actions,
             .identity-card,
-            .controls-card,
             .census-actions-card,
             .section-title {
                 display: flex;
@@ -757,7 +735,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             }
 
             .identity-card,
-            .controls-card,
             .census-actions-card,
             .demo-data-banner,
             .member-card,
@@ -994,30 +971,8 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 grid-template-columns: none !important;
             }
 
-            .controls-card {
-                align-items: end;
-                justify-content: space-between;
-                flex-wrap: wrap;
-            }
-
             .search-box {
                 min-width: min(100%, 240px);
-            }
-
-            .totals {
-                display: grid;
-                gap: 0.15rem;
-                text-align: right;
-            }
-
-            .totals strong {
-                font-size: 1.6rem;
-                color: #111827;
-            }
-
-            .totals span,
-            .totals small {
-                color: #64748b;
             }
 
             .role-badge {
@@ -1253,14 +1208,12 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
                 .census-actions-card,
                 .identity-card,
-                .controls-card,
                 .section-title {
                     flex-direction: column;
                     align-items: stretch;
                 }
 
-                .identity-meta,
-                .totals {
+                .identity-meta {
                     text-align: left;
                 }
 
@@ -1320,8 +1273,6 @@ export class Comunita {
     parrocchieOptions = PARROCCHIE_MOCK;
     numeriComunitaOptions = NUMERI_COMUNITA;
 
-    ricerca = '';
-    ruoloFiltro: RuoloOperativoComunita | null = null;
     formVisibile = false;
     membroInModifica: MembroComunitaPilota | null = null;
     tipoInserimentoMembro: TipoUnitaMembroComunita = 'Fratello singolo';
@@ -1402,12 +1353,7 @@ export class Comunita {
     }
 
     get membriFiltrati() {
-        const query = this.ricerca.trim().toLowerCase();
-        return this.membri.filter((membro) => {
-            const matchQuery = !query || membro.nome.toLowerCase().includes(query) || membro.cognome.toLowerCase().includes(query) || membro.nomeCompleto.toLowerCase().includes(query);
-            const matchRuolo = !this.ruoloFiltro || membro.ruolo === this.ruoloFiltro;
-            return matchQuery && matchRuolo;
-        }).sort((a, b) => this.compareMembri(a, b));
+        return [...this.membri].sort((a, b) => this.compareMembri(a, b));
     }
 
     get mostraBannerDatiDemo() {
@@ -1549,8 +1495,6 @@ export class Comunita {
         clearCommunityMembers();
         this.membri = [];
         this.prossimoId = 1;
-        this.ricerca = '';
-        this.ruoloFiltro = null;
         this.messaggio = 'Elenco fratelli svuotato. Puoi iniziare un nuovo censimento.';
     }
 
