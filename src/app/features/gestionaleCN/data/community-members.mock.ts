@@ -88,19 +88,31 @@ const DEMO_MEMBERS: CommunityMemberMock[] = [
         inviteLink: `${INVITE_BASE_PATH}?token=demo`,
         createdAt: '2026-01-13T11:00:00.000Z',
         invitedAt: '2026-01-13T11:05:00.000Z'
+    },
+    {
+        id: 'member-demo-3',
+        nome: 'Andrea',
+        cognome: 'Neri',
+        email: '',
+        telefono: '3330000003',
+        sesso: 'Maschio',
+        statoProfilo: 'DA_COMPLETARE',
+        statoPrivacy: 'MANCANTE',
+        statoInvito: 'DA_INVIARE',
+        origine: 'INSERITO_DAL_RESPONSABILE',
+        createdAt: '2026-01-14T09:00:00.000Z'
     }
 ];
 
 export function readCommunityMembers(): CommunityMemberMock[] {
     if (typeof localStorage === 'undefined') {
-        return DEMO_MEMBERS;
+        return [];
     }
 
     const raw = localStorage.getItem(COMMUNITY_MEMBERS_STORAGE_KEY);
 
     if (!raw) {
-        saveCommunityMembers(DEMO_MEMBERS);
-        return [...DEMO_MEMBERS];
+        return [];
     }
 
     try {
@@ -111,13 +123,27 @@ export function readCommunityMembers(): CommunityMemberMock[] {
 
         return parsed.map(normalizeMember);
     } catch {
-        saveCommunityMembers(DEMO_MEMBERS);
-        return [...DEMO_MEMBERS];
+        saveCommunityMembers([]);
+        return [];
     }
 }
 
 export function saveCommunityMembers(members: CommunityMemberMock[]): void {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+
     localStorage.setItem(COMMUNITY_MEMBERS_STORAGE_KEY, JSON.stringify(members));
+}
+
+export function clearCommunityMembers(): void {
+    saveCommunityMembers([]);
+}
+
+export function loadDemoCommunityMembers(): CommunityMemberMock[] {
+    const demo = DEMO_MEMBERS.map(normalizeMember);
+    saveCommunityMembers(demo);
+    return demo;
 }
 
 export function addManualCommunityMember(input: Partial<CommunityMemberMock>): CommunityMemberMock {
@@ -166,7 +192,7 @@ export function findCommunityMemberByToken(token: string | null): CommunityMembe
         return null;
     }
 
-    return readCommunityMembers().find((member) => member.token === token) ?? null;
+    return readCommunityMembers().find((member) => member.token === token) ?? (token === 'demo' ? normalizeMember(DEMO_MEMBERS[1]) : null);
 }
 
 export function completeCommunityMember(token: string, payload: CommunityMemberCompletionPayload): CommunityMemberMock | null {

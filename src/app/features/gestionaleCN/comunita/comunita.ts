@@ -10,12 +10,9 @@ import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import {
     EQUIPE_CATECHISTI_UNITA_PILOTA,
-    MEMBRI_COMUNITA_PILOTA,
-    UNITA_MEMBRI_COMUNITA_PILOTA,
     ConsensoPrivacyPilota,
     EquipeCatechistiUnita,
     MembroComunitaPilota,
-    UnitaMembroComunita,
     normalizeCarismaComunitario,
     RuoloComunitaPilota,
     RuoloOperativoComunita,
@@ -28,14 +25,17 @@ import { NUMERI_COMUNITA, PARROCCHIE_MOCK } from '../data/anagrafica-ecclesiale.
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
-import { UnitaCensimentoComunita, leggiUnitaCensimento } from '../censimento-comunita/censimento-comunita.storage';
 import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
 import {
     CommunityMemberMock,
     addManualCommunityMember,
+    clearCommunityMembers,
     inviteCommunityMember,
+    loadDemoCommunityMembers,
     readCommunityMembers,
-    resendInvite
+    resendInvite,
+    saveCommunityMembers,
+    updateCommunityMember
 } from '../data/community-members.mock';
 
 type StatoMembro = MembroComunitaPilota['statoMembro'];
@@ -81,7 +81,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             <header class="community-content-header">
                 <div>
                     <h1>La mia comunità</h1>
-                    <p>Anagrafica, censimento fratelli, consensi e inviti</p>
+                    <p>Censisci i fratelli, invia gli inviti e raccogli privacy e consensi.</p>
                 </div>
             </header>
 
@@ -144,11 +144,12 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 <section class="census-actions-card">
                     <div class="search-box">
                         <strong>Censimento fratelli</strong>
-                        <small>Il responsabile inserisce i dati base; ogni fratello completa personalmente privacy e consensi.</small>
+                        <small>Avvia il censimento della comunità partendo dai dati base o da un invito personale.</small>
                     </div>
                     <a pButton routerLink="/gestionale-cn/membri-comunita" label="Gestisci censimento fratelli" icon="pi pi-users"></a>
-                    <button pButton type="button" label="Aggiungi fratello" icon="pi pi-user-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
-                    <button pButton type="button" label="Invita via email" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
+                    <button pButton type="button" label="Censisci fratello" icon="pi pi-plus" severity="secondary" outlined (click)="apriCensimentoFratello()"></button>
+                    <button pButton type="button" label="Invita fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
+                    <button pButton type="button" label="Importa elenco" icon="pi pi-file-import" severity="secondary" outlined (click)="apriImportaElenco()"></button>
                     <button pButton type="button" label="Invio massivo inviti" icon="pi pi-send" severity="success" outlined (click)="inviaInvitiMassiviFratelli()"></button>
                     <button pButton type="button" label="Copia link invito" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoDemo()"></button>
                     <button pButton type="button" label="Invia WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoDemo()"></button>
@@ -156,8 +157,18 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 
                 <section class="action-message">
                     <i class="pi pi-shield"></i>
-                    <span>Il responsabile può inserire i dati base, ma ogni fratello deve completare personalmente privacy e consensi.</span>
+                    <span>Il responsabile può inserire i dati base del fratello. Privacy e consensi devono essere completati personalmente dal fratello tramite link di invito.</span>
                 </section>
+
+                @if (mostraBannerDatiDemo) {
+                    <section class="demo-data-banner">
+                        <div>
+                            <strong>Sono presenti dati demo precedenti</strong>
+                            <span>Puoi svuotare l'elenco per iniziare un censimento pulito della comunità.</span>
+                        </div>
+                        <button pButton type="button" label="Svuota elenco" icon="pi pi-trash" severity="danger" outlined (click)="svuotaElencoFratelli()"></button>
+                    </section>
+                }
             }
 
             @if (quickMode) {
@@ -178,7 +189,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             </div>
                             <div>
                                 <label for="quickEmail">Email</label>
-                                <input id="quickEmail" name="quickEmail" pInputText type="email" [(ngModel)]="quickBrother.email" required />
+                                <input id="quickEmail" name="quickEmail" pInputText type="email" [(ngModel)]="quickBrother.email" [required]="quickMode === 'invita'" />
                             </div>
                             <div>
                                 <label for="quickTelefono">Telefono</label>
@@ -202,12 +213,28 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                     <textarea id="quickNote" name="quickNote" pTextarea rows="3" [(ngModel)]="quickBrother.note"></textarea>
                                 </div>
                             }
-                            <p class="form-helper">{{ quickMode === 'censisci' ? 'Il profilo sarà salvato come da completare e la privacy come mancante.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
+                            <p class="form-helper">{{ quickMode === 'censisci' ? 'Il profilo sarà salvato come da completare, con accesso da invitare e privacy da inviare.' : 'Verrà generato un link mock per /registrazione-fratello?token=...' }}</p>
                             <footer class="form-actions">
                                 <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiFlussoFratelloRapido()"></button>
                                 <button pButton type="submit" icon="pi pi-check" [label]="quickMode === 'censisci' ? 'Salva censimento' : 'Genera invito'" [disabled]="quickBrotherForm.invalid"></button>
                             </footer>
                         </form>
+                    </section>
+                </div>
+            }
+
+            @if (importMode) {
+                <div class="modal-backdrop" role="presentation" (click)="chiudiImportaElenco()">
+                    <section class="app-modal" role="dialog" aria-modal="true" aria-label="Importa elenco fratelli" (click)="$event.stopPropagation()">
+                        <header>
+                            <span>Censimento fratelli</span>
+                            <h2>Importa elenco</h2>
+                        </header>
+                        <p class="privacy-warning">Funzione import Excel in preparazione.</p>
+                        <footer>
+                            <button pButton type="button" label="Annulla" severity="secondary" outlined (click)="chiudiImportaElenco()"></button>
+                            <button pButton type="button" label="Carica dati demo" icon="pi pi-database" (click)="caricaDatiDemoFratelli()"></button>
+                        </footer>
                     </section>
                 </div>
             }
@@ -323,27 +350,42 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 </section>
             }
 
-            <section class="controls-card">
-                <div class="search-box">
-                    <label for="ricerca">Cerca membro</label>
-                    <input id="ricerca" pInputText type="search" placeholder="Nome o cognome" [(ngModel)]="ricerca" />
-                </div>
-                <div class="search-box">
-                    <label for="filtroRuolo">Filtra carisma</label>
-                    <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiFiltro" optionLabel="label" optionValue="value" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i carismi"></p-select>
-                </div>
-                @if (canManagePrivacy) {
-                    <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
-                }
-                <div class="totals">
-                    <strong>{{ membriFiltrati.length }}</strong>
-                    <span>membri visualizzati su {{ membri.length }}</span>
-                    @if (!isDemo) {
-                        <small>Equipe dei catechisti: {{ equipeCatechisti.length }}</small>
+            @if (!membri.length) {
+                <section class="empty-community-state empty-members-state">
+                    <i class="pi pi-users"></i>
+                    <h2>Nessun fratello censito</h2>
+                    <p>Inizia inserendo manualmente un fratello oppure inviando un invito per far compilare direttamente i dati e i consensi.</p>
+                    @if (!isDemo && canAddMember) {
+                        <div class="empty-actions">
+                            <button pButton type="button" label="Censisci primo fratello" icon="pi pi-plus" (click)="apriCensimentoFratello()"></button>
+                            <button pButton type="button" label="Invita primo fratello" icon="pi pi-send" severity="secondary" outlined (click)="apriInvitoFratello()"></button>
+                        </div>
                     }
-                </div>
-            </section>
+                </section>
+            } @else {
+                <section class="controls-card">
+                    <div class="search-box">
+                        <label for="ricerca">Cerca membro</label>
+                        <input id="ricerca" pInputText type="search" placeholder="Nome o cognome" [(ngModel)]="ricerca" />
+                    </div>
+                    <div class="search-box">
+                        <label for="filtroRuolo">Filtra carisma</label>
+                        <p-select inputId="filtroRuolo" appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="carismiFiltro" optionLabel="label" optionValue="value" [(ngModel)]="ruoloFiltro" [showClear]="true" placeholder="Tutti i carismi"></p-select>
+                    </div>
+                    @if (canManagePrivacy) {
+                        <button pButton type="button" icon="pi pi-send" label="Invia moduli privacy mancanti" severity="success" outlined (click)="apriInvioPrivacyMassivo()"></button>
+                    }
+                    <div class="totals">
+                        <strong>{{ membriFiltrati.length }}</strong>
+                        <span>membri visualizzati su {{ membri.length }}</span>
+                        @if (!isDemo) {
+                            <small>Equipe dei catechisti: {{ equipeCatechisti.length }}</small>
+                        }
+                    </div>
+                </section>
+            }
 
+            @if (membri.length) {
             <section class="card member-table">
                 <p-table [value]="membriFiltrati" dataKey="id" responsiveLayout="scroll" [paginator]="membriFiltrati.length > 12" [rows]="12">
                     <ng-template #caption>
@@ -384,14 +426,14 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <td>{{ displayContact(membro.email) }}</td>
                             <td>
                                 @if (canManagePrivacy && membro.accessoApp === 'Da invitare') {
-                                    <button pButton type="button" label="Invita" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                    <button pButton type="button" label="Da invitare" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
                                 } @else {
                                     <p-tag [value]="membro.accessoApp" [severity]="getAccessoSeverity(membro.accessoApp)" />
                                 }
                             </td>
                             <td>
                                 @if (canManagePrivacy && membro.consensoPrivacyStato === 'Da inviare') {
-                                    <button pButton type="button" label="Invia consenso" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
+                                    <button pButton type="button" label="Da inviare" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
                                 } @else {
                                     <span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span>
                                 }
@@ -401,20 +443,14 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                 <td>
                                     <div class="row-actions">
                                         @if (canEditMembers) {
-                                            <button pButton type="button" label="Modifica carisma" icon="pi pi-user-edit" severity="info" text (click)="apriModificaRuolo(membro)"></button>
-                                            <button pButton type="button" label="Modifica contatti" icon="pi pi-address-book" severity="secondary" text (click)="apriModificaContattiMembro(membro)"></button>
-                                            <button pButton type="button" icon="pi pi-trash" severity="danger" text ariaLabel="Elimina" (click)="eliminaMembro(membro.id)"></button>
+                                            <button pButton type="button" label="Dettaglio" icon="pi pi-eye" severity="secondary" text (click)="apriDettaglioFratello(membro)"></button>
+                                            <button pButton type="button" label="Modifica" icon="pi pi-pencil" severity="info" text (click)="modificaMembro(membro)"></button>
                                         }
                                         @if (canManagePrivacy) {
-                                            @if (isDaInvitare(membro)) {
-                                                <button pButton type="button" label="Invia invito" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
-                                                <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoFratello(membro)"></button>
-                                                <button pButton type="button" label="WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoFratello(membro)"></button>
-                                                <button pButton type="button" label="Dettaglio" icon="pi pi-eye" severity="secondary" text (click)="apriDettaglioFratello(membro)"></button>
-                                            }
-                                            <button pButton type="button" label="Modifica privacy" icon="pi pi-shield" severity="secondary" text (click)="apriModificaPrivacy(membro)"></button>
-                                            <button pButton type="button" label="Anteprima modulo" icon="pi pi-eye" severity="secondary" text (click)="apriAnteprimaPrivacy(membro)"></button>
-                                            <button pButton type="button" label="Invia modulo privacy" icon="pi pi-send" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
+                                            <button pButton type="button" label="Invia invito" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                            <button pButton type="button" label="Copia link" icon="pi pi-copy" severity="secondary" text (click)="copiaLinkInvitoFratello(membro)"></button>
+                                            <button pButton type="button" label="WhatsApp" icon="pi pi-whatsapp" severity="secondary" text (click)="apriWhatsappInvitoFratello(membro)"></button>
+                                            <button pButton type="button" label="Archivia" icon="pi pi-archive" severity="danger" text (click)="archiviaFratello(membro)"></button>
                                         }
                                     </div>
                                 </td>
@@ -428,7 +464,9 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     </ng-template>
                 </p-table>
             </section>
+            }
 
+            @if (membri.length) {
             <section class="member-cards" aria-label="Membri comunitÃ ">
                 @for (membro of membriFiltrati; track membro.id) {
                     <article class="member-card">
@@ -449,7 +487,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                 <dt>Accesso app</dt>
                                 <dd>
                                     @if (canManagePrivacy && membro.accessoApp === 'Da invitare') {
-                                        <button pButton type="button" label="Invita" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
+                                        <button pButton type="button" label="Da invitare" icon="pi pi-send" severity="success" text (click)="inviaInvitoFratello(membro)"></button>
                                     } @else {
                                         {{ membro.accessoApp }}
                                     }
@@ -459,7 +497,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                                 <dt>Privacy</dt>
                                 <dd>
                                     @if (canManagePrivacy && membro.consensoPrivacyStato === 'Da inviare') {
-                                        <button pButton type="button" label="Invia consenso" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
+                                        <button pButton type="button" label="Da inviare" icon="pi pi-shield" severity="success" text (click)="apriInvioPrivacy(membro)"></button>
                                     } @else {
                                         <span class="privacy-badge" [ngClass]="getPrivacyClass(membro.consensoPrivacyStato)">{{ membro.consensoPrivacyStato }}</span>
                                     }
@@ -471,25 +509,21 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                         @if (canEditMembers || canManagePrivacy) {
                             <div class="card-actions">
                                 @if (canEditMembers) {
-                                    <button pButton type="button" icon="pi pi-user-edit" label="Modifica carisma" severity="info" outlined (click)="apriModificaRuolo(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-address-book" label="Contatti" severity="secondary" outlined (click)="apriModificaContattiMembro(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-eye" label="Dettaglio" severity="secondary" outlined (click)="apriDettaglioFratello(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-pencil" label="Modifica" severity="info" outlined (click)="modificaMembro(membro)"></button>
                                 }
                                 @if (canManagePrivacy) {
-                                    @if (isDaInvitare(membro)) {
-                                        <button pButton type="button" icon="pi pi-send" label="Invia invito" severity="success" outlined (click)="inviaInvitoFratello(membro)"></button>
-                                        <button pButton type="button" icon="pi pi-copy" label="Copia link" severity="secondary" outlined (click)="copiaLinkInvitoFratello(membro)"></button>
-                                        <button pButton type="button" icon="pi pi-whatsapp" label="WhatsApp" severity="secondary" outlined (click)="apriWhatsappInvitoFratello(membro)"></button>
-                                        <button pButton type="button" icon="pi pi-eye" label="Dettaglio" severity="secondary" outlined (click)="apriDettaglioFratello(membro)"></button>
-                                    }
-                                    <button pButton type="button" icon="pi pi-shield" label="Privacy" severity="secondary" outlined (click)="apriModificaPrivacy(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-eye" label="Anteprima" severity="secondary" outlined (click)="apriAnteprimaPrivacy(membro)"></button>
-                                    <button pButton type="button" icon="pi pi-send" label="Invia modulo" severity="success" outlined (click)="apriInvioPrivacy(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-send" label="Invia invito" severity="success" outlined (click)="inviaInvitoFratello(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-copy" label="Copia link" severity="secondary" outlined (click)="copiaLinkInvitoFratello(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-whatsapp" label="WhatsApp" severity="secondary" outlined (click)="apriWhatsappInvitoFratello(membro)"></button>
+                                    <button pButton type="button" icon="pi pi-archive" label="Archivia" severity="danger" outlined (click)="archiviaFratello(membro)"></button>
                                 }
                             </div>
                         }
                     </article>
                 }
             </section>
+            }
 
             @if (ruoloModalMembro) {
                 <div class="modal-backdrop" role="presentation" (click)="chiudiModali()">
@@ -754,6 +788,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             .controls-card,
             .community-content-header,
             .census-actions-card,
+            .demo-data-banner,
             .member-card,
             .action-message,
             .catechisti-card {
@@ -776,6 +811,43 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
             .census-actions-card a,
             .census-actions-card button {
                 min-height: 44px;
+            }
+
+            .demo-data-banner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                border-color: #fecaca;
+                background: #fff7ed;
+            }
+
+            .demo-data-banner div,
+            .empty-members-state {
+                display: grid;
+                gap: 0.4rem;
+            }
+
+            .empty-members-state {
+                min-height: 18rem;
+                align-content: center;
+            }
+
+            .empty-members-state i {
+                font-size: 2.5rem;
+                color: #2563eb;
+            }
+
+            .empty-members-state h2,
+            .empty-members-state p {
+                margin: 0;
+            }
+
+            .empty-actions {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.75rem;
             }
 
             .identity-card,
@@ -852,48 +924,8 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 gap: 0.45rem;
             }
 
-            .unit-members {
-                margin: 0;
-                padding-left: 1.1rem;
-                color: #334155;
-                line-height: 1.45;
-            }
-
             .unit-actions button {
                 min-height: 40px;
-            }
-
-            .operative-permissions-card {
-                margin-bottom: 1rem;
-                padding: 1rem;
-            }
-
-            .permission-request-form {
-                display: grid;
-                grid-template-columns: minmax(14rem, 0.8fr) minmax(16rem, 1fr) auto;
-                gap: 1rem;
-                align-items: end;
-            }
-
-            .permission-requests-list {
-                display: grid;
-                gap: 0.75rem;
-            }
-
-            .permission-requests-list article {
-                display: flex;
-                justify-content: space-between;
-                gap: 1rem;
-                padding: 0.85rem;
-                border-radius: 0.9rem;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-            }
-
-            .permission-requests-list span,
-            .permission-requests-list small,
-            .empty-copy {
-                color: #475569;
             }
 
             .contact-list {
@@ -918,17 +950,6 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 color: #111827;
                 font-weight: 700;
                 overflow-wrap: anywhere;
-            }
-
-            .preview-link {
-                color: #17335f;
-                font-size: 0.85rem;
-                font-weight: 800;
-                text-decoration: none;
-            }
-
-            .preview-link:hover {
-                text-decoration: underline;
             }
 
             .action-message {
@@ -1274,8 +1295,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 }
 
                 .member-form,
-                .catechisti-grid,
-                .permission-request-form {
+                .catechisti-grid {
                     grid-template-columns: 1fr;
                 }
 
@@ -1338,6 +1358,7 @@ export class Comunita {
     nuovoMembroMinimo = this.creaNuovoMembroMinimo();
     quickMode: CensimentoFratelloMode = null;
     quickBrother: FratelloQuickForm = this.creaQuickBrotherForm();
+    importMode = false;
     messaggio = '';
     permessoRichiesto: PermessoOperativoRichiedibile = 'Collaboratore convivenze';
     motivazionePermesso = '';
@@ -1417,6 +1438,15 @@ export class Comunita {
             const matchRuolo = !this.ruoloFiltro || membro.ruolo === this.ruoloFiltro;
             return matchQuery && matchRuolo;
         }).sort((a, b) => this.compareMembri(a, b));
+    }
+
+    get mostraBannerDatiDemo() {
+        if (this.isDemo || !this.membri.length) {
+            return false;
+        }
+
+        const firmeDemo = new Set(['don antonio|grappone', 'don giulio|barbieri', 'silvia|corona', 'alessandro|arciero', 'marco|bianchi', 'lucia|verdi']);
+        return this.membri.length > 3 || this.membri.some((membro) => firmeDemo.has(this.memberKey(membro)));
     }
 
     get conteggiRuolo() {
@@ -1528,6 +1558,31 @@ export class Comunita {
         this.quickBrother = this.creaQuickBrotherForm();
     }
 
+    apriImportaElenco() {
+        this.importMode = true;
+    }
+
+    chiudiImportaElenco() {
+        this.importMode = false;
+    }
+
+    caricaDatiDemoFratelli() {
+        const demo = loadDemoCommunityMembers();
+        this.membri = demo.map((member, index) => this.creaMembroDaCommunityMember(member, index + 1));
+        this.prossimoId = this.membri.length + 1;
+        this.importMode = false;
+        this.messaggio = 'Caricati 3 fratelli demo per provare il flusso di censimento.';
+    }
+
+    svuotaElencoFratelli() {
+        clearCommunityMembers();
+        this.membri = [];
+        this.prossimoId = 1;
+        this.ricerca = '';
+        this.ruoloFiltro = null;
+        this.messaggio = 'Elenco fratelli svuotato. Puoi iniziare un nuovo censimento.';
+    }
+
     salvaFlussoFratelloRapido() {
         const payload = {
             nome: this.quickBrother.nome.trim(),
@@ -1540,8 +1595,8 @@ export class Comunita {
             note: this.quickBrother.note.trim()
         };
 
-        if (!payload.nome || !payload.cognome || !payload.email) {
-            this.messaggio = 'Compila nome, cognome ed email prima di continuare.';
+        if (!payload.nome || !payload.cognome || (this.quickMode === 'invita' && !payload.email)) {
+            this.messaggio = this.quickMode === 'invita' ? 'Compila nome, cognome ed email prima di continuare.' : 'Compila nome e cognome prima di continuare.';
             return;
         }
 
@@ -1549,7 +1604,7 @@ export class Comunita {
         this.upsertMembroVisualeDaCommunityMember(member);
         this.messaggio =
             this.quickMode === 'invita'
-                ? `Invito simulato inviato. Link: ${this.publicInviteUrl(member)}`
+                ? `Invito simulato creato. Link: ${this.publicInviteUrl(member)}`
                 : 'Fratello censito in modalità mock. Privacy e consensi restano da completare personalmente.';
         this.chiudiFlussoFratelloRapido();
     }
@@ -1576,7 +1631,7 @@ export class Comunita {
     }
 
     apriDettaglioFratello(membro: MembroComunitaPilota) {
-        this.modificaMembro(membro);
+        this.apriAnteprimaPrivacy(membro);
     }
 
     inviaInvitiMassiviFratelli() {
@@ -1606,6 +1661,18 @@ export class Comunita {
         return membro.accessoApp === 'Da invitare' || membro.consensoPrivacyStato === 'Da inviare' || membro.consensoPrivacyStato === 'Da completare';
     }
 
+    archiviaFratello(membro: MembroComunitaPilota) {
+        const updated = { ...membro, accessoApp: 'Non attivo' as AccessoApp, statoMembro: 'Non attivo' as StatoMembro };
+        this.membri = this.membri.map((item) => (item.id === membro.id ? updated : item));
+
+        const stored = this.findCommunityMemberForMembro(membro);
+        if (stored) {
+            updateCommunityMember({ ...stored, statoProfilo: 'ARCHIVIATO' });
+        }
+
+        this.messaggio = 'Fratello archiviato in modalità mock.';
+    }
+
     salvaMembro() {
         if (!this.membroInModifica) {
             this.salvaCensimentoMinimo();
@@ -1624,7 +1691,9 @@ export class Comunita {
             note: this.form.note.trim()
         };
 
-        this.membri = this.membri.map((item) => (item.id === this.membroInModifica?.id ? { ...membro, id: item.id } : item));
+        const updated = { ...membro, id: this.membroInModifica.id };
+        this.membri = this.membri.map((item) => (item.id === this.membroInModifica?.id ? updated : item));
+        this.aggiornaStorageDaMembroVisuale(updated);
         this.annullaForm();
     }
 
@@ -1721,7 +1790,9 @@ export class Comunita {
         const email = this.emailContatto.trim();
 
         if (this.contattiModalMembro) {
-            this.membri = this.membri.map((membro) => (membro.id === this.contattiModalMembro?.id ? { ...membro, telefono, email } : membro));
+            const updated = { ...this.contattiModalMembro, telefono, email };
+            this.membri = this.membri.map((membro) => (membro.id === this.contattiModalMembro?.id ? updated : membro));
+            this.aggiornaStorageDaMembroVisuale(updated);
         }
 
         if (this.contattiModalCatechista) {
@@ -1768,15 +1839,13 @@ export class Comunita {
         if (!this.privacyModalMembro) {
             return;
         }
-        this.membri = this.membri.map((membro) =>
-            membro.id === this.privacyModalMembro?.id
-                ? {
-                      ...membro,
-                      consensoPrivacyStato: this.nuovaPrivacy,
-                      moduloPrivacyRicevuto: this.privacyModuloRicevuto
-                  }
-                : membro
-        );
+        const updated = {
+            ...this.privacyModalMembro,
+            consensoPrivacyStato: this.nuovaPrivacy,
+            moduloPrivacyRicevuto: this.privacyModuloRicevuto
+        };
+        this.membri = this.membri.map((membro) => (membro.id === this.privacyModalMembro?.id ? updated : membro));
+        this.aggiornaStorageDaMembroVisuale(updated);
         this.messaggio = 'Privacy aggiornata';
         this.chiudiModali();
     }
@@ -1810,6 +1879,7 @@ export class Comunita {
                   }
                 : membro
         );
+        this.membri.filter((membro) => ids.includes(membro.id)).forEach((membro) => this.aggiornaStorageDaMembroVisuale(membro));
         this.messaggio = this.invioMassivo ? `Invio mock completato: ${ids.length} moduli segnati come inviati` : 'Modulo privacy segnato come inviato';
         this.chiudiModali();
     }
@@ -1887,7 +1957,36 @@ export class Comunita {
         this.membri = [...this.membri, mapped];
     }
 
+    private aggiornaStorageDaMembroVisuale(membro: MembroComunitaPilota) {
+        const stored = this.findCommunityMemberForMembro(membro);
+        if (!stored) {
+            return;
+        }
+
+        updateCommunityMember({
+            ...stored,
+            nome: membro.nome,
+            cognome: membro.cognome,
+            email: membro.email,
+            telefono: membro.telefono,
+            indirizzo: membro.indirizzo,
+            ruoloComunitario: membro.ruolo,
+            note: membro.note,
+            statoProfilo: this.mapCommunityMemberStatus(membro),
+            statoPrivacy: this.mapCommunityPrivacyStatus(membro),
+            statoInvito: membro.accessoApp === 'Invito inviato' || membro.accessoApp === 'Invitato' ? 'INVIATO' : stored.statoInvito
+        });
+    }
+
     eliminaMembro(id: number) {
+        const membro = this.membri.find((item) => item.id === id);
+        if (membro) {
+            const stored = this.findCommunityMemberForMembro(membro);
+            if (stored) {
+                saveCommunityMembers(readCommunityMembers().filter((item) => item.id !== stored.id));
+            }
+        }
+
         this.membri = this.membri.filter((membro) => membro.id !== id);
         if (this.membroInModifica?.id === id) {
             this.annullaForm();
@@ -2168,14 +2267,7 @@ export class Comunita {
     }
 
     private creaMembriGestionali(): MembroComunitaPilota[] {
-        const base = this.currentCommunity.isPilot ? UNITA_MEMBRI_COMUNITA_PILOTA.map((unita) => this.creaMembroDaUnitaPilota(unita)) : [];
-        const censiti = leggiUnitaCensimento().flatMap((unita) => this.creaMembriDaUnitaCensimento(unita));
-        const fratelliMock = readCommunityMembers().map((member, index) => this.creaMembroDaCommunityMember(member, base.length + censiti.length + index + 1));
-        const chiaviEsistenti = new Set(base.map((membro) => this.memberKey(membro)));
-        const nuoviCensiti = censiti.filter((membro) => !chiaviEsistenti.has(this.memberKey(membro)));
-        nuoviCensiti.forEach((membro) => chiaviEsistenti.add(this.memberKey(membro)));
-        const nuoviMock = fratelliMock.filter((membro) => !chiaviEsistenti.has(this.memberKey(membro)));
-        return [...base, ...nuoviCensiti.map((membro, index) => ({ ...membro, id: base.length + index + 1 })), ...nuoviMock];
+        return readCommunityMembers().map((member, index) => this.creaMembroDaCommunityMember(member, index + 1));
     }
 
     private creaMembroDaCommunityMember(member: CommunityMemberMock, id: number): MembroComunitaPilota {
@@ -2224,115 +2316,34 @@ export class Comunita {
             case 'REVOCATA':
                 return 'Revocato';
             default:
-                return 'Da completare';
+                return member.statoInvito === 'INVIATO' ? 'Da completare' : 'Da inviare';
+        }
+    }
+
+    private mapCommunityMemberStatus(membro: MembroComunitaPilota): CommunityMemberMock['statoProfilo'] {
+        if (membro.statoMembro === 'Non attivo') return 'ARCHIVIATO';
+        if (membro.statoMembro === 'Attivo' && membro.consensoPrivacyStato === 'Raccolto') return 'COMPLETATO';
+        if (membro.accessoApp === 'Invito inviato' || membro.accessoApp === 'Invitato') return 'INVITO_INVIATO';
+        return 'DA_COMPLETARE';
+    }
+
+    private mapCommunityPrivacyStatus(membro: MembroComunitaPilota): CommunityMemberMock['statoPrivacy'] {
+        switch (membro.consensoPrivacyStato) {
+            case 'Raccolto':
+                return 'COMPLETATA';
+            case 'Inviato':
+                return 'INVIATA';
+            case 'Parziale':
+                return 'PARZIALE';
+            case 'Revocato':
+                return 'REVOCATA';
+            default:
+                return 'MANCANTE';
         }
     }
 
     private memberKey(membro: MembroComunitaPilota) {
         return `${membro.nome.toLowerCase()}|${membro.cognome.toLowerCase()}|${membro.email.toLowerCase()}`;
-    }
-
-    private creaMembroDaUnitaPilota(unita: UnitaMembroComunita): MembroComunitaPilota {
-        const membriCompleti = unita.membri
-            .map((membroUnita) => MEMBRI_COMUNITA_PILOTA.find((membro) => membro.id === membroUnita.membroId))
-            .filter((membro): membro is MembroComunitaPilota => !!membro);
-
-        if (unita.tipoUnita !== 'Coppia') {
-            const membro = membriCompleti[0];
-            return {
-                ...(membro ?? this.creaMembroMinimo(unita.nomeVisualizzato, '', unita.emailRiferimento, unita.note)),
-                id: unita.id,
-                ruolo: membro?.ruolo ?? '',
-                indirizzo: membro?.indirizzo ?? ''
-            };
-        }
-
-        const telefoni = membriCompleti
-            .filter((membro) => membro.telefono.trim())
-            .map((membro) => `${membro.telefono.trim()} (${membro.nome})`);
-        const emails = membriCompleti.map((membro) => membro.email.trim()).filter(Boolean);
-        const carismi = [...new Set(membriCompleti.map((membro) => this.displayCarisma(membro)).filter((carisma) => carisma !== '—'))];
-        const primo = membriCompleti[0];
-        const nomeCoppia = membriCompleti.map((membro) => membro.nome.trim()).filter(Boolean).join(' e ') || unita.nomeVisualizzato;
-        const cognomeFamiglia = primo?.cognome ?? '';
-
-        return {
-            id: unita.id,
-            nome: nomeCoppia,
-            cognome: cognomeFamiglia,
-            nomeCompleto: cognomeFamiglia ? `${nomeCoppia} ${cognomeFamiglia}`.trim() : nomeCoppia,
-            ruolo: carismi.length === 1 ? (carismi[0] as MembroComunitaPilota['ruolo']) : '',
-            accessoApp: primo?.accessoApp ?? 'Da invitare',
-            statoMembro: primo?.statoMembro ?? 'Attivo',
-            consensoPrivacyStato: primo?.consensoPrivacyStato ?? 'Da inviare',
-            moduloPrivacyInviato: membriCompleti.some((membro) => membro.moduloPrivacyInviato),
-            moduloPrivacyRicevuto: membriCompleti.every((membro) => membro.moduloPrivacyRicevuto),
-            dataInvioModuloPrivacy: primo?.dataInvioModuloPrivacy ?? '',
-            telefono: telefoni.join('\n'),
-            indirizzo: membriCompleti.find((membro) => membro.indirizzo.trim())?.indirizzo ?? '',
-            email: unita.emailRiferimento || emails[0] || '',
-            note: unita.note
-        };
-    }
-
-    private creaMembriDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota[] {
-        if (unita.tipoUnita === 'Coppia') {
-            return [this.creaMembroCoppiaDaUnitaCensimento(unita)];
-        }
-
-        return unita.persone.map((persona, index) => ({
-            id: index + 1,
-            nome: persona.nome,
-            cognome: persona.cognome,
-            nomeCompleto: `${persona.nome} ${persona.cognome}`.trim(),
-            ruolo: '',
-            accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
-            statoMembro: 'Attivo',
-            consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da completare',
-            moduloPrivacyInviato: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato',
-            moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
-            dataInvioModuloPrivacy: '',
-            telefono: persona.telefono || unita.telefonoRiferimento,
-            indirizzo: '',
-            email: persona.email || unita.emailRiferimento,
-            note: `Unità censimento: ${unita.nomeVisualizzato}`
-        }));
-    }
-
-    private creaMembroCoppiaDaUnitaCensimento(unita: UnitaCensimentoComunita): MembroComunitaPilota {
-        const persone = unita.persone.map((persona) => ({
-            nome: persona.nome.trim(),
-            cognome: persona.cognome.trim(),
-            email: persona.email.trim(),
-            telefono: persona.telefono.trim()
-        }));
-        const componenti = persone.map((persona) => `${persona.nome} ${persona.cognome}`.trim()).filter(Boolean);
-        const cognomi = [...new Set(unita.persone.map((persona) => persona.cognome.trim()).filter(Boolean))];
-        const emails = [...new Set(persone.map((persona) => persona.email).filter(Boolean))];
-        const telefoniConNome = persone
-            .filter((persona) => persona.telefono)
-            .map((persona) => `${persona.telefono}${persona.nome ? ` (${persona.nome})` : ''}`);
-        const nomeCoppia = persone.map((persona) => persona.nome).filter(Boolean).join(' e ') || unita.nomeVisualizzato || 'Famiglia';
-        const cognomeFamiglia = persone[0]?.cognome || cognomi[0] || '';
-        const nomeCompleto = cognomeFamiglia ? `${nomeCoppia} ${cognomeFamiglia}`.trim() : nomeCoppia;
-
-        return {
-            id: unita.id,
-            nome: nomeCoppia,
-            cognome: cognomeFamiglia || 'Coppia',
-            nomeCompleto,
-            ruolo: '',
-            accessoApp: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato' ? 'Invito inviato' : 'Da invitare',
-            statoMembro: 'Attivo',
-            consensoPrivacyStato: unita.statoConsensi === 'Raccolto' ? 'Raccolto' : 'Da completare',
-            moduloPrivacyInviato: unita.statoInvito === 'Invito inviato' || unita.statoInvito === 'Inviato',
-            moduloPrivacyRicevuto: unita.statoConsensi === 'Raccolto',
-            dataInvioModuloPrivacy: '',
-            telefono: telefoniConNome.join('\n') || unita.telefonoRiferimento,
-            indirizzo: '',
-            email: emails[0] || unita.emailRiferimento,
-            note: `Unità censimento coppia: ${unita.nomeVisualizzato}. Componenti: ${componenti.join(', ')}`
-        };
     }
 
     private leggiEquipeCatechisti(): EquipeCatechistiUnita[] {

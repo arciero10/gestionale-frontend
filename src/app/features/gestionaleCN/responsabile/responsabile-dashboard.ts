@@ -323,7 +323,7 @@ export class ResponsabileDashboard {
                     title: 'Membri comunità / Censimento fratelli',
                     description: 'Censimento, inviti e anagrafica',
                     icon: 'pi pi-user-plus',
-                    route: '/gestionale-cn/membri-comunita'
+                    route: '/gestionale-cn/comunita'
                 },
                 {
                     title: 'Permessi assegnati',
