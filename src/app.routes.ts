@@ -123,6 +123,11 @@ export const routes: Routes = [
     loadComponent: () => import('@/features/strutture/area-strutture').then((c) => c.AreaStruttureRichieste)
   },
   {
+    path: 'admin-strutture-test',
+    loadComponent: () => import('@/features/gestionaleCN/admin-strutture/admin-strutture').then((c) => c.AdminStrutture),
+    data: { breadcrumb: 'Strutture da approvare', visibilita: 'test', testAccess: true }
+  },
+  {
     path: 'gestionale-cn',
     component: AppLayout,
     canMatch: [gestionaleAuthGuard],

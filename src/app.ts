@@ -472,6 +472,7 @@ export class App {
       path === '/privacy' ||
       path === '/completa-profilo' ||
       path === '/registrazione-fratello' ||
+      path === '/admin-strutture-test' ||
       path.startsWith('/completa-anagrafica/') ||
       path === '/area-strutture' ||
       path.startsWith('/area-strutture/')
@@ -604,7 +605,7 @@ export class App {
       return;
     }
 
-    if (this.authenticated() && isSpecificInternalRoute) {
+    if (isSpecificInternalRoute) {
       console.log('[AUTH] preserving requested route', current);
       this.authenticated.set(true);
       this.msalReady.set(true);
