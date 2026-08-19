@@ -53,6 +53,11 @@ export interface StructureAccreditationResponse extends StructureAccreditationRe
     rejectionReason?: string | null;
     suspendedAt?: string | null;
     suspensionReason?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    googlePlaceId?: string | null;
+    googleFormattedAddress?: string | null;
+    addressVerified?: boolean;
     photos?: StructurePhotoResponse[] | null;
 }
 

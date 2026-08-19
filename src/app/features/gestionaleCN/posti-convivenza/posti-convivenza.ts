@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnInit, inject, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -76,19 +76,17 @@ type PostoConCensimento = PostoConvivenza & {
 @Component({
     selector: 'app-posti-convivenza',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TagModule],
+    imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, SelectModule, TagModule],
     template: `
         <section class="posti-page" style="background:#f8fafc;border-radius:22px;padding:1rem">
-            <header style="position:relative;min-height:clamp(220px,30vw,340px);overflow:hidden;border-radius:22px;display:flex;align-items:flex-end;box-shadow:0 16px 36px rgba(15,23,42,.14)">
+            <section style="display:grid;gap:.35rem;padding:.35rem .15rem .1rem">
+                <h1 style="margin:0;color:#0f172a;font-size:clamp(2rem,3vw,2.75rem);line-height:1.05">Posti di Convivenza</h1>
+                <p style="margin:0;color:#475569;font-weight:700;font-size:1rem">Catalogo delle strutture approvate per convivenze, incontri e ritiri.</p>
+            </section>
+
+            <header style="position:relative;min-height:clamp(220px,30vw,340px);overflow:hidden;border-radius:22px;box-shadow:0 16px 36px rgba(15,23,42,.14)">
                 <img src="assets/images/posti-convivenza/posti-convivenza-hero.jpg" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center" />
-                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.06) 20%,rgba(15,23,42,.58) 100%)"></div>
-                <div style="position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;width:100%;padding:clamp(1rem,3vw,2rem);flex-wrap:wrap">
-                    <div style="max-width:760px">
-                        <h1 style="margin:0 0 .35rem;color:#fff;font-size:clamp(2rem,4vw,3.3rem);line-height:1.05;text-shadow:0 2px 12px rgba(15,23,42,.35)">Posti di Convivenza</h1>
-                        <p style="margin:0;color:#f8fafc;font-weight:700;font-size:clamp(.95rem,1.6vw,1.1rem);text-shadow:0 2px 10px rgba(15,23,42,.35)">Catalogo delle strutture approvate per convivenze, incontri e ritiri.</p>
-                    </div>
-                    <a pButton [routerLink]="mappaRoute" icon="pi pi-map" label="Vista mappa futura" outlined></a>
-                </div>
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,0) 55%,rgba(15,23,42,.18) 100%)"></div>
             </header>
 
             @if (showSegnalaForm && canCreatePosto) {
@@ -309,8 +307,8 @@ type PostoConCensimento = PostoConvivenza & {
                     <div class="map-shell">
                         <div #mapContainer class="mock-map" aria-label="Mappa strutture censite">
                             <div class="map-toolbar">
-                                <span>Mappa strutture</span>
-                                <strong>Google Maps ready</strong>
+                                <span>Posizione strutture</span>
+                                <strong>Anteprima geografica delle strutture approvate</strong>
                             </div>
                             <div class="map-grid-line line-a"></div>
                             <div class="map-grid-line line-b"></div>
@@ -340,21 +338,6 @@ type PostoConCensimento = PostoConvivenza & {
                         </div>
                     </div>
 
-                    <section class="street-card">
-                        <div class="street-preview">
-                            <div>
-                                <span>Anteprima luogo</span>
-                                <strong>{{ selected.nome }}</strong>
-                                <small>Anteprima luogo pronta per futura integrazione Google Maps.</small>
-                            </div>
-                        </div>
-                        <dl>
-                            <div><dt>Lat/Lng</dt><dd>{{ selected.lat }}, {{ selected.lng }}</dd></div>
-                            <div><dt>Google Maps URL</dt><dd>{{ selected.googleMapsUrl || googleMapsUrl(selected) }}</dd></div>
-                            <div><dt>Street View URL</dt><dd>{{ streetViewUrl(selected) }}</dd></div>
-                        </dl>
-                    </section>
-
                     <section class="detail-card" id="posto-detail">
                         <div class="detail-head">
                             <div>
@@ -379,7 +362,7 @@ type PostoConCensimento = PostoConvivenza & {
                         @if (hasStructurePhoto(selected)) {
                             <img class="detail-cover" style="width:100%;max-height:280px;object-fit:cover;border-radius:14px" [src]="selected.fotoCopertina" [alt]="selected.nome" />
                         } @else {
-                            <div class="detail-cover placeholder-cover" style="min-height:150px;display:grid;place-items:center;gap:.4rem;border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;color:#64748b;font-weight:800"><i class="pi pi-building" style="font-size:1.5rem"></i><span>Nessuna foto caricata</span></div>
+                            <div class="detail-cover placeholder-cover" style="min-height:92px;display:grid;place-items:center;gap:.35rem;border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;color:#64748b;font-weight:800"><i class="pi pi-building" style="font-size:1.3rem"></i><span>Nessuna foto caricata</span></div>
                         }
 
                         @if (!selected.email) {
@@ -509,7 +492,6 @@ type PostoConCensimento = PostoConvivenza & {
             .filters,
             .list-panel,
             .map-shell,
-            .street-card,
             .detail-card {
                 background: rgba(255,255,255,.96);
                 border: 1px solid #e2e8f0;
@@ -775,7 +757,6 @@ type PostoConCensimento = PostoConvivenza & {
                 .detail-grid { grid-template-columns: 1fr; }
                 .service-filter button { flex: 1 1 100%; justify-content: center; }
                 .mock-map { min-height: 360px; height: 420px; }
-                .street-card { grid-template-columns: 1fr; }
                 .posto-item { min-height: auto; padding: 1rem; }
                 .detail-head { flex-direction: column; }
             }
@@ -1241,11 +1222,10 @@ ${this.comunitaNome}`;
     }
 
     googleMapsUrl(posto: PostoConCensimento) {
+        if (posto.latitudine != null && posto.longitudine != null) {
+            return `https://www.google.com/maps/search/?api=1&query=${posto.latitudine},${posto.longitudine}`;
+        }
         return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${posto.nome}, ${posto.indirizzo}, ${posto.citta}`)}`;
-    }
-
-    streetViewUrl(posto: PostoConCensimento) {
-        return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${posto.lat},${posto.lng}`;
     }
 
     private creaPostiConCensimento(): PostoConCensimento[] {
@@ -1399,8 +1379,8 @@ ${this.comunitaNome}`;
             zona: struttura.city || struttura.region || 'Da completare',
             citta: struttura.city || 'Da completare',
             regione: struttura.region || 'Da completare',
-            indirizzo: struttura.address || '',
-            indirizzoNormalizzato: struttura.address || '',
+            indirizzo: struttura.googleFormattedAddress || struttura.address || '',
+            indirizzoNormalizzato: struttura.googleFormattedAddress || struttura.address || '',
             capienza: this.toNullableNumber(struttura.capacity),
             referente: struttura.referentName || '',
             telefono: struttura.phone || '',
@@ -1413,8 +1393,8 @@ ${this.comunitaNome}`;
             longitudine: lng,
             lat,
             lng,
-            placeId: null,
-            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${struttura.name}, ${struttura.address}, ${struttura.city}, ${struttura.region}`)}`,
+            placeId: struttura.googlePlaceId || null,
+            googleMapsUrl: this.googleMapsUrlFromStructure(struttura, lat, lng),
             ultimoContatto: struttura.updatedAt || struttura.approvedAt || struttura.createdAt || null,
             storicoConvivenze: [],
             servizi: {
@@ -1532,6 +1512,10 @@ ${this.comunitaNome}`;
     }
 
     private coordinateApiFallback(struttura: StructureAccreditationResponse, index: number): [number, number] {
+        if (this.isValidCoordinate(struttura.latitude, struttura.longitude)) {
+            return [Number(struttura.latitude), Number(struttura.longitude)];
+        }
+
         const citta = struttura.city || '';
         const basi: Record<string, [number, number]> = {
             Roma: [41.9028, 12.4964],
@@ -1542,6 +1526,19 @@ ${this.comunitaNome}`;
         const base = basi[citta] ?? (citta.includes('Santa') ? basi['Santa Marinella'] : basi['Roma']);
         const offset = (index % 8) * 0.006;
         return [Number((base[0] + offset).toFixed(6)), Number((base[1] - offset).toFixed(6))];
+    }
+
+    private isValidCoordinate(latitude: number | null | undefined, longitude: number | null | undefined) {
+        return typeof latitude === 'number' && typeof longitude === 'number' && Number.isFinite(latitude) && Number.isFinite(longitude);
+    }
+
+    private googleMapsUrlFromStructure(struttura: StructureAccreditationResponse, lat: number, lng: number) {
+        if (this.isValidCoordinate(struttura.latitude, struttura.longitude)) {
+            return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        }
+
+        const query = struttura.googleFormattedAddress || `${struttura.name}, ${struttura.address}, ${struttura.city}, ${struttura.region}`;
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
     }
 
     private createTipiOptions(): TipoStrutturaMappa[] {
