@@ -826,7 +826,7 @@ export class PostiConvivenza implements OnInit {
         { key: 'spazioBambini', label: 'Spazio bambini' }
     ];
     readonly censimentoSanGaetanoLink = SAN_GAETANO_CENSIMENTO_LINK;
-    posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : this.creaPostiConCensimento();
+    posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : [];
     struttureSegnalate = this.isDemo ? [] : readStruttureSegnalate().filter((item) => !item.pubblicata && item.stato !== 'Scartata');
     tipi: TipoStrutturaMappa[] = this.createTipiOptions();
     zone: string[] = this.createZoneOptions();
@@ -910,14 +910,11 @@ export class PostiConvivenza implements OnInit {
         this.struttureApi.getCatalogStructures().subscribe({
             next: (strutture) => {
                 const catalogoReale = (Array.isArray(strutture) ? strutture : [])
-                    .filter((struttura) => struttura?.status === 'APPROVATA')
                     .map((struttura, index) => this.creaPostoDaApiStructure(struttura, index));
 
-                if (catalogoReale.length) {
-                    this.setPosti(catalogoReale);
-                } else {
-                    this.catalogoApiError = 'Nessuna struttura approvata ricevuta dall’API: mostro il catalogo locale di fallback.';
-                    this.setPosti(this.creaPostiConCensimento());
+                this.setPosti(catalogoReale);
+                if (!catalogoReale.length) {
+                    this.catalogoApiError = 'Nessuna struttura approvata disponibile.';
                 }
             },
             error: () => {
