@@ -32,6 +32,14 @@ export function isLocalAdminMockEnabled(): boolean {
     return ['localhost', '127.0.0.1'].includes(window.location.hostname) || localStorage.getItem('globalAdminMockEnabled') === 'true';
 }
 
+export function isAdminStructuresTestAccessEnabled(): boolean {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    return isLocalAdminMockEnabled() || window.location.hostname === 'test.eventidicomunita.it';
+}
+
 @Injectable({ providedIn: 'root' })
 export class PlatformAdminAccess {
     private readonly authService = inject(AuthService);
@@ -39,9 +47,14 @@ export class PlatformAdminAccess {
     readonly isPlatformAdmin = computed(() => isPlatformAdminEmail(this.authService.state().email) || isLocalAdminMockEnabled());
 }
 
-export const platformAdminGuard: CanMatchFn = () => {
+export const platformAdminGuard: CanMatchFn = (_route, segments) => {
     const access = inject(PlatformAdminAccess);
     const router = inject(Router);
+    const requestedPath = segments.map((segment) => segment.path).join('/');
+
+    if (requestedPath === 'admin/strutture' && isAdminStructuresTestAccessEnabled()) {
+        return true;
+    }
 
     return access.isPlatformAdmin() ? true : router.createUrlTree(['/forbidden']);
 };
