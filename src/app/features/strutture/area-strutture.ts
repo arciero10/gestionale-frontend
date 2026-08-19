@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
@@ -23,6 +24,7 @@ import {
     saveStrutturaProfile,
     statusLabelStruttura
 } from './struttura-profile.storage';
+import { StruttureApiService } from './strutture-api.service';
 
 const structurePageStyles = `
     .structure-entry {
@@ -370,10 +372,16 @@ export class AreaStruttureDashboard {
                     </div>
                 </header>
                 <ng-container *ngTemplateOutlet="formTemplate"></ng-container>
-                @if (message) { <div class="message status-box info">{{ message }}</div> }
+                @if (message) { <div class="message status-box" [ngClass]="messageType">{{ message }}</div> }
                 <footer>
                     <a pButton routerLink="/area-strutture" label="Indietro" icon="pi pi-arrow-left" severity="secondary" outlined></a>
-                    <button pButton type="submit" label="Salva e vai alla dashboard" icon="pi pi-check"></button>
+                    <button
+                        pButton
+                        type="submit"
+                        [label]="submitting ? 'Invio in corso...' : 'Invia richiesta di accreditamento'"
+                        [icon]="submitting ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
+                        [disabled]="submitting">
+                    </button>
                 </footer>
             </form>
         </main>
@@ -412,18 +420,63 @@ export class AreaStruttureDashboard {
 })
 export class AreaStruttureAccreditamento {
     private readonly router = inject(Router);
+    private readonly struttureApi = inject(StruttureApiService);
     readonly tipiStruttura = ['Casa di convivenza', 'Istituto religioso', 'Santuario', 'Casa per ferie', 'Albergo', 'Struttura di accoglienza', 'Altro'];
     form: StrutturaProfileMock = normalizeStrutturaProfile({ ...STRUTTURA_PROFILE_DEFAULT, ...(readStrutturaProfile() ?? {}) });
     message = '';
+    messageType: 'info' | 'success' | 'danger' = 'info';
+    submitting = false;
 
-    submit() {
-        if (!this.form.nome.trim()) {
-            this.message = 'Inserisci il nome della struttura.';
+    async submit() {
+        if (this.submitting) {
             return;
         }
-        saveStrutturaProfile(this.form, 'IN_ATTESA');
-        this.message = 'Profilo salvato. La struttura è in attesa di approvazione.';
-        setTimeout(() => void this.router.navigateByUrl('/area-strutture/dashboard'), 400);
+
+        if (!this.form.nome.trim()) {
+            this.message = 'Inserisci il nome della struttura.';
+            this.messageType = 'danger';
+            return;
+        }
+
+        this.submitting = true;
+        this.message = 'Invio della richiesta di accreditamento in corso...';
+        this.messageType = 'info';
+
+        try {
+            const response = await firstValueFrom(this.struttureApi.createAccreditation(this.form));
+            const savedPreview = normalizeStrutturaProfile({
+                ...this.form,
+                id: String(response.id),
+                updatedAt: response.updatedAt || response.createdAt || new Date().toISOString()
+            });
+
+            saveStrutturaProfile(savedPreview, 'IN_ATTESA');
+            this.message = 'Richiesta di accreditamento inviata correttamente.';
+            this.messageType = 'success';
+            setTimeout(() => void this.router.navigateByUrl('/area-strutture/in-attesa'), 500);
+        } catch (error) {
+            this.message = this.readErrorMessage(error);
+            this.messageType = 'danger';
+        } finally {
+            this.submitting = false;
+        }
+    }
+
+    private readErrorMessage(error: unknown): string {
+        if (error && typeof error === 'object' && 'error' in error) {
+            const body = (error as { error?: unknown }).error;
+            if (typeof body === 'string' && body.trim()) {
+                return body;
+            }
+            if (body && typeof body === 'object' && 'message' in body) {
+                const message = (body as { message?: unknown }).message;
+                if (typeof message === 'string' && message.trim()) {
+                    return message;
+                }
+            }
+        }
+
+        return 'Non è stato possibile inviare la richiesta di accreditamento. Controlla i dati e riprova.';
     }
 }
 
