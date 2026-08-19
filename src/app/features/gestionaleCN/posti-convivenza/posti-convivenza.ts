@@ -38,9 +38,11 @@ import {
     StrutturaProfileMock,
     activePromo,
     fotoCopertina,
+    normalizeStrutturaProfile,
     readProfileStatus,
     readStrutturaProfile
 } from '../../strutture/struttura-profile.storage';
+import { StructureAccreditationResponse, StructurePhotoResponse, StruttureApiService } from '../../strutture/strutture-api.service';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -195,6 +197,12 @@ type PostoConCensimento = PostoConvivenza & {
                     <div><span>{{ stato }}</span><strong>{{ countByDisponibilita(stato) }}</strong></div>
                 }
             </section>
+
+            @if (catalogoLoading) {
+                <section class="empty-state">Caricamento catalogo strutture approvate...</section>
+            } @else if (catalogoApiError) {
+                <section class="empty-state">{{ catalogoApiError }}</section>
+            }
 
             @if (!posti.length) {
                 <section class="empty-state">
@@ -410,12 +418,14 @@ type PostoConCensimento = PostoConvivenza & {
                                 <dl class="detail-grid">
                                     <div><dt>Posti letto</dt><dd>{{ selected.strutturaProfile.postiLetto ?? 'Da completare' }}</dd></div>
                                     <div><dt>Camere</dt><dd>{{ selected.strutturaProfile.camere ?? 'Da completare' }}</dd></div>
-                                    <div><dt>Sale</dt><dd>{{ displayValue(selected.strutturaProfile.sale) }}</dd></div>
+                                    <div><dt>Sale incontri</dt><dd>{{ displayValue(selected.strutturaProfile.sale) }}</dd></div>
                                     <div><dt>Cappella</dt><dd>{{ booleanLabel(selected.strutturaProfile.cappella) }}</dd></div>
                                     <div><dt>Mensa</dt><dd>{{ booleanLabel(selected.strutturaProfile.mensa) }}</dd></div>
                                     <div><dt>Cucina interna</dt><dd>{{ booleanLabel(selected.strutturaProfile.cucinaInterna) }}</dd></div>
                                     <div><dt>Parcheggio</dt><dd>{{ booleanLabel(selected.strutturaProfile.parcheggio) }}</dd></div>
-                                    <div><dt>Accessibilita</dt><dd>{{ booleanLabel(selected.strutturaProfile.accessibilitaDisabili) }}</dd></div>
+                                    <div><dt>Accessibilità disabili</dt><dd>{{ booleanLabel(selected.strutturaProfile.accessibilitaDisabili) }}</dd></div>
+                                    <div><dt>Spazi esterni</dt><dd>{{ booleanLabel(selected.strutturaProfile.spaziEsterni) }}</dd></div>
+                                    <div><dt>Famiglie con bambini</dt><dd>{{ booleanLabel(selected.strutturaProfile.famiglieConBambini) }}</dd></div>
                                     <div><dt>Tariffe indicative</dt><dd>{{ displayValue(selected.strutturaProfile.tariffeIndicative) }}</dd></div>
                                     <div><dt>Caparra</dt><dd>{{ displayValue(selected.strutturaProfile.condizioniCaparra) }}</dd></div>
                                     <div><dt>Cancellazione</dt><dd>{{ displayValue(selected.strutturaProfile.condizioniCancellazione) }}</dd></div>
@@ -795,6 +805,7 @@ export class PostiConvivenza implements OnInit {
     private readonly router = inject(Router);
     private readonly richiesteService = inject(RichiesteStruttureService);
     private readonly authService = inject(AuthService);
+    private readonly struttureApi = inject(StruttureApiService);
     readonly userAccessContext = getUserAccessContext();
     readonly canCreatePosto = canPerformAction('nuovo-posto', this.userAccessContext);
     readonly canSendStructureRequest = canPerformAction('invia-richiesta-struttura', this.userAccessContext);
@@ -812,10 +823,10 @@ export class PostiConvivenza implements OnInit {
         { key: 'spazioBambini', label: 'Spazio bambini' }
     ];
     readonly censimentoSanGaetanoLink = SAN_GAETANO_CENSIMENTO_LINK;
-    readonly posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : this.creaPostiConCensimento();
+    posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : this.creaPostiConCensimento();
     struttureSegnalate = this.isDemo ? [] : readStruttureSegnalate().filter((item) => !item.pubblicata && item.stato !== 'Scartata');
-    readonly tipi = Array.from(new Set(this.posti.map((posto) => posto.tipo)));
-    readonly zone = Array.from(new Set(this.posti.map((posto) => posto.zona || posto.citta))).sort();
+    tipi: TipoStrutturaMappa[] = this.createTipiOptions();
+    zone: string[] = this.createZoneOptions();
 
     filtroTesto = '';
     filtroZona: string | null = null;
@@ -856,6 +867,8 @@ export class PostiConvivenza implements OnInit {
     showSegnalaForm = false;
     segnalazioneErrore = '';
     segnalazioneForm = this.createEmptySegnalazioneForm();
+    catalogoLoading = false;
+    catalogoApiError = '';
 
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];
@@ -867,6 +880,8 @@ export class PostiConvivenza implements OnInit {
     }
 
     ngOnInit() {
+        this.caricaCatalogoStruttureReale();
+
         const param = this.route.snapshot.queryParamMap.get('convivenzaId');
         if (param) {
             const id = Number(param);
@@ -879,6 +894,46 @@ export class PostiConvivenza implements OnInit {
                 }
             }
         }
+    }
+
+    private caricaCatalogoStruttureReale() {
+        if (this.isDemo) {
+            return;
+        }
+
+        this.catalogoLoading = true;
+        this.catalogoApiError = '';
+
+        this.struttureApi.getCatalogStructures().subscribe({
+            next: (strutture) => {
+                const catalogoReale = (Array.isArray(strutture) ? strutture : [])
+                    .filter((struttura) => struttura?.status === 'APPROVATA')
+                    .map((struttura, index) => this.creaPostoDaApiStructure(struttura, index));
+
+                if (catalogoReale.length) {
+                    this.setPosti(catalogoReale);
+                } else {
+                    this.catalogoApiError = 'Nessuna struttura approvata ricevuta dall’API: mostro il catalogo mock di fallback.';
+                    this.setPosti(this.creaPostiConCensimento());
+                }
+            },
+            error: () => {
+                this.catalogoApiError = 'Catalogo API non disponibile: mostro il catalogo mock di fallback.';
+                this.setPosti(this.creaPostiConCensimento());
+                this.catalogoLoading = false;
+            },
+            complete: () => {
+                this.catalogoLoading = false;
+            }
+        });
+    }
+
+    private setPosti(posti: PostoConCensimento[]) {
+        this.posti = posti;
+        this.tipi = this.createTipiOptions();
+        this.zone = this.createZoneOptions();
+        this.selected = this.posti[0] ?? this.createEmptyPosto();
+        this.aggiornaMappa();
     }
 
     select(posto: PostoConCensimento, centerMap = false) {
@@ -1342,6 +1397,171 @@ ${this.comunitaNome}`;
             statoVerifica: pubblicata ? 'Verificata' : 'Da verificare',
             pubblicata
         };
+    }
+
+    private creaPostoDaApiStructure(struttura: StructureAccreditationResponse, index: number): PostoConCensimento {
+        const profile = this.toStrutturaProfile(struttura);
+        const [lat, lng] = this.coordinateApiFallback(struttura, index);
+
+        return {
+            id: struttura.id,
+            nome: struttura.name || 'Struttura senza nome',
+            tipo: this.toTipoStruttura(struttura.type),
+            tipologia: this.toTipologiaPosto(struttura.type),
+            zona: struttura.city || struttura.region || 'Da completare',
+            citta: struttura.city || 'Da completare',
+            regione: struttura.region || 'Da completare',
+            indirizzo: struttura.address || '',
+            indirizzoNormalizzato: struttura.address || '',
+            capienza: this.toNullableNumber(struttura.capacity),
+            referente: struttura.referentName || '',
+            telefono: struttura.phone || '',
+            email: struttura.email || '',
+            sitoWeb: '',
+            statoRelazione: 'Partner attivo',
+            statoDisponibilita: 'Disponibile',
+            note: struttura.description || 'Struttura approvata dal Global Admin.',
+            latitudine: lat,
+            longitudine: lng,
+            lat,
+            lng,
+            placeId: null,
+            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${struttura.name}, ${struttura.address}, ${struttura.city}, ${struttura.region}`)}`,
+            ultimoContatto: struttura.updatedAt || struttura.approvedAt || struttura.createdAt || null,
+            storicoConvivenze: [],
+            servizi: {
+                camere: this.toNullableNumber(struttura.rooms) !== null,
+                salaIncontri: this.toNullableNumber(struttura.halls) !== null,
+                cucina: Boolean(struttura.hasInternalKitchen || struttura.hasCanteen),
+                parcheggio: Boolean(struttura.hasParking),
+                accessibilita: Boolean(struttura.hasDisabledAccess),
+                spazioBambini: Boolean(struttura.acceptsFamiliesWithChildren)
+            },
+            valutazioneInterna: 'positivo',
+            strutturaProfile: profile,
+            fotoCopertina: fotoCopertina(profile),
+            promoAttive: [],
+            statoVerifica: 'Verificata',
+            pubblicata: true
+        };
+    }
+
+    private toStrutturaProfile(struttura: StructureAccreditationResponse): StrutturaProfileMock {
+        return normalizeStrutturaProfile({
+            id: `api-${struttura.id}`,
+            nome: struttura.name || 'Struttura senza nome',
+            tipo: struttura.type || 'Struttura di accoglienza',
+            descrizione: struttura.description || '',
+            indirizzo: struttura.address || '',
+            citta: struttura.city || '',
+            regione: struttura.region || '',
+            referente: struttura.referentName || '',
+            telefono: struttura.phone || '',
+            email: struttura.email || '',
+            capienza: this.toNullableNumber(struttura.capacity),
+            postiLetto: this.toNullableNumber(struttura.beds),
+            camere: this.toNullableNumber(struttura.rooms),
+            sale: this.toSaleLabel(struttura.halls),
+            cappella: Boolean(struttura.hasChapel),
+            mensa: Boolean(struttura.hasCanteen),
+            cucinaInterna: Boolean(struttura.hasInternalKitchen),
+            parcheggio: Boolean(struttura.hasParking),
+            accessibilitaDisabili: Boolean(struttura.hasDisabledAccess),
+            spaziEsterni: Boolean(struttura.hasOutdoorSpaces),
+            famiglieConBambini: Boolean(struttura.acceptsFamiliesWithChildren),
+            tariffeIndicative: struttura.indicativeRates || '',
+            condizioniCaparra: struttura.depositConditions || '',
+            condizioniCancellazione: struttura.cancellationConditions || '',
+            foto: this.toFotoStruttura(struttura.photos),
+            promo: [],
+            updatedAt: struttura.updatedAt || struttura.approvedAt || struttura.createdAt || new Date().toISOString()
+        });
+    }
+
+    private toFotoStruttura(photos: StructurePhotoResponse[] | null | undefined): FotoStrutturaMock[] {
+        return (Array.isArray(photos) ? photos : [])
+            .filter((foto) => Boolean(foto?.url))
+            .map((foto) => ({
+                id: String(foto.id),
+                categoria: foto.category as FotoStrutturaMock['categoria'],
+                url: foto.url,
+                descrizione: foto.description || foto.category || 'Foto struttura',
+                copertina: Boolean(foto.isCover),
+                isCover: Boolean(foto.isCover),
+                createdAt: foto.createdAt || ''
+            }));
+    }
+
+    private toTipoStruttura(value: string | null | undefined): TipoStrutturaMappa {
+        const normalized = (value || '').trim().toLowerCase();
+        if (normalized.includes('hotel') || normalized.includes('albergo')) {
+            return 'Hotel';
+        }
+        if (normalized.includes('parrocchia')) {
+            return 'Parrocchia';
+        }
+        if (normalized.includes('istituto')) {
+            return 'Istituto';
+        }
+        if (normalized.includes('accoglienza')) {
+            return 'Struttura di accoglienza';
+        }
+        return 'Casa di convivenza';
+    }
+
+    private toTipologiaPosto(value: string | null | undefined): TipologiaPosto {
+        const normalized = (value || '').trim().toLowerCase();
+        if (normalized.includes('hotel') || normalized.includes('albergo')) {
+            return 'Albergo / pensione';
+        }
+        if (normalized.includes('parrocchia')) {
+            return 'Parrocchia';
+        }
+        if (normalized.includes('istituto')) {
+            return 'Istituto religioso';
+        }
+        if (normalized.includes('ritiri')) {
+            return 'Casa per ritiri';
+        }
+        return 'Casa di convivenza';
+    }
+
+    private toSaleLabel(value: number | string | null | undefined): string {
+        const numberValue = this.toNullableNumber(value);
+        if (numberValue === null) {
+            return '';
+        }
+        return numberValue === 1 ? '1 sala incontri' : `${numberValue} sale incontri`;
+    }
+
+    private toNullableNumber(value: number | string | null | undefined): number | null {
+        if (typeof value === 'number') {
+            return Number.isFinite(value) && value > 0 ? value : null;
+        }
+
+        const parsed = Number.parseInt(String(value ?? '').replace(/[^\d-]/g, ''), 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private coordinateApiFallback(struttura: StructureAccreditationResponse, index: number): [number, number] {
+        const citta = struttura.city || '';
+        const basi: Record<string, [number, number]> = {
+            Roma: [41.9028, 12.4964],
+            'Santa Severa': [42.0186, 11.9541],
+            'Santa Marinella': [42.0349, 11.8542],
+            Civitavecchia: [42.0924, 11.7954]
+        };
+        const base = basi[citta] ?? (citta.includes('Santa') ? basi['Santa Marinella'] : basi['Roma']);
+        const offset = (index % 8) * 0.006;
+        return [Number((base[0] + offset).toFixed(6)), Number((base[1] - offset).toFixed(6))];
+    }
+
+    private createTipiOptions(): TipoStrutturaMappa[] {
+        return Array.from(new Set(this.posti.map((posto) => posto.tipo)));
+    }
+
+    private createZoneOptions(): string[] {
+        return Array.from(new Set(this.posti.map((posto) => posto.zona || posto.citta).filter(Boolean))).sort();
     }
 
     private readSanGaetanoCensimento(): CensimentoStrutturaMock | null {
