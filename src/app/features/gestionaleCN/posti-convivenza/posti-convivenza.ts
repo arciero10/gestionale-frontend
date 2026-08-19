@@ -78,17 +78,16 @@ type PostoConCensimento = PostoConvivenza & {
     standalone: true,
     imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TagModule],
     template: `
-        <section class="posti-page">
-            <header class="page-head">
-                <div>
-                    <h1>Posti di Convivenza</h1>
-                    <p>Censimento operativo delle strutture, con mappa interattiva e richiesta collegata al posto selezionato.</p>
-                </div>
-                <div class="head-actions">
+        <section class="posti-page" style="background:#f8fafc;border-radius:22px;padding:1rem">
+            <header style="position:relative;min-height:clamp(220px,30vw,340px);overflow:hidden;border-radius:22px;display:flex;align-items:flex-end;box-shadow:0 16px 36px rgba(15,23,42,.14)">
+                <img src="assets/images/posti-convivenza/posti-convivenza-hero.jpg" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center" />
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.06) 20%,rgba(15,23,42,.58) 100%)"></div>
+                <div style="position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;width:100%;padding:clamp(1rem,3vw,2rem);flex-wrap:wrap">
+                    <div style="max-width:760px">
+                        <h1 style="margin:0 0 .35rem;color:#fff;font-size:clamp(2rem,4vw,3.3rem);line-height:1.05;text-shadow:0 2px 12px rgba(15,23,42,.35)">Posti di Convivenza</h1>
+                        <p style="margin:0;color:#f8fafc;font-weight:700;font-size:clamp(.95rem,1.6vw,1.1rem);text-shadow:0 2px 10px rgba(15,23,42,.35)">Catalogo delle strutture approvate per convivenze, incontri e ritiri.</p>
+                    </div>
                     <a pButton [routerLink]="mappaRoute" icon="pi pi-map" label="Vista mappa futura" outlined></a>
-                    @if (canCreatePosto) {
-                        <button pButton type="button" icon="pi pi-plus" label="Nuovo posto" (click)="toggleSegnalaForm()"></button>
-                    }
                 </div>
             </header>
 
@@ -505,22 +504,6 @@ type PostoConCensimento = PostoConvivenza & {
                 padding: .15rem;
                 color: #0f172a;
             }
-            .page-head {
-                display: flex;
-                justify-content: space-between;
-                gap: 1rem;
-                align-items: center;
-                padding: 1.15rem 1.25rem;
-                border: 1px solid #e2e8f0;
-                border-radius: 18px;
-                background: rgba(255,255,255,.96);
-                box-shadow: 0 12px 30px rgba(15,23,42,.08);
-            }
-            .page-head h1 { margin: 0 0 .35rem; font-size: 2rem; color: #111827; }
-            .page-head p { margin: 0; color: #475569; font-weight: 650; }
-            .head-actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: flex-end; }
-            .head-actions a,
-            .head-actions button { min-height: 44px; }
             .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
             .stats div,
             .filters,
@@ -785,11 +768,7 @@ type PostoConCensimento = PostoConvivenza & {
                 .reported-grid { grid-template-columns: 1fr; }
                 .fci-col-span-2 { grid-column: span 1; }
                 .signal-span-2 { grid-column: span 1; }
-                .page-head { flex-direction: column; align-items: stretch; }
-                .head-actions,
                 .actions { flex-direction: column; }
-                .head-actions a,
-                .head-actions button,
                 .actions a,
                 .actions button { width: 100%; }
                 .stats,
