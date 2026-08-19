@@ -265,7 +265,7 @@ export class AppMenu implements OnDestroy {
                 this.link('Utenti', 'pi pi-fw pi-id-card', '/gestionale-cn/admin/utenti'),
                 this.link('Comunità', 'pi pi-fw pi-sitemap', '/gestionale-cn/admin/comunita'),
                 this.link('Profili', 'pi pi-fw pi-users', '/gestionale-cn/admin/profili'),
-                this.link('Strutture', 'pi pi-fw pi-building', '/gestionale-cn/admin/strutture'),
+                this.link('Strutture da approvare', 'pi pi-fw pi-building', '/gestionale-cn/admin/strutture'),
                 this.link('Convivenze', 'pi pi-fw pi-calendar', '/gestionale-cn/admin/convivenze'),
                 this.link('Richieste', 'pi pi-fw pi-send', '/gestionale-cn/admin/richieste'),
                 this.link('Viaggi', 'pi pi-fw pi-map', '/gestionale-cn/admin/viaggi'),
