@@ -61,6 +61,7 @@ interface ConvivenzaBozza {
 }
 
 type PostoConCensimento = PostoConvivenza & {
+    tipoDisplay?: string;
     censimento?: CensimentoStrutturaMock;
     segnalazione?: StrutturaSegnalataMock;
     statoCensimento?: CensimentoStrutturaMock['statoCensimento'];
@@ -265,15 +266,17 @@ type PostoConCensimento = PostoConvivenza & {
                                 [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
                                 (click)="select(posto, true)"
                                 (keydown.enter)="select(posto, true)">
-                                @if (posto.fotoCopertina) {
-                                    <img class="posto-thumb" [src]="posto.fotoCopertina" [alt]="posto.nome" />
+                                @if (hasStructurePhoto(posto)) {
+                                    <img class="posto-thumb" width="72" height="54" style="width:72px;height:54px;object-fit:cover;border-radius:10px" [src]="posto.fotoCopertina" [alt]="posto.nome" />
+                                } @else {
+                                    <span class="photo-empty" style="width:72px;min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:800"><i class="pi pi-building"></i> Nessuna foto</span>
                                 }
                                 <span class="posto-title">{{ posto.nome }}</span>
-                                <span class="posto-meta">{{ posto.tipo }} · {{ posto.zona || posto.citta }}</span>
+                                <span class="posto-meta">{{ posto.tipoDisplay || posto.tipo }} · {{ posto.citta }}{{ posto.regione ? ' / ' + posto.regione : '' }}</span>
                                 <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
-                                <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }}</span>
+                                <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }} · Posti letto: {{ posto.strutturaProfile?.postiLetto ?? 'Da completare' }}</span>
                                 <span class="badges">
-                                    <span class="local-badge">{{ posto.tipo }}</span>
+                                    <span class="local-badge">{{ posto.tipoDisplay || posto.tipo }}</span>
                                     <span class="local-badge" [ngClass]="getDisponibilitaClass(posto.statoDisponibilita)">{{ posto.statoDisponibilita }}</span>
                                     @if (posto.statoCensimento) {
                                         <span class="local-badge census-received">{{ posto.statoCensimento }}</span>
@@ -305,9 +308,9 @@ type PostoConCensimento = PostoConvivenza & {
 
                 <main class="map-panel">
                     <div class="map-shell">
-                        <div #mapContainer class="mock-map" aria-label="Mappa mock strutture censite">
+                        <div #mapContainer class="mock-map" aria-label="Mappa strutture censite">
                             <div class="map-toolbar">
-                                <span>Mock mappa strutture</span>
+                                <span>Mappa strutture</span>
                                 <strong>Google Maps ready</strong>
                             </div>
                             <div class="map-grid-line line-a"></div>
@@ -330,7 +333,7 @@ type PostoConCensimento = PostoConvivenza & {
                             }
 
                             <article class="map-popup">
-                                <span>{{ selected.tipo }}</span>
+                                <span>{{ selected.tipoDisplay || selected.tipo }}</span>
                                 <strong>{{ selected.nome }}</strong>
                                 <small>{{ selected.citta }} · {{ selected.indirizzo || 'Indirizzo da completare' }}</small>
                                 <button type="button" (click)="scrollToDetail()">Dettagli</button>
@@ -341,7 +344,7 @@ type PostoConCensimento = PostoConvivenza & {
                     <section class="street-card">
                         <div class="street-preview">
                             <div>
-                                <span>Street View mock</span>
+                                <span>Anteprima luogo</span>
                                 <strong>{{ selected.nome }}</strong>
                                 <small>Anteprima luogo pronta per futura integrazione Google Maps.</small>
                             </div>
@@ -356,7 +359,7 @@ type PostoConCensimento = PostoConvivenza & {
                     <section class="detail-card" id="posto-detail">
                         <div class="detail-head">
                             <div>
-                                <span class="eyebrow">{{ selected.tipo }}</span>
+                                <span class="eyebrow">{{ selected.tipoDisplay || selected.tipo }}</span>
                                 <h2>{{ selected.nome }}</h2>
                                 <p>{{ selected.indirizzo }} · {{ selected.citta }}</p>
                             </div>
@@ -374,10 +377,10 @@ type PostoConCensimento = PostoConvivenza & {
                             </div>
                         }
 
-                        @if (selected.fotoCopertina && (!selected.strutturaProfile || selected.strutturaProfile.foto.length)) {
-                            <img class="detail-cover" [src]="selected.fotoCopertina" [alt]="selected.nome" />
+                        @if (hasStructurePhoto(selected)) {
+                            <img class="detail-cover" style="width:100%;max-height:280px;object-fit:cover;border-radius:14px" [src]="selected.fotoCopertina" [alt]="selected.nome" />
                         } @else {
-                            <div class="detail-cover placeholder-cover">Nessuna foto caricata dalla struttura.</div>
+                            <div class="detail-cover placeholder-cover" style="min-height:150px;display:grid;place-items:center;gap:.4rem;border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;color:#64748b;font-weight:800"><i class="pi pi-building" style="font-size:1.5rem"></i><span>Nessuna foto caricata</span></div>
                         }
 
                         @if (!selected.email) {
@@ -386,7 +389,7 @@ type PostoConCensimento = PostoConvivenza & {
 
                         <dl class="detail-grid">
                             <div><dt>Zona</dt><dd>{{ displayValue(selected.zona) }}</dd></div>
-                            <div><dt>Tipo</dt><dd>{{ selected.tipo }}</dd></div>
+                            <div><dt>Tipo</dt><dd>{{ selected.tipoDisplay || selected.tipo }}</dd></div>
                             <div><dt>Capienza</dt><dd>{{ selected.capienza ?? 'Da completare' }}</dd></div>
                             <div><dt>Referente</dt><dd>{{ displayValue(selected.referente) }}</dd></div>
                             <div><dt>Telefono</dt><dd>{{ displayValue(selected.telefono) }}</dd></div>
@@ -913,12 +916,12 @@ export class PostiConvivenza implements OnInit {
                 if (catalogoReale.length) {
                     this.setPosti(catalogoReale);
                 } else {
-                    this.catalogoApiError = 'Nessuna struttura approvata ricevuta dall’API: mostro il catalogo mock di fallback.';
+                    this.catalogoApiError = 'Nessuna struttura approvata ricevuta dall’API: mostro il catalogo locale di fallback.';
                     this.setPosti(this.creaPostiConCensimento());
                 }
             },
             error: () => {
-                this.catalogoApiError = 'Catalogo API non disponibile: mostro il catalogo mock di fallback.';
+                this.catalogoApiError = 'Catalogo API non disponibile: mostro il catalogo locale di fallback.';
                 this.setPosti(this.creaPostiConCensimento());
                 this.catalogoLoading = false;
             },
@@ -1198,6 +1201,14 @@ ${this.comunitaNome}`;
         return foto.dataUrl || foto.url || '/images/backgrounds/posti-convivenza-bg.jpg';
     }
 
+    hasStructurePhoto(posto: PostoConCensimento | null | undefined) {
+        const photos = posto?.strutturaProfile?.foto;
+        if (Array.isArray(photos)) {
+            return photos.some((foto) => Boolean(foto?.dataUrl || foto?.url));
+        }
+        return Boolean(posto?.fotoCopertina && !posto.fotoCopertina.includes('posti-convivenza-bg.jpg'));
+    }
+
     getDisponibilitaSeverity(stato: StatoDisponibilitaPosto) {
         switch (stato) {
             case 'Disponibile':
@@ -1407,6 +1418,7 @@ ${this.comunitaNome}`;
             id: struttura.id,
             nome: struttura.name || 'Struttura senza nome',
             tipo: this.toTipoStruttura(struttura.type),
+            tipoDisplay: struttura.type || 'Struttura di accoglienza',
             tipologia: this.toTipologiaPosto(struttura.type),
             zona: struttura.city || struttura.region || 'Da completare',
             citta: struttura.city || 'Da completare',
@@ -1500,7 +1512,7 @@ ${this.comunitaNome}`;
         if (normalized.includes('parrocchia')) {
             return 'Parrocchia';
         }
-        if (normalized.includes('istituto')) {
+        if (normalized.includes('istituto') || normalized.includes('religiosa')) {
             return 'Istituto';
         }
         if (normalized.includes('accoglienza')) {
@@ -1517,7 +1529,7 @@ ${this.comunitaNome}`;
         if (normalized.includes('parrocchia')) {
             return 'Parrocchia';
         }
-        if (normalized.includes('istituto')) {
+        if (normalized.includes('istituto') || normalized.includes('religiosa')) {
             return 'Istituto religioso';
         }
         if (normalized.includes('ritiri')) {
