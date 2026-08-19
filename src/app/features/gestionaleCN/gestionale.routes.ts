@@ -73,6 +73,11 @@ import { platformAdminGuard } from "./admin/platform-admin.mock";
         pathMatch: 'full'
     },
         {
+        path: 'admin/strutture',
+        loadComponent: () => import('./admin-strutture/admin-strutture').then((c) => c.AdminStrutture),
+        data: { breadcrumb: 'Strutture da approvare', bypassRoleCheck: true }
+    },
+        {
         path: 'admin',
         canMatch: [platformAdminGuard],
         children: [
