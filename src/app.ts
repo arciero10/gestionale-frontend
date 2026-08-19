@@ -575,6 +575,21 @@ export class App {
   }
 
   private async resolvePostLoginRoute(): Promise<void> {
+    const browserPath = this.getBrowserPath();
+
+    if (
+      browserPath === '/admin-strutture-test' ||
+      browserPath === '/gestionale-cn/strutture-admin-test'
+    ) {
+      console.log('[AUTH] hard preserve admin structures test route', browserPath);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = true;
+      return;
+    }
+
     const selected = hasSelectedCommunity();
     const hasProfile = hasAppUserProfile();
     const userStatus = getAppUserStatus();
@@ -700,6 +715,21 @@ export class App {
       return;
     }
 
+    const browserPath = this.getBrowserPath();
+
+    if (
+      browserPath === '/admin-strutture-test' ||
+      browserPath === '/gestionale-cn/strutture-admin-test'
+    ) {
+      console.log('[AUTH] watchdog preserves admin structures test route', browserPath);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = true;
+      return;
+    }
+
     try {
       await this.ensureMsalInitialized();
       const routed = await this.resolveRouteFromMsalAccount('watchdog');
@@ -753,8 +783,26 @@ export class App {
     this.authErrorMessage.set(null);
     this.authenticated.set(true);
     this.msalReady.set(true);
+    const browserPath = this.getBrowserPath();
+
+    if (
+      browserPath === '/admin-strutture-test' ||
+      browserPath === '/gestionale-cn/strutture-admin-test'
+    ) {
+      console.log('[AUTH] skip post-login redirect for admin structures test route', browserPath);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = true;
+      return true;
+    }
+
     await this.resolvePostLoginRoute();
     return true;
+  }
+
+  private getBrowserPath(): string {
+    const pathname = window.location.pathname || this.router.url.split('?')[0].split('#')[0];
+    return pathname.split('?')[0].split('#')[0];
   }
 
   private getOrSetActiveAccount(source: string): AccountInfo | null {
