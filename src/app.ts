@@ -580,7 +580,30 @@ export class App {
     const userStatus = getAppUserStatus();
     const hasApplicationProfile = hasProfile && Boolean(userStatus);
     const isGlobalAdmin = this.isCurrentGlobalAdmin();
-    const current = this.currentPath();
+    const current = this.router.url.split('?')[0].split('#')[0];
+    const isPublicOrTestRoute =
+      current === '/admin-strutture-test' ||
+      current === '/gestionale-cn/strutture-admin-test' ||
+      current === '/demo' ||
+      current.startsWith('/demo/') ||
+      current === '/faq' ||
+      current === '/privacy' ||
+      current === '/completa-profilo' ||
+      current === '/registrazione-fratello' ||
+      current.startsWith('/completa-anagrafica/') ||
+      current === '/area-strutture' ||
+      current.startsWith('/area-strutture/');
+
+    if (isPublicOrTestRoute) {
+      console.log('[AUTH] preserving public/test route', current);
+      this.authenticated.set(true);
+      this.msalReady.set(true);
+      this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null);
+      this.postLoginRouteResolved = true;
+      return;
+    }
+
     const isAdminRoute = current === '/gestionale-cn/admin' || current.startsWith('/gestionale-cn/admin/');
     const isSpecificInternalRoute =
       current.startsWith('/gestionale-cn/') &&
