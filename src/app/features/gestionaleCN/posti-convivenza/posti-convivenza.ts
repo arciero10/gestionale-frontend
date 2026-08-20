@@ -16,7 +16,6 @@ import {
     TipologiaPosto
 } from '../data/posti-convivenza.mock';
 import { DEMO_POSTI } from '../../demo/demo.mock';
-import { RichiesteStruttureService } from '../richieste-strutture/richieste-strutture.service';
 import { formatDateIt } from '../richieste-strutture/richieste-strutture.models';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { AuthService } from '@/auth/auth.service';
@@ -136,11 +135,20 @@ type PostoConCensimento = PostoConvivenza & {
                 </div>
             }
 
+            @if (pageRequestFeedbackMessage) {
+                <section class="empty-state"
+                    [style.border-color]="pageRequestFeedbackType === 'success' ? '#86efac' : '#fecaca'"
+                    [style.background]="pageRequestFeedbackType === 'success' ? '#f0fdf4' : '#fef2f2'"
+                    [style.color]="pageRequestFeedbackType === 'success' ? '#166534' : '#991b1b'">
+                    <strong>{{ pageRequestFeedbackMessage }}</strong>
+                </section>
+            }
+
             @if (showFormConvivenza && canSendStructureRequest) {
                 <section class="form-convivenza-inline">
                     <div class="fci-header">
-                        <div class="fci-eyebrow"><i class="pi pi-send"></i> Richiesta disponibilità</div>
-                        <p>Stai per inviare una richiesta a <strong>{{ postoPerRichiesta?.nome }}</strong>. Compila i dati necessari alla segreteria.</p>
+                        <div class="fci-eyebrow"><i class="pi pi-send"></i> Invia richiesta alla struttura</div>
+                        <p>Struttura selezionata: <strong>{{ postoPerRichiesta?.nome }}</strong></p>
                     </div>
                     <div class="fci-grid">
                         <div class="fci-field fci-col-span-2">
@@ -908,7 +916,6 @@ type PostoConCensimento = PostoConvivenza & {
 export class PostiConvivenza implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
-    private readonly richiesteService = inject(RichiesteStruttureService);
     private readonly authService = inject(AuthService);
     private readonly struttureApi = inject(StruttureApiService);
     readonly userAccessContext = getUserAccessContext();
@@ -981,6 +988,8 @@ export class PostiConvivenza implements OnInit {
     requestChildren: number | null = null;
     requestFeedbackMessage = '';
     requestFeedbackType: 'success' | 'error' | '' = '';
+    pageRequestFeedbackMessage = '';
+    pageRequestFeedbackType: 'success' | 'error' | '' = '';
     submittingStructureRequest = false;
     showSegnalaForm = false;
     segnalazioneErrore = '';
@@ -1088,6 +1097,8 @@ export class PostiConvivenza implements OnInit {
         this.postoPerRichiesta = posto;
         this.select(posto, true);
         this.preparaFormRichiestaDaContesto();
+        this.pageRequestFeedbackMessage = '';
+        this.pageRequestFeedbackType = '';
         this.showFormConvivenza = true;
         setTimeout(() => {
             document.querySelector('.form-convivenza-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1186,40 +1197,6 @@ export class PostiConvivenza implements OnInit {
         this.select(posto, true);
     }
 
-    inviaRichiestaMock() {
-        if (!this.canSendStructureRequest) {
-            return;
-        }
-
-        if (!this.convivenzaBozza || !this.postoPerRichiesta) {
-            return;
-        }
-
-        const bozza = this.convivenzaBozza;
-        const posto = this.postoPerRichiesta;
-
-        const corpoEmail = this.creaCorpoEmailDaBozza(bozza, posto);
-
-        const richiesta = this.richiesteService.creaRichiesta({
-            convivenzaId: bozza.id,
-            strutturaId: posto.id,
-            comunitaCoinvolte: [bozza.comunitaDestinatariaNome],
-            oggettoPersonalizzato: 'Richiesta disponibilità convivenza',
-            corpoEmail,
-            soggettoOrganizzatore: bozza.soggettoOrganizzatore,
-            equipeOrganizzatriceNome: bozza.equipeOrganizzatriceNome,
-            comunitaDestinatariaNome: bozza.comunitaDestinatariaNome
-        });
-
-        localStorage.setItem(`richiesta-struttura-${richiesta.id}`, JSON.stringify(richiesta));
-
-        const convivenzaAggiornata: ConvivenzaBozza = { ...bozza, stato: 'In richiesta' };
-        localStorage.setItem(`bozza-convivenza-${bozza.id}`, JSON.stringify(convivenzaAggiornata));
-
-        const basePath = this.isDemo ? '/demo' : '/gestionale-cn';
-        this.router.navigate([`${basePath}/richieste-strutture`], { queryParams: { richiestaId: richiesta.id } });
-    }
-
     private inviaRichiestaReale() {
         if (!this.postoPerRichiesta || !this.formTipoConvivenza || !this.formPartecipanti) {
             return;
@@ -1250,8 +1227,8 @@ export class PostiConvivenza implements OnInit {
 
         this.struttureApi.createStructureRequest(payload).subscribe({
             next: (response) => {
-                this.requestFeedbackType = 'success';
-                this.requestFeedbackMessage = 'Richiesta inviata correttamente. La segreteria prenderà in carico la richiesta.';
+                this.pageRequestFeedbackType = 'success';
+                this.pageRequestFeedbackMessage = 'Richiesta inviata correttamente. La segreteria prenderà in carico la richiesta.';
 
                 if (this.convivenzaBozza) {
                     const convivenzaAggiornata: ConvivenzaBozza = { ...this.convivenzaBozza, stato: 'In richiesta' };
@@ -1260,6 +1237,10 @@ export class PostiConvivenza implements OnInit {
                 }
 
                 localStorage.setItem(`structure-request-${response.id}`, JSON.stringify(response));
+                this.showFormConvivenza = false;
+                this.postoPerRichiesta = null;
+                this.requestFeedbackMessage = '';
+                this.requestFeedbackType = '';
             },
             error: (error) => {
                 console.error('[Posti di Convivenza] Invio richiesta struttura non riuscito', error);
@@ -1289,43 +1270,6 @@ export class PostiConvivenza implements OnInit {
 
     private toOptionalNumber(value: number | null) {
         return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-    }
-
-    private creaCorpoEmailDaBozza(bozza: ConvivenzaBozza, _posto: PostoConvivenza): string {
-        const { firstName, lastName } = this.authService.state();
-        const nome = firstName && lastName ? `${firstName} ${lastName}` : firstName ?? 'Da indicare';
-
-        return `Gentili,
-
-con la presente chiediamo disponibilità presso la vostra struttura per una convivenza.
-
-Date:
-dal ${formatDateIt(bozza.dataInizio)} al ${formatDateIt(bozza.dataFine)}
-
-Numero indicativo partecipanti:
-${bozza.partecipantiPrevisti ?? 'Da completare'}
-
-Numero comunità/gruppi coinvolti:
-1
-
-Bambini/ragazzi presenti:
-Da confermare
-
-Necessità principali:
-- Pernottamento: Da indicare
-- Pasti (colazione, pranzo, cena): Da indicare
-- Sala incontri: Da indicare
-- Spazi bambini/ragazzi: Da indicare
-- Parcheggio: Da indicare
-
-Note:
-${bozza.note || 'Da completare'}
-
-Vi chiediamo cortesemente di indicarci la disponibilità della struttura per le date indicate e, se disponibile, di fornirci un preventivo indicativo.
-
-Cordiali saluti
-${nome}
-${this.comunitaNome}`;
     }
 
     toggleServizio(servizio: ServizioFiltro) {
