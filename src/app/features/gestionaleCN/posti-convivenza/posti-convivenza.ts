@@ -142,11 +142,26 @@ function formatPostiDateIt(value: string | Date | null | undefined): string {
             }
 
             @if (pageRequestFeedbackMessage) {
-                <section class="empty-state"
+                <section class="empty-state" style="align-items:flex-start;text-align:left;gap:.85rem"
                     [style.border-color]="pageRequestFeedbackType === 'success' ? '#86efac' : '#fecaca'"
                     [style.background]="pageRequestFeedbackType === 'success' ? '#f0fdf4' : '#fef2f2'"
                     [style.color]="pageRequestFeedbackType === 'success' ? '#166534' : '#991b1b'">
-                    <strong>{{ pageRequestFeedbackMessage }}</strong>
+                    @if (pageRequestFeedbackType === 'success') {
+                        <div style="display:grid;gap:.35rem">
+                            <strong style="font-size:1.05rem">Richiesta inviata correttamente</strong>
+                            <span style="color:#166534;font-weight:700">La richiesta è stata registrata. Puoi ora preparare la comunicazione email alla struttura oppure tornare al catalogo.</span>
+                            @if (lastCreatedStructureRequestId) {
+                                <span style="font-size:.82rem;color:#15803d;font-weight:800">Riferimento richiesta: #{{ lastCreatedStructureRequestId }}</span>
+                            }
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:.6rem">
+                            <button pButton type="button" label="Prepara email alla struttura" icon="pi pi-envelope" (click)="preparaEmailAllaStruttura()"></button>
+                            <button pButton type="button" label="Vai alla richiesta" icon="pi pi-external-link" severity="secondary" outlined (click)="vaiAllaRichiestaCreata()"></button>
+                            <button pButton type="button" label="Torna al catalogo" icon="pi pi-list" severity="secondary" text (click)="rimaniNelCatalogo()"></button>
+                        </div>
+                    } @else {
+                        <strong>{{ pageRequestFeedbackMessage }}</strong>
+                    }
                 </section>
             }
 
@@ -996,6 +1011,8 @@ export class PostiConvivenza implements OnInit {
     requestFeedbackType: 'success' | 'error' | '' = '';
     pageRequestFeedbackMessage = '';
     pageRequestFeedbackType: 'success' | 'error' | '' = '';
+    lastCreatedStructureRequestId: number | null = null;
+    lastCreatedStructureRequestName = '';
     submittingStructureRequest = false;
     showSegnalaForm = false;
     segnalazioneErrore = '';
@@ -1089,6 +1106,8 @@ export class PostiConvivenza implements OnInit {
         this.preparaFormRichiestaDaContesto();
         this.pageRequestFeedbackMessage = '';
         this.pageRequestFeedbackType = '';
+        this.lastCreatedStructureRequestId = null;
+        this.lastCreatedStructureRequestName = '';
         this.showFormConvivenza = true;
         setTimeout(() => {
             document.querySelector('.form-convivenza-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1116,6 +1135,8 @@ export class PostiConvivenza implements OnInit {
         this.formValidationError = '';
         this.requestFeedbackMessage = '';
         this.requestFeedbackType = '';
+        this.lastCreatedStructureRequestId = null;
+        this.lastCreatedStructureRequestName = '';
     }
 
     chiudiFormConvivenza() {
@@ -1220,6 +1241,8 @@ export class PostiConvivenza implements OnInit {
             next: (response) => {
                 this.pageRequestFeedbackType = 'success';
                 this.pageRequestFeedbackMessage = 'Richiesta inviata correttamente. La segreteria prenderà in carico la richiesta.';
+                this.lastCreatedStructureRequestId = response.id ?? null;
+                this.lastCreatedStructureRequestName = response.structureName || payload.structureName || posto.nome;
 
                 if (this.convivenzaBozza) {
                     const convivenzaAggiornata: ConvivenzaBozza = { ...this.convivenzaBozza, stato: 'In richiesta' };
@@ -1242,6 +1265,34 @@ export class PostiConvivenza implements OnInit {
                 this.submittingStructureRequest = false;
             }
         });
+    }
+
+    preparaEmailAllaStruttura() {
+        this.router.navigate(['/gestionale-cn/richieste-strutture'], {
+            queryParams: this.createPostRequestActionQueryParams('email')
+        });
+    }
+
+    vaiAllaRichiestaCreata() {
+        this.router.navigate(['/gestionale-cn/richieste-strutture'], {
+            queryParams: this.createPostRequestActionQueryParams('detail')
+        });
+    }
+
+    rimaniNelCatalogo() {
+        this.pageRequestFeedbackMessage = '';
+        this.pageRequestFeedbackType = '';
+        this.lastCreatedStructureRequestId = null;
+        this.lastCreatedStructureRequestName = '';
+    }
+
+    private createPostRequestActionQueryParams(action: 'email' | 'detail') {
+        return {
+            source: 'posti-convivenza',
+            action,
+            ...(this.lastCreatedStructureRequestId ? { structureRequestId: this.lastCreatedStructureRequestId } : {}),
+            ...(this.lastCreatedStructureRequestName ? { structureName: this.lastCreatedStructureRequestName } : {})
+        };
     }
 
     private validateStructureRequestForm() {
