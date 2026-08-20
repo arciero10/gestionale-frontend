@@ -16,7 +16,6 @@ import {
     TipologiaPosto
 } from '../data/posti-convivenza.mock';
 import { DEMO_POSTI } from '../../demo/demo.mock';
-import { formatDateIt } from '../richieste-strutture/richieste-strutture.models';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { AuthService } from '@/auth/auth.service';
 import { TIPI_CONVIVENZA_ANNUALE, TAPPE_UFFICIALI_CAMMINO } from '../data/tappe-cammino.mock';
@@ -72,6 +71,13 @@ type PostoConCensimento = PostoConvivenza & {
     fotoCopertina?: string;
     promoAttive?: ReturnType<typeof activePromo>;
 };
+
+function formatPostiDateIt(value: string | Date | null | undefined): string {
+    if (!value) return 'Da definire';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+}
 
 @Component({
     selector: 'app-posti-convivenza',
@@ -129,7 +135,7 @@ type PostoConCensimento = PostoConvivenza & {
                     @if (postoPerRichiesta && canSendStructureRequest) {
                         <div class="ctx-cta">
                             <span><i class="pi pi-building"></i> <strong>{{ postoPerRichiesta.nome }}</strong> selezionato</span>
-                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="apriPannelloRichiesta(postoPerRichiesta)"></button>
+                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="apriModaleRichiesta(postoPerRichiesta)"></button>
                         </div>
                     }
                 </div>
@@ -599,9 +605,9 @@ type PostoConCensimento = PostoConvivenza & {
                             <button pButton type="button" label="Dettaglio" icon="pi pi-info-circle" outlined></button>
                             @if (convivenzaBozza && canSendStructureRequest) {
                                 <button pButton type="button" label="Seleziona e invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)"
-                                    (click)="apriPannelloRichiesta(selected)"></button>
+                                    (click)="apriModaleRichiesta(selected)"></button>
                             } @else if (canSendStructureRequest) {
-                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)" (click)="apriNuovaRichiesta(selected)"></button>
+                                <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)" (click)="apriModaleRichiesta(selected)"></button>
                             }
                             @if (selected.googleMapsUrl) {
                                 <a pButton [href]="selected.googleMapsUrl" target="_blank" rel="noopener" icon="pi pi-external-link" label="Apri in Google Maps" outlined></a>
@@ -950,7 +956,7 @@ export class PostiConvivenza implements OnInit {
     serviziSelezionati: ServizioFiltro[] = [];
     selected: PostoConCensimento = this.posti[0] ?? this.createEmptyPosto();
 
-    readonly formatDateIt = formatDateIt;
+    readonly formatDateIt = formatPostiDateIt;
 
     private readonly currentCommunity = getCurrentCommunity();
     readonly comunitaNome = `${this.currentCommunity.nomeComunita} – ${this.currentCommunity.parrocchiaNome}`;
@@ -1073,23 +1079,7 @@ export class PostiConvivenza implements OnInit {
         this.aggiornaMappa(centerMap);
     }
 
-    apriNuovaRichiesta(posto: PostoConCensimento) {
-        if (!this.canSendStructureRequest) {
-            return;
-        }
-
-        if (!this.isPostoOperativo(posto)) {
-            return;
-        }
-
-        if (this.convivenzaBozza) {
-            this.apriPannelloRichiesta(posto);
-            return;
-        }
-        this.apriPannelloRichiesta(posto);
-    }
-
-    apriPannelloRichiesta(posto: PostoConCensimento | null) {
+    apriModaleRichiesta(posto: PostoConCensimento | null) {
         if (!posto || !this.canSendStructureRequest || !this.isPostoOperativo(posto)) {
             return;
         }
@@ -1212,6 +1202,7 @@ export class PostiConvivenza implements OnInit {
             communityName: this.requestCommunityName.trim() || this.convivenzaBozza?.comunitaDestinatariaNome || this.comunitaNome,
             parishName: this.requestParishName.trim() || this.currentCommunity.parrocchiaNome,
             city: this.requestCity.trim() || this.currentCommunity.comune || posto.citta,
+            eventType: this.formTipoConvivenza,
             convivenzaType: this.formTipoConvivenza,
             startDate: this.toApiDate(this.formDataInizio),
             endDate: this.toApiDate(this.formDataFine),

@@ -76,6 +76,7 @@ export interface StructureRequestCreateRequest {
     communityName?: string | null;
     parishName?: string | null;
     city?: string | null;
+    eventType?: string;
     convivenzaType: string;
     startDate: string;
     endDate: string;
