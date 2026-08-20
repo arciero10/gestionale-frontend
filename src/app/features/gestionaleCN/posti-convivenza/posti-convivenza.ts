@@ -79,7 +79,7 @@ type PostoConCensimento = PostoConvivenza & {
     standalone: true,
     imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, SelectModule, TagModule],
     template: `
-        <section class="posti-page" style="background:#f8fafc;border-radius:22px;padding:1rem">
+        <section class="posti-page">
             <section style="display:grid;gap:.35rem;padding:.35rem .15rem .1rem">
                 <h1 style="margin:0;color:#0f172a;font-size:clamp(2rem,3vw,2.75rem);line-height:1.05">Posti di Convivenza</h1>
                 <p style="margin:0;color:#475569;font-weight:700;font-size:1rem">Catalogo delle strutture approvate per convivenze, incontri e ritiri.</p>
@@ -258,103 +258,125 @@ type PostoConCensimento = PostoConvivenza & {
 
                     <section class="list-panel">
                         @if (catalogoApiDisponibile !== false) {
-                            <div class="catalog-section-title">
-                                <div>
-                                    <strong>Strutture approvate</strong>
-                                    <span>Strutture censite e validate dalla segreteria.</span>
+                            <div class="catalog-group approved-group">
+                                <div class="catalog-section-title">
+                                    <div>
+                                        <strong>Strutture approvate</strong>
+                                        <span>Strutture censite e validate dalla segreteria.</span>
+                                    </div>
+                                    <em>{{ struttureApprovateFiltrate().length }}</em>
                                 </div>
-                                <em>{{ struttureApprovateFiltrate().length }}</em>
-                            </div>
-                            @for (posto of struttureApprovateFiltrate(); track posto.id) {
-                                <div role="button" tabindex="0" class="posto-item api-source"
-                                    [class.active]="posto.id === selected.id"
-                                    [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
-                                    (click)="select(posto, true)"
-                                    (keydown.enter)="select(posto, true)">
-                                    @if (hasStructurePhoto(posto)) {
-                                        <img class="posto-thumb" width="72" height="54" style="width:72px;height:54px;object-fit:cover;border-radius:10px" [src]="posto.fotoCopertina" [alt]="posto.nome" />
-                                    } @else {
-                                        <span class="photo-empty" style="width:72px;min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:800"><i class="pi pi-building"></i> Nessuna foto</span>
-                                    }
-                                    <span class="posto-title">{{ posto.nome }}</span>
-                                    <span class="posto-meta">{{ posto.tipoDisplay || posto.tipo }} · {{ posto.citta }}{{ posto.regione ? ' / ' + posto.regione : '' }}</span>
-                                    <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
-                                    <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }} · Posti letto: {{ posto.strutturaProfile?.postiLetto ?? 'Da completare' }}</span>
-                                    <span class="badges">
-                                        <span class="local-badge disp-disponibile">Approvata</span>
-                                        <span class="local-badge census-check">Verificata</span>
-                                        <span class="local-badge census-received">Censita</span>
-                                    </span>
-                                    @if (convivenzaBozza && canSendStructureRequest) {
-                                        <button type="button" class="seleziona-btn"
-                                            [class.selezionato]="postoPerRichiesta?.id === posto.id"
-                                            [disabled]="!isPostoOperativo(posto)"
-                                            (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
-                                            @if (postoPerRichiesta?.id === posto.id) {
-                                                <i class="pi pi-check"></i> Selezionato
+                                <div class="catalog-items">
+                                    @for (posto of struttureApprovateFiltrate(); track posto.id) {
+                                        <div role="button" tabindex="0" class="posto-item api-source"
+                                            [class.active]="posto.id === selected.id"
+                                            [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
+                                            (click)="select(posto, true)"
+                                            (keydown.enter)="select(posto, true)">
+                                            @if (hasStructurePhoto(posto)) {
+                                                <img class="posto-thumb" width="72" height="54" style="width:72px;height:54px;object-fit:cover;border-radius:10px" [src]="posto.fotoCopertina" [alt]="posto.nome" />
                                             } @else {
-                                                Seleziona posto
+                                                <span class="photo-empty" style="width:72px;min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:800"><i class="pi pi-building"></i> Nessuna foto</span>
                                             }
-                                        </button>
+                                            <span class="posto-title">{{ posto.nome }}</span>
+                                            <span class="posto-meta">{{ posto.tipoDisplay || posto.tipo }} · {{ posto.citta }}{{ posto.regione ? ' / ' + posto.regione : '' }}</span>
+                                            <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
+                                            <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }} · Posti letto: {{ posto.strutturaProfile?.postiLetto ?? 'Da completare' }}</span>
+                                            <span class="badges">
+                                                <span class="local-badge disp-disponibile">Approvata</span>
+                                                <span class="local-badge census-check">Verificata</span>
+                                                <span class="local-badge census-received">Censita</span>
+                                            </span>
+                                            @if (convivenzaBozza && canSendStructureRequest) {
+                                                <button type="button" class="seleziona-btn"
+                                                    [class.selezionato]="postoPerRichiesta?.id === posto.id"
+                                                    [disabled]="!isPostoOperativo(posto)"
+                                                    (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
+                                                    @if (postoPerRichiesta?.id === posto.id) {
+                                                        <i class="pi pi-check"></i> Selezionato
+                                                    } @else {
+                                                        Seleziona posto
+                                                    }
+                                                </button>
+                                            }
+                                        </div>
+                                    } @empty {
+                                        @if (!catalogoLoading) {
+                                            <div class="empty-state">Nessuna struttura approvata disponibile.</div>
+                                        }
                                     }
                                 </div>
-                            } @empty {
-                                @if (!catalogoLoading) {
-                                    <div class="empty-state">Nessuna struttura approvata disponibile.</div>
-                                }
-                            }
+                            </div>
                         }
 
                         @if (localFallbackStructures.length) {
-                            <div class="catalog-section-title">
-                                <div>
-                                    <strong>Altri posti disponibili</strong>
-                                    <span>Elenco operativo da verificare o completare.</span>
+                            <div class="catalog-group fallback-group">
+                                <div class="catalog-section-title">
+                                    <div>
+                                        <strong>Altri posti disponibili</strong>
+                                        <span>Elenco operativo da verificare o completare.</span>
+                                    </div>
+                                    <em>{{ altriPostiFiltrati().length }}</em>
                                 </div>
-                                <em>{{ altriPostiFiltrati().length }}</em>
+                                <div class="catalog-items">
+                                    @for (posto of altriPostiFiltrati(); track posto.id) {
+                                        <div role="button" tabindex="0" class="posto-item"
+                                            [class.active]="posto.id === selected.id"
+                                            [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
+                                            (click)="select(posto, true)"
+                                            (keydown.enter)="select(posto, true)">
+                                            @if (hasStructurePhoto(posto)) {
+                                                <img class="posto-thumb" width="72" height="54" style="width:72px;height:54px;object-fit:cover;border-radius:10px" [src]="posto.fotoCopertina" [alt]="posto.nome" />
+                                            } @else {
+                                                <span class="photo-empty" style="width:72px;min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:800"><i class="pi pi-building"></i> Nessuna foto</span>
+                                            }
+                                            <span class="posto-title">{{ posto.nome }}</span>
+                                            <span class="posto-meta">{{ posto.tipoDisplay || posto.tipo }} · {{ posto.citta }}{{ posto.regione ? ' / ' + posto.regione : '' }}</span>
+                                            <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
+                                            <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }} · Posti letto: {{ posto.strutturaProfile?.postiLetto ?? 'Da completare' }}</span>
+                                            <span class="badges">
+                                                <span class="local-badge">{{ posto.tipoDisplay || posto.tipo }}</span>
+                                                <span class="local-badge" [ngClass]="getDisponibilitaClass(posto.statoDisponibilita)">{{ posto.statoDisponibilita }}</span>
+                                                @if (posto.statoCensimento) {
+                                                    <span class="local-badge census-received">{{ posto.statoCensimento }}</span>
+                                                }
+                                                @if (posto.statoVerifica) {
+                                                    <span class="local-badge census-check">{{ posto.statoVerifica }}</span>
+                                                } @else {
+                                                    <span class="local-badge census-check">Da verificare</span>
+                                                }
+                                            </span>
+                                            @if (convivenzaBozza && canSendStructureRequest) {
+                                                <button type="button" class="seleziona-btn"
+                                                    [class.selezionato]="postoPerRichiesta?.id === posto.id"
+                                                    [disabled]="!isPostoOperativo(posto)"
+                                                    (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
+                                                    @if (postoPerRichiesta?.id === posto.id) {
+                                                        <i class="pi pi-check"></i> Selezionato
+                                                    } @else if (!isPostoOperativo(posto)) {
+                                                        Non operativa
+                                                    } @else {
+                                                        Seleziona posto
+                                                    }
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                    @if (!altriPostiFiltrati().length && !catalogoLoading) {
+                                        <div class="empty-state">Nessun posto locale corrisponde ai filtri selezionati.</div>
+                                    }
+                                </div>
                             </div>
-                        }
-                        @for (posto of altriPostiFiltrati(); track posto.id) {
-                            <div role="button" tabindex="0" class="posto-item"
-                                [class.active]="posto.id === selected.id"
-                                [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
-                                (click)="select(posto, true)"
-                                (keydown.enter)="select(posto, true)">
-                                @if (hasStructurePhoto(posto)) {
-                                    <img class="posto-thumb" width="72" height="54" style="width:72px;height:54px;object-fit:cover;border-radius:10px" [src]="posto.fotoCopertina" [alt]="posto.nome" />
-                                } @else {
-                                    <span class="photo-empty" style="width:72px;min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:800"><i class="pi pi-building"></i> Nessuna foto</span>
-                                }
-                                <span class="posto-title">{{ posto.nome }}</span>
-                                <span class="posto-meta">{{ posto.tipoDisplay || posto.tipo }} · {{ posto.citta }}{{ posto.regione ? ' / ' + posto.regione : '' }}</span>
-                                <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
-                                <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }} · Posti letto: {{ posto.strutturaProfile?.postiLetto ?? 'Da completare' }}</span>
-                                <span class="badges">
-                                    <span class="local-badge">{{ posto.tipoDisplay || posto.tipo }}</span>
-                                    <span class="local-badge" [ngClass]="getDisponibilitaClass(posto.statoDisponibilita)">{{ posto.statoDisponibilita }}</span>
-                                    @if (posto.statoCensimento) {
-                                        <span class="local-badge census-received">{{ posto.statoCensimento }}</span>
-                                    }
-                                    @if (posto.statoVerifica) {
-                                        <span class="local-badge census-check">{{ posto.statoVerifica }}</span>
-                                    } @else {
-                                        <span class="local-badge census-check">Da verificare</span>
-                                    }
-                                </span>
-                                @if (convivenzaBozza && canSendStructureRequest) {
-                                    <button type="button" class="seleziona-btn"
-                                        [class.selezionato]="postoPerRichiesta?.id === posto.id"
-                                        [disabled]="!isPostoOperativo(posto)"
-                                        (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
-                                        @if (postoPerRichiesta?.id === posto.id) {
-                                            <i class="pi pi-check"></i> Selezionato
-                                        } @else if (!isPostoOperativo(posto)) {
-                                            Non operativa
-                                        } @else {
-                                            Seleziona posto
-                                        }
-                                    </button>
-                                }
+                        } @else if (catalogoApiDisponibile === false) {
+                            <div class="catalog-group fallback-group">
+                                <div class="catalog-section-title">
+                                    <div>
+                                        <strong>Altri posti disponibili</strong>
+                                        <span>Elenco operativo da verificare o completare.</span>
+                                    </div>
+                                    <em>0</em>
+                                </div>
+                                <div class="empty-state">Nessun posto locale disponibile.</div>
                             </div>
                         }
                         @if (!postiFiltrati().length && !catalogoLoading) {
@@ -368,7 +390,7 @@ type PostoConCensimento = PostoConvivenza & {
                         <div #mapContainer class="mock-map" aria-label="Mappa strutture censite">
                             <div class="map-toolbar">
                                 <span>Posizione strutture</span>
-                                <strong>Anteprima geografica delle strutture approvate e dei posti disponibili.</strong>
+                                <strong>Mappa delle strutture approvate e dei posti disponibili.</strong>
                             </div>
                             <div class="map-grid-line line-a"></div>
                             <div class="map-grid-line line-b"></div>
@@ -543,8 +565,13 @@ type PostoConCensimento = PostoConvivenza & {
             .posti-page {
                 display: grid;
                 gap: 1.25rem;
-                padding: .15rem;
+                min-height: 100vh;
+                margin: -1rem;
+                padding: 1.25rem 1.25rem 6rem;
+                background: #f3f6fb;
                 color: #0f172a;
+                box-shadow: 0 0 0 100vmax #f3f6fb;
+                clip-path: inset(0 -100vmax);
             }
             .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
             .stats div,
@@ -560,7 +587,7 @@ type PostoConCensimento = PostoConvivenza & {
             .stats div { padding: .9rem; }
             .stats span { display: block; color: #64748b; font-size: .82rem; }
             .stats strong { display: block; margin-top: .2rem; color: #111827; font-size: 1.2rem; }
-            .map-layout { display: grid; grid-template-columns: minmax(20rem, 35%) minmax(0, 65%); gap: 1.25rem; align-items: start; }
+            .map-layout { display: grid; grid-template-columns: minmax(420px, .8fr) minmax(0, 1.4fr); gap: 1.25rem; align-items: start; }
             .sidebar-panel { display: grid; gap: 1rem; min-width: 0; }
             .filters { display: grid; gap: .75rem; padding: 1rem; }
             .filters input,
@@ -582,22 +609,29 @@ type PostoConCensimento = PostoConvivenza & {
             }
             .service-filter button.active { background: #e0f2fe; border-color: #7dd3fc; color: #075985; }
             .list-panel {
-                padding: .75rem;
+                padding: .9rem;
                 display: grid;
-                gap: .75rem;
+                gap: 1.1rem;
                 align-content: start;
-                max-height: 650px;
+                max-height: min(78vh, 860px);
                 overflow: auto;
                 background: rgba(255,255,255,.98);
+                scrollbar-gutter: stable;
             }
-            .result-count { color: #64748b; font-weight: 800; padding: .25rem .25rem .4rem; }
-            .catalog-section-title { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; padding: .25rem .25rem 0; }
+            .catalog-group,
+            .catalog-items { display: grid; gap: .8rem; min-width: 0; }
+            .catalog-group + .catalog-group {
+                margin-top: .8rem;
+                padding-top: 1rem;
+                border-top: 1px solid #e2e8f0;
+            }
+            .catalog-section-title { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
             .catalog-section-title div { display: grid; gap: .15rem; }
             .catalog-section-title strong { color: #0f172a; font-size: .98rem; }
             .catalog-section-title span { color: #64748b; font-size: .8rem; font-weight: 700; line-height: 1.3; }
-            .catalog-section-title em { font-style: normal; color: #1d4ed8; font-weight: 900; }
+            .catalog-section-title em { color: #1d4ed8; font-style: normal; font-weight: 900; }
             .posto-item {
-                min-height: 128px;
+                min-height: 140px;
                 text-align: left;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
