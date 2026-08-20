@@ -22,6 +22,22 @@ body {
       overflow-x: hidden;
     }
 
+.layout-container.layout-immersive:has(app-posti-convivenza),
+.layout-container.layout-immersive:has(app-posti-convivenza) .layout-content-wrapper,
+.layout-container.layout-immersive:has(app-posti-convivenza) .layout-content {
+      background: #f3f6fb !important;
+      background-image: none !important;
+}
+
+.layout-container.layout-immersive:has(app-posti-convivenza) .internal-footer {
+      color: #475569;
+      background: #f3f6fb;
+      border-color: #dbe3ee;
+      text-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+}
+
 .leaflet-map {
       height: 300px;
       width: 100%;
