@@ -61,6 +61,7 @@ interface ConvivenzaBozza {
 }
 
 type PostoConCensimento = PostoConvivenza & {
+    catalogoOrigine?: 'api' | 'locale' | 'demo';
     tipoDisplay?: string;
     censimento?: CensimentoStrutturaMock;
     segnalazione?: StrutturaSegnalataMock;
@@ -191,9 +192,9 @@ type PostoConCensimento = PostoConvivenza & {
             <section class="stats">
                 <div><span>Totale posti</span><strong>{{ posti.length }}</strong></div>
                 <div><span>Filtrati</span><strong>{{ postiFiltrati().length }}</strong></div>
-                @for (stato of statiDisponibilita; track stato) {
-                    <div><span>{{ stato }}</span><strong>{{ countByDisponibilita(stato) }}</strong></div>
-                }
+                <div><span>Approvate</span><strong>{{ approvedApiStructures.length }}</strong></div>
+                <div><span>Da verificare</span><strong>{{ localFallbackStructures.length }}</strong></div>
+                <div><span>Non disponibile</span><strong>{{ countByDisponibilita('Non disponibile') }}</strong></div>
             </section>
 
             @if (catalogoLoading) {
@@ -205,7 +206,7 @@ type PostoConCensimento = PostoConvivenza & {
             @if (!posti.length) {
                 <section class="empty-state">
                     <h2>Nessuna struttura disponibile</h2>
-                    <p>Il catalogo mostra solo strutture approvate dal Global Admin. Quando una struttura verrà approvata, comparirà qui.</p>
+                    <p>Non ci sono strutture approvate o posti locali da mostrare con i filtri correnti.</p>
                 </section>
             }
 
@@ -256,8 +257,64 @@ type PostoConCensimento = PostoConvivenza & {
                     </section>
 
                     <section class="list-panel">
-                        <div class="result-count">{{ postiFiltrati().length }} strutture</div>
-                        @for (posto of postiFiltrati(); track posto.id) {
+                        @if (catalogoApiDisponibile !== false) {
+                            <div class="catalog-section-title">
+                                <div>
+                                    <strong>Strutture approvate</strong>
+                                    <span>Strutture censite e validate dalla segreteria.</span>
+                                </div>
+                                <em>{{ struttureApprovateFiltrate().length }}</em>
+                            </div>
+                            @for (posto of struttureApprovateFiltrate(); track posto.id) {
+                                <div role="button" tabindex="0" class="posto-item api-source"
+                                    [class.active]="posto.id === selected.id"
+                                    [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
+                                    (click)="select(posto, true)"
+                                    (keydown.enter)="select(posto, true)">
+                                    @if (hasStructurePhoto(posto)) {
+                                        <img class="posto-thumb" width="72" height="54" style="width:72px;height:54px;object-fit:cover;border-radius:10px" [src]="posto.fotoCopertina" [alt]="posto.nome" />
+                                    } @else {
+                                        <span class="photo-empty" style="width:72px;min-height:54px;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:800"><i class="pi pi-building"></i> Nessuna foto</span>
+                                    }
+                                    <span class="posto-title">{{ posto.nome }}</span>
+                                    <span class="posto-meta">{{ posto.tipoDisplay || posto.tipo }} · {{ posto.citta }}{{ posto.regione ? ' / ' + posto.regione : '' }}</span>
+                                    <span class="posto-address">{{ posto.indirizzo || 'Indirizzo da completare' }}</span>
+                                    <span class="posto-capacity">Capienza: {{ posto.capienza ?? 'Da completare' }} · Posti letto: {{ posto.strutturaProfile?.postiLetto ?? 'Da completare' }}</span>
+                                    <span class="badges">
+                                        <span class="local-badge disp-disponibile">Approvata</span>
+                                        <span class="local-badge census-check">Verificata</span>
+                                        <span class="local-badge census-received">Censita</span>
+                                    </span>
+                                    @if (convivenzaBozza && canSendStructureRequest) {
+                                        <button type="button" class="seleziona-btn"
+                                            [class.selezionato]="postoPerRichiesta?.id === posto.id"
+                                            [disabled]="!isPostoOperativo(posto)"
+                                            (click)="$event.stopPropagation(); selezionaPerRichiesta(posto)">
+                                            @if (postoPerRichiesta?.id === posto.id) {
+                                                <i class="pi pi-check"></i> Selezionato
+                                            } @else {
+                                                Seleziona posto
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            } @empty {
+                                @if (!catalogoLoading) {
+                                    <div class="empty-state">Nessuna struttura approvata disponibile.</div>
+                                }
+                            }
+                        }
+
+                        @if (localFallbackStructures.length) {
+                            <div class="catalog-section-title">
+                                <div>
+                                    <strong>Altri posti disponibili</strong>
+                                    <span>Elenco operativo da verificare o completare.</span>
+                                </div>
+                                <em>{{ altriPostiFiltrati().length }}</em>
+                            </div>
+                        }
+                        @for (posto of altriPostiFiltrati(); track posto.id) {
                             <div role="button" tabindex="0" class="posto-item"
                                 [class.active]="posto.id === selected.id"
                                 [class.flusso-selezionato]="postoPerRichiesta?.id === posto.id"
@@ -280,6 +337,8 @@ type PostoConCensimento = PostoConvivenza & {
                                     }
                                     @if (posto.statoVerifica) {
                                         <span class="local-badge census-check">{{ posto.statoVerifica }}</span>
+                                    } @else {
+                                        <span class="local-badge census-check">Da verificare</span>
                                     }
                                 </span>
                                 @if (convivenzaBozza && canSendStructureRequest) {
@@ -297,7 +356,8 @@ type PostoConCensimento = PostoConvivenza & {
                                     </button>
                                 }
                             </div>
-                        } @empty {
+                        }
+                        @if (!postiFiltrati().length && !catalogoLoading) {
                             <div class="empty-state">Nessun posto corrisponde ai filtri selezionati.</div>
                         }
                     </section>
@@ -308,7 +368,7 @@ type PostoConCensimento = PostoConvivenza & {
                         <div #mapContainer class="mock-map" aria-label="Mappa strutture censite">
                             <div class="map-toolbar">
                                 <span>Posizione strutture</span>
-                                <strong>Anteprima geografica delle strutture approvate</strong>
+                                <strong>Anteprima geografica delle strutture approvate e dei posti disponibili.</strong>
                             </div>
                             <div class="map-grid-line line-a"></div>
                             <div class="map-grid-line line-b"></div>
@@ -377,7 +437,6 @@ type PostoConCensimento = PostoConvivenza & {
                             <div><dt>Telefono</dt><dd>{{ displayValue(selected.telefono) }}</dd></div>
                             <div><dt>Email</dt><dd>{{ displayValue(selected.email) }}</dd></div>
                             <div><dt>Stato verifica</dt><dd>{{ selected.statoDisponibilita }}</dd></div>
-                            <div><dt>Coordinate</dt><dd>{{ selected.lat }}, {{ selected.lng }}</dd></div>
                         </dl>
 
                         @if (selected.censimento) {
@@ -532,6 +591,11 @@ type PostoConCensimento = PostoConvivenza & {
                 background: rgba(255,255,255,.98);
             }
             .result-count { color: #64748b; font-weight: 800; padding: .25rem .25rem .4rem; }
+            .catalog-section-title { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; padding: .25rem .25rem 0; }
+            .catalog-section-title div { display: grid; gap: .15rem; }
+            .catalog-section-title strong { color: #0f172a; font-size: .98rem; }
+            .catalog-section-title span { color: #64748b; font-size: .8rem; font-weight: 700; line-height: 1.3; }
+            .catalog-section-title em { font-style: normal; color: #1d4ed8; font-weight: 900; }
             .posto-item {
                 min-height: 128px;
                 text-align: left;
@@ -546,6 +610,7 @@ type PostoConCensimento = PostoConvivenza & {
                 color: #111827;
                 line-height: 1.35;
             }
+            .posto-item.api-source { border-color: #bfdbfe; background: #f8fbff; }
             .posto-item.active { border-color: #315f8f; background: #eff6ff; box-shadow: inset 3px 0 0 #315f8f; }
             .posto-item span { display: block; min-width: 0; overflow-wrap: anywhere; }
             .posto-title { color: #111827; font-weight: 850; line-height: 1.25; }
@@ -786,7 +851,9 @@ export class PostiConvivenza implements OnInit {
         { key: 'spazioBambini', label: 'Spazio bambini' }
     ];
     readonly censimentoSanGaetanoLink = SAN_GAETANO_CENSIMENTO_LINK;
-    posti: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : [];
+    approvedApiStructures: PostoConCensimento[] = [];
+    localFallbackStructures: PostoConCensimento[] = this.isDemo ? this.creaPostiDemo() : this.creaPostiConCensimento();
+    posti: PostoConCensimento[] = [...this.localFallbackStructures];
     struttureSegnalate = this.isDemo ? [] : readStruttureSegnalate().filter((item) => !item.pubblicata && item.stato !== 'Scartata');
     tipi: TipoStrutturaMappa[] = this.createTipiOptions();
     zone: string[] = this.createZoneOptions();
@@ -832,6 +899,7 @@ export class PostiConvivenza implements OnInit {
     segnalazioneForm = this.createEmptySegnalazioneForm();
     catalogoLoading = false;
     catalogoApiError = '';
+    catalogoApiDisponibile: boolean | null = this.isDemo ? false : null;
 
     get isDemo() {
         const url = this.router.url.split('?')[0].split('#')[0];
@@ -861,25 +929,32 @@ export class PostiConvivenza implements OnInit {
 
     private caricaCatalogoStruttureReale() {
         if (this.isDemo) {
+            this.localFallbackStructures = this.posti;
             return;
         }
 
         this.catalogoLoading = true;
         this.catalogoApiError = '';
+        this.catalogoApiDisponibile = null;
 
         this.struttureApi.getCatalogStructures().subscribe({
             next: (strutture) => {
                 const catalogoReale = (Array.isArray(strutture) ? strutture : [])
                     .map((struttura, index) => this.creaPostoDaApiStructure(struttura, index));
 
-                this.setPosti(catalogoReale);
-                if (!catalogoReale.length) {
-                    this.catalogoApiError = 'Nessuna struttura approvata disponibile.';
-                }
+                this.approvedApiStructures = catalogoReale;
+                this.localFallbackStructures = this.rimuoviDuplicatiLocali(this.creaPostiConCensimento(), catalogoReale);
+                this.catalogoApiDisponibile = true;
+                this.catalogoApiError = '';
+                this.setPosti([...this.approvedApiStructures, ...this.localFallbackStructures]);
             },
-            error: () => {
-                this.catalogoApiError = 'Catalogo API non disponibile: mostro il catalogo locale di fallback.';
-                this.setPosti(this.creaPostiConCensimento());
+            error: (error) => {
+                console.error('[Posti di Convivenza] Catalogo approvato API non disponibile', error);
+                this.approvedApiStructures = [];
+                this.localFallbackStructures = this.creaPostiConCensimento();
+                this.catalogoApiDisponibile = false;
+                this.catalogoApiError = 'Catalogo approvato non disponibile. Viene mostrato l’elenco locale di supporto.';
+                this.setPosti(this.localFallbackStructures);
                 this.catalogoLoading = false;
             },
             complete: () => {
@@ -1081,6 +1156,14 @@ ${this.comunitaNome}`;
         });
     }
 
+    struttureApprovateFiltrate() {
+        return this.postiFiltrati().filter((posto) => posto.catalogoOrigine === 'api');
+    }
+
+    altriPostiFiltrati() {
+        return this.postiFiltrati().filter((posto) => posto.catalogoOrigine !== 'api');
+    }
+
     displayValue(value: string | null) {
         return value && value.trim() ? value : 'Da completare';
     }
@@ -1269,12 +1352,30 @@ ${this.comunitaNome}`;
         });
 
         if (!strutturaProfile) {
-            return postiBase.filter((posto) => posto.pubblicata === true);
+            return this.normalizzaPostiLocali(postiBase.filter((posto) => posto.pubblicata === true));
         }
 
         const postoProfilo = this.creaPostoDaStrutturaProfile(strutturaProfile, profileStatus);
         const senzaDuplicato = postiBase.filter((posto) => posto.nome.trim().toLowerCase() !== postoProfilo.nome.trim().toLowerCase());
-        return [postoProfilo, ...senzaDuplicato].filter((posto) => posto.pubblicata === true);
+        return this.normalizzaPostiLocali([postoProfilo, ...senzaDuplicato].filter((posto) => posto.pubblicata === true));
+    }
+
+    private normalizzaPostiLocali(posti: PostoConCensimento[]) {
+        return posti.map((posto, index) => ({
+            ...posto,
+            id: posto.id >= 50000 ? posto.id : 50000 + index,
+            catalogoOrigine: 'locale' as const,
+            statoVerifica: posto.statoVerifica ?? 'Da verificare'
+        }));
+    }
+
+    private rimuoviDuplicatiLocali(locali: PostoConCensimento[], api: PostoConCensimento[]) {
+        const chiaviApi = new Set(api.map((posto) => this.catalogoKey(posto)));
+        return locali.filter((posto) => !chiaviApi.has(this.catalogoKey(posto)));
+    }
+
+    private catalogoKey(posto: PostoConCensimento) {
+        return `${posto.nome}|${posto.citta}|${posto.indirizzo}`.trim().toLowerCase();
     }
 
     private createEmptyPosto(): PostoConCensimento {
@@ -1314,6 +1415,7 @@ ${this.comunitaNome}`;
             },
             valutazioneInterna: 'non valutato',
             pubblicata: false,
+            catalogoOrigine: 'locale',
             fotoCopertina: '/images/backgrounds/posti-convivenza-bg.jpg',
             promoAttive: []
         };
@@ -1410,6 +1512,7 @@ ${this.comunitaNome}`;
             fotoCopertina: fotoCopertina(profile),
             promoAttive: [],
             statoVerifica: 'Verificata',
+            catalogoOrigine: 'api',
             pubblicata: true
         };
     }
@@ -1601,7 +1704,8 @@ ${this.comunitaNome}`;
                     accessibilita: index === 0,
                     spazioBambini: index === 1
                 },
-                valutazioneInterna: index === 0 ? 'positivo' : 'non valutato'
+                valutazioneInterna: index === 0 ? 'positivo' : 'non valutato',
+                catalogoOrigine: 'demo'
             };
         });
     }
