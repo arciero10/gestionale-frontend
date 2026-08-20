@@ -42,7 +42,7 @@ import {
     readProfileStatus,
     readStrutturaProfile
 } from '../../strutture/struttura-profile.storage';
-import { StructureAccreditationResponse, StructurePhotoResponse, StruttureApiService } from '../../strutture/strutture-api.service';
+import { StructureAccreditationResponse, StructurePhotoResponse, StructureRequestCreateRequest, StruttureApiService } from '../../strutture/strutture-api.service';
 
 type ServizioFiltro = keyof Pick<ServiziPosto, 'salaIncontri' | 'cucina' | 'parcheggio' | 'accessibilita' | 'spazioBambini'>;
 
@@ -130,19 +130,47 @@ type PostoConCensimento = PostoConvivenza & {
                     @if (postoPerRichiesta && canSendStructureRequest) {
                         <div class="ctx-cta">
                             <span><i class="pi pi-building"></i> <strong>{{ postoPerRichiesta.nome }}</strong> selezionato</span>
-                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="inviaRichiestaMock()"></button>
+                            <button pButton type="button" label="Invia richiesta" icon="pi pi-send" (click)="apriPannelloRichiesta(postoPerRichiesta)"></button>
                         </div>
                     }
                 </div>
             }
 
-            @if (showFormConvivenza && !convivenzaBozza && canSendStructureRequest) {
+            @if (showFormConvivenza && canSendStructureRequest) {
                 <section class="form-convivenza-inline">
                     <div class="fci-header">
-                                <div class="fci-eyebrow"><i class="pi pi-calendar-plus"></i> Dati convivenza</div>
-                        <p>Stai per inviare una richiesta a <strong>{{ postoPerRichiesta?.nome }}</strong>. Compila i dati della convivenza per procedere.</p>
+                        <div class="fci-eyebrow"><i class="pi pi-send"></i> Richiesta disponibilità</div>
+                        <p>Stai per inviare una richiesta a <strong>{{ postoPerRichiesta?.nome }}</strong>. Compila i dati necessari alla segreteria.</p>
                     </div>
                     <div class="fci-grid">
+                        <div class="fci-field fci-col-span-2">
+                            <label>Struttura selezionata</label>
+                            <div class="fci-readonly">{{ postoPerRichiesta?.nome || 'Struttura da selezionare' }}</div>
+                        </div>
+                        <div class="fci-field">
+                            <label>Nome referente</label>
+                            <input pInputText [(ngModel)]="requestReferenteName" placeholder="Nome e cognome" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Email</label>
+                            <input pInputText type="email" [(ngModel)]="requestEmail" placeholder="email@dominio.it" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Telefono</label>
+                            <input pInputText [(ngModel)]="requestPhone" placeholder="Opzionale" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Città</label>
+                            <input pInputText [(ngModel)]="requestCity" placeholder="Città" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Comunità</label>
+                            <input pInputText [(ngModel)]="requestCommunityName" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Parrocchia</label>
+                            <input pInputText [(ngModel)]="requestParishName" />
+                        </div>
                         <div class="fci-field">
                             <label>Chi organizza</label>
                             <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="chiOrganizzaOptions" [(ngModel)]="formChiOrganizza"></p-select>
@@ -174,17 +202,33 @@ type PostoConCensimento = PostoConvivenza & {
                             <label>Numero partecipanti</label>
                             <input pInputText type="number" min="1" [(ngModel)]="formPartecipanti" placeholder="Es. 35" />
                         </div>
+                        <div class="fci-field">
+                            <label>Adulti</label>
+                            <input pInputText type="number" min="0" [(ngModel)]="requestAdults" placeholder="Opzionale" />
+                        </div>
+                        <div class="fci-field">
+                            <label>Bambini</label>
+                            <input pInputText type="number" min="0" [(ngModel)]="requestChildren" placeholder="Opzionale" />
+                        </div>
                         <div class="fci-field fci-col-span-2">
-                            <label>Note (opzionale)</label>
-                            <input pInputText [(ngModel)]="formNote" placeholder="Eventuali necessità specifiche..." />
+                            <label>Note / esigenze particolari</label>
+                            <textarea rows="3" style="width:100%;min-height:88px;resize:vertical;border:1px solid #d1d5db;border-radius:8px;padding:.62rem .75rem;color:#0f172a;font:inherit" [(ngModel)]="formNote" placeholder="Eventuali necessità specifiche..."></textarea>
                         </div>
                     </div>
                     @if (formValidationError) {
                         <div class="fci-error"><i class="pi pi-exclamation-triangle"></i> {{ formValidationError }}</div>
                     }
+                    @if (requestFeedbackMessage) {
+                        <div style="display:inline-flex;align-items:center;gap:.5rem;padding:.6rem .8rem;border-radius:10px;font-weight:800;font-size:.88rem"
+                            [style.background]="requestFeedbackType === 'success' ? '#dcfce7' : '#fee2e2'"
+                            [style.color]="requestFeedbackType === 'success' ? '#166534' : '#991b1b'">
+                            <i class="pi" [class.pi-check-circle]="requestFeedbackType === 'success'" [class.pi-exclamation-triangle]="requestFeedbackType === 'error'"></i>
+                            {{ requestFeedbackMessage }}
+                        </div>
+                    }
                     <div class="fci-actions">
                         <button pButton type="button" severity="secondary" outlined label="Annulla" (click)="chiudiFormConvivenza()"></button>
-                        <button pButton type="button" label="Salva e invia richiesta" icon="pi pi-send" (click)="salvaFormConvivenzaEProcedi()"></button>
+                        <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [loading]="submittingStructureRequest" (click)="salvaFormConvivenzaEProcedi()"></button>
                     </div>
                 </section>
             }
@@ -547,7 +591,7 @@ type PostoConCensimento = PostoConvivenza & {
                             <button pButton type="button" label="Dettaglio" icon="pi pi-info-circle" outlined></button>
                             @if (convivenzaBozza && canSendStructureRequest) {
                                 <button pButton type="button" label="Seleziona e invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)"
-                                    (click)="selezionaPerRichiesta(selected); inviaRichiestaMock()"></button>
+                                    (click)="apriPannelloRichiesta(selected)"></button>
                             } @else if (canSendStructureRequest) {
                                 <button pButton type="button" label="Invia richiesta" icon="pi pi-send" [disabled]="!isPostoOperativo(selected)" (click)="apriNuovaRichiesta(selected)"></button>
                             }
@@ -822,13 +866,12 @@ type PostoConCensimento = PostoConvivenza & {
                 display: inline-flex;
                 align-items: center;
                 gap: .5rem;
-                padding: .55rem .75rem;
+                padding: .6rem .8rem;
                 border-radius: 10px;
-                background: #fff7ed;
-                color: #9a3412;
-                font-weight: 700;
+                font-weight: 800;
                 font-size: .88rem;
             }
+            .fci-error { background: #fff7ed; color: #9a3412; }
             .fci-actions {
                 display: flex;
                 justify-content: flex-end;
@@ -928,6 +971,17 @@ export class PostiConvivenza implements OnInit {
     formPartecipanti: number | null = null;
     formNote = '';
     formValidationError = '';
+    requestReferenteName = '';
+    requestEmail = '';
+    requestPhone = '';
+    requestCommunityName = '';
+    requestParishName = '';
+    requestCity = '';
+    requestAdults: number | null = null;
+    requestChildren: number | null = null;
+    requestFeedbackMessage = '';
+    requestFeedbackType: 'success' | 'error' | '' = '';
+    submittingStructureRequest = false;
     showSegnalaForm = false;
     segnalazioneErrore = '';
     segnalazioneForm = this.createEmptySegnalazioneForm();
@@ -1020,66 +1074,107 @@ export class PostiConvivenza implements OnInit {
         }
 
         if (this.convivenzaBozza) {
-            this.selezionaPerRichiesta(posto);
-            this.inviaRichiestaMock();
+            this.apriPannelloRichiesta(posto);
             return;
         }
+        this.apriPannelloRichiesta(posto);
+    }
+
+    apriPannelloRichiesta(posto: PostoConCensimento | null) {
+        if (!posto || !this.canSendStructureRequest || !this.isPostoOperativo(posto)) {
+            return;
+        }
+
         this.postoPerRichiesta = posto;
         this.select(posto, true);
-        this.formChiOrganizza = 'Comunità';
-        this.formComunitaDestinataria = this.comunitaNome;
-        this.formTipoConvivenza = null;
-        this.formDataInizio = '';
-        this.formDataFine = '';
-        this.formPartecipanti = null;
-        this.formNote = '';
-        this.formValidationError = '';
+        this.preparaFormRichiestaDaContesto();
         this.showFormConvivenza = true;
         setTimeout(() => {
             document.querySelector('.form-convivenza-inline')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 50);
     }
 
+    private preparaFormRichiestaDaContesto() {
+        const authState = this.authService.state();
+        const fullName = [authState.firstName, authState.lastName].filter(Boolean).join(' ').trim();
+        this.formChiOrganizza = 'Comunità';
+        this.formComunitaDestinataria = this.comunitaNome;
+        this.requestReferenteName = this.requestReferenteName || fullName;
+        this.requestEmail = this.requestEmail || authState.email || '';
+        this.requestPhone = this.requestPhone || '';
+        this.requestCommunityName = this.convivenzaBozza?.comunitaDestinatariaNome || this.comunitaNome;
+        this.requestParishName = this.currentCommunity.parrocchiaNome || '';
+        this.requestCity = this.currentCommunity.comune || this.postoPerRichiesta?.citta || '';
+        this.formTipoConvivenza = this.convivenzaBozza?.tipoConvivenza || null;
+        this.formDataInizio = this.convivenzaBozza?.dataInizio || '';
+        this.formDataFine = this.convivenzaBozza?.dataFine || '';
+        this.formPartecipanti = this.convivenzaBozza?.partecipantiPrevisti || null;
+        this.formNote = this.convivenzaBozza?.note || '';
+        this.requestAdults = null;
+        this.requestChildren = null;
+        this.formValidationError = '';
+        this.requestFeedbackMessage = '';
+        this.requestFeedbackType = '';
+    }
+
     chiudiFormConvivenza() {
         this.showFormConvivenza = false;
         this.postoPerRichiesta = null;
         this.formValidationError = '';
+        this.requestFeedbackMessage = '';
+        this.requestFeedbackType = '';
     }
 
     salvaFormConvivenzaEProcedi() {
-        if (!this.formTipoConvivenza || !this.formDataInizio || !this.formDataFine || !this.formPartecipanti) {
-            this.formValidationError = 'Compila tipo convivenza, date e numero partecipanti.';
+        if (this.submittingStructureRequest) {
             return;
         }
+
+        const validation = this.validateStructureRequestForm();
+        if (validation) {
+            this.formValidationError = validation;
+            this.requestFeedbackMessage = '';
+            this.requestFeedbackType = '';
+            return;
+        }
+
+        if (!this.postoPerRichiesta || !this.formTipoConvivenza || !this.formPartecipanti) {
+            this.formValidationError = 'Seleziona una struttura e compila i dati della richiesta.';
+            return;
+        }
+
         if (this.formDataFine < this.formDataInizio) {
             this.formValidationError = 'La data di fine deve essere uguale o successiva a quella di inizio.';
             return;
         }
+
         this.formValidationError = '';
 
-        const id = Date.now();
         const comunitaDestinatariaNome = this.hasComunitaFiglie
             ? (this.formComunitaDestinataria || this.comunitaNome)
             : this.comunitaNome;
 
-        const bozza: ConvivenzaBozza = {
-            id,
-            titolo: this.formTipoConvivenza,
-            tipoConvivenza: this.formTipoConvivenza,
-            comunitaDestinatariaNome,
-            dataInizio: this.formDataInizio,
-            dataFine: this.formDataFine,
-            stato: 'Bozza',
-            soggettoOrganizzatore: this.formChiOrganizza,
-            equipeOrganizzatriceNome: this.formChiOrganizza === 'Equipe dei catechisti' ? 'Equipe dei catechisti' : '',
-            partecipantiPrevisti: Number(this.formPartecipanti),
-            note: this.formNote
-        };
+        if (!this.convivenzaBozza) {
+            const id = Date.now();
+            const bozza: ConvivenzaBozza = {
+                id,
+                titolo: this.formTipoConvivenza,
+                tipoConvivenza: this.formTipoConvivenza,
+                comunitaDestinatariaNome,
+                dataInizio: this.formDataInizio,
+                dataFine: this.formDataFine,
+                stato: 'Bozza',
+                soggettoOrganizzatore: this.formChiOrganizza,
+                equipeOrganizzatriceNome: this.formChiOrganizza === 'Equipe dei catechisti' ? 'Equipe dei catechisti' : '',
+                partecipantiPrevisti: Number(this.formPartecipanti),
+                note: this.formNote
+            };
 
-        localStorage.setItem(`bozza-convivenza-${id}`, JSON.stringify(bozza));
-        this.convivenzaBozza = bozza;
-        this.showFormConvivenza = false;
-        this.inviaRichiestaMock();
+            localStorage.setItem(`bozza-convivenza-${id}`, JSON.stringify(bozza));
+            this.convivenzaBozza = bozza;
+        }
+
+        this.inviaRichiestaReale();
     }
 
     selezionaPerRichiesta(posto: PostoConCensimento) {
@@ -1123,6 +1218,77 @@ export class PostiConvivenza implements OnInit {
 
         const basePath = this.isDemo ? '/demo' : '/gestionale-cn';
         this.router.navigate([`${basePath}/richieste-strutture`], { queryParams: { richiestaId: richiesta.id } });
+    }
+
+    private inviaRichiestaReale() {
+        if (!this.postoPerRichiesta || !this.formTipoConvivenza || !this.formPartecipanti) {
+            return;
+        }
+
+        const posto = this.postoPerRichiesta;
+        const payload: StructureRequestCreateRequest = {
+            structureId: posto.catalogoOrigine === 'api' && posto.id > 0 ? posto.id : null,
+            structureName: posto.nome,
+            requestedByName: this.requestReferenteName.trim(),
+            requestedByEmail: this.requestEmail.trim(),
+            requestedByPhone: this.requestPhone.trim() || null,
+            communityName: this.requestCommunityName.trim() || this.convivenzaBozza?.comunitaDestinatariaNome || this.comunitaNome,
+            parishName: this.requestParishName.trim() || this.currentCommunity.parrocchiaNome,
+            city: this.requestCity.trim() || this.currentCommunity.comune || posto.citta,
+            convivenzaType: this.formTipoConvivenza,
+            startDate: this.toApiDate(this.formDataInizio),
+            endDate: this.toApiDate(this.formDataFine),
+            peopleCount: Number(this.formPartecipanti),
+            adultsCount: this.toOptionalNumber(this.requestAdults),
+            childrenCount: this.toOptionalNumber(this.requestChildren),
+            notes: this.formNote.trim() || null
+        };
+
+        this.submittingStructureRequest = true;
+        this.requestFeedbackMessage = '';
+        this.requestFeedbackType = '';
+
+        this.struttureApi.createStructureRequest(payload).subscribe({
+            next: (response) => {
+                this.requestFeedbackType = 'success';
+                this.requestFeedbackMessage = 'Richiesta inviata correttamente. La segreteria prenderà in carico la richiesta.';
+
+                if (this.convivenzaBozza) {
+                    const convivenzaAggiornata: ConvivenzaBozza = { ...this.convivenzaBozza, stato: 'In richiesta' };
+                    localStorage.setItem(`bozza-convivenza-${convivenzaAggiornata.id}`, JSON.stringify(convivenzaAggiornata));
+                    this.convivenzaBozza = convivenzaAggiornata;
+                }
+
+                localStorage.setItem(`structure-request-${response.id}`, JSON.stringify(response));
+            },
+            error: (error) => {
+                console.error('[Posti di Convivenza] Invio richiesta struttura non riuscito', error);
+                this.requestFeedbackType = 'error';
+                this.requestFeedbackMessage = 'Non è stato possibile inviare la richiesta. Riprova più tardi.';
+            },
+            complete: () => {
+                this.submittingStructureRequest = false;
+            }
+        });
+    }
+
+    private validateStructureRequestForm() {
+        if (!this.postoPerRichiesta) return 'Seleziona una struttura.';
+        if (!this.requestReferenteName.trim()) return 'Il nome referente è obbligatorio.';
+        if (!this.requestEmail.trim()) return 'L’email è obbligatoria.';
+        if (!this.formTipoConvivenza) return 'Il tipo convivenza è obbligatorio.';
+        if (!this.formDataInizio) return 'La data di inizio è obbligatoria.';
+        if (!this.formDataFine) return 'La data di fine è obbligatoria.';
+        if (!this.formPartecipanti || Number(this.formPartecipanti) <= 0) return 'Il numero persone è obbligatorio.';
+        return '';
+    }
+
+    private toApiDate(value: string) {
+        return `${value}T00:00:00.000Z`;
+    }
+
+    private toOptionalNumber(value: number | null) {
+        return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
     }
 
     private creaCorpoEmailDaBozza(bozza: ConvivenzaBozza, _posto: PostoConvivenza): string {

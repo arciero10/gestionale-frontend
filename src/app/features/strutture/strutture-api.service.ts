@@ -65,6 +65,42 @@ export interface RejectStructureRequest {
     reason?: string;
 }
 
+export type StructureRequestStatus = 'INVIATA' | 'IN_VALUTAZIONE' | 'ACCETTATA' | 'RIFIUTATA' | 'ANNULLATA';
+
+export interface StructureRequestCreateRequest {
+    structureId?: number | null;
+    structureName?: string | null;
+    requestedByName: string;
+    requestedByEmail: string;
+    requestedByPhone?: string | null;
+    communityName?: string | null;
+    parishName?: string | null;
+    city?: string | null;
+    convivenzaType: string;
+    startDate: string;
+    endDate: string;
+    peopleCount: number;
+    adultsCount?: number | null;
+    childrenCount?: number | null;
+    notes?: string | null;
+}
+
+export interface StructureRequestResponse extends StructureRequestCreateRequest {
+    id: number;
+    status: StructureRequestStatus;
+    createdAt: string;
+    updatedAt?: string | null;
+    reviewedAt?: string | null;
+    reviewedBy?: string | null;
+    responseNotes?: string | null;
+}
+
+export interface StructureRequestStatusUpdateRequest {
+    status: StructureRequestStatus;
+    reviewedBy?: string | null;
+    responseNotes?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StruttureApiService {
     private readonly http = inject(HttpClient);
@@ -96,6 +132,19 @@ export class StruttureApiService {
 
     getCatalogStructures(): Observable<StructureAccreditationResponse[]> {
         return this.http.get<StructureAccreditationResponse[]>(`${this.baseUrl}/catalog/structures`);
+    }
+
+    createStructureRequest(payload: StructureRequestCreateRequest): Observable<StructureRequestResponse> {
+        return this.http.post<StructureRequestResponse>(`${this.baseUrl}/structure-requests`, payload);
+    }
+
+    getAdminStructureRequests(status?: StructureRequestStatus): Observable<StructureRequestResponse[]> {
+        const suffix = status ? `?status=${encodeURIComponent(status)}` : '';
+        return this.http.get<StructureRequestResponse[]>(`${this.baseUrl}/admin/structure-requests${suffix}`);
+    }
+
+    updateStructureRequestStatus(id: number, payload: StructureRequestStatusUpdateRequest): Observable<StructureRequestResponse> {
+        return this.http.patch<StructureRequestResponse>(`${this.baseUrl}/admin/structure-requests/${id}/status`, payload);
     }
 
     toAccreditationPayload(profile: StrutturaProfileMock): StructureAccreditationRequest {

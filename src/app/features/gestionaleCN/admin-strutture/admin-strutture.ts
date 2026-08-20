@@ -7,6 +7,8 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import {
     StructureAccreditationResponse,
+    StructureRequestResponse,
+    StructureRequestStatus,
     StructureStatus,
     StruttureApiService
 } from '../../strutture/strutture-api.service';
@@ -129,6 +131,78 @@ type StructureFilter = 'TUTTE' | 'IN_ATTESA' | 'APPROVATA' | 'RESPINTA';
                                 <p>Non ci sono accreditamenti con i filtri selezionati.</p>
                             </div>
                         }
+                    </div>
+                }
+            </section>
+
+            <section class="structures-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="eyebrow">Disponibilità</span>
+                        <h2>Richieste strutture</h2>
+                    </div>
+                    <button pButton type="button" icon="pi pi-refresh" label="Aggiorna richieste" size="small" outlined [loading]="requestsLoading" (click)="loadStructureRequests()"></button>
+                </div>
+
+                @if (requestsMessage) {
+                    <div class="feedback" [class.error]="requestsMessageType === 'error'">{{ requestsMessage }}</div>
+                }
+
+                @if (requestsLoading) {
+                    <div class="empty-state">
+                        <i class="pi pi-spin pi-spinner"></i>
+                        <h3>Caricamento richieste</h3>
+                        <p>Sto recuperando le richieste disponibilità dall'API.</p>
+                    </div>
+                } @else if (structureRequests.length) {
+                    <div class="table-shell">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Struttura</th>
+                                    <th>Comunità / parrocchia</th>
+                                    <th>Periodo</th>
+                                    <th>Persone</th>
+                                    <th>Stato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (request of structureRequests; track request.id) {
+                                    <tr>
+                                        <td>{{ formatDate(request.createdAt) }}</td>
+                                        <td>
+                                            <strong>{{ request.structureName }}</strong>
+                                            <span>{{ request.convivenzaType }}</span>
+                                        </td>
+                                        <td>
+                                            <strong>{{ request.communityName || 'Comunità da completare' }}</strong>
+                                            <span>{{ request.parishName || 'Parrocchia da completare' }}</span>
+                                        </td>
+                                        <td>{{ formatDate(request.startDate) }} - {{ formatDate(request.endDate) }}</td>
+                                        <td>
+                                            <strong>{{ request.peopleCount }}</strong>
+                                            <span>Adulti {{ request.adultsCount ?? 'n/d' }} · Bambini {{ request.childrenCount ?? 'n/d' }}</span>
+                                        </td>
+                                        <td><p-tag [value]="requestStatusLabel(request.status)" [severity]="requestStatusSeverity(request.status)"></p-tag></td>
+                                        <td>
+                                            <div class="row-actions">
+                                                <button pButton type="button" label="In valutazione" icon="pi pi-clock" size="small" outlined [loading]="isRequestActionLoading(request)" (click)="updateRequestStatus(request, 'IN_VALUTAZIONE')"></button>
+                                                <button pButton type="button" label="Accetta" icon="pi pi-check" size="small" [loading]="isRequestActionLoading(request)" (click)="updateRequestStatus(request, 'ACCETTATA')"></button>
+                                                <button pButton type="button" label="Rifiuta" icon="pi pi-times" size="small" severity="danger" outlined [loading]="isRequestActionLoading(request)" (click)="updateRequestStatus(request, 'RIFIUTATA')"></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } @else {
+                    <div class="empty-state">
+                        <i class="pi pi-inbox"></i>
+                        <h3>Nessuna richiesta struttura</h3>
+                        <p>Le richieste inviate da Posti di Convivenza compariranno qui.</p>
                     </div>
                 }
             </section>
@@ -299,9 +373,15 @@ export class AdminStrutture implements OnInit {
     rejectTarget: StructureAccreditationResponse | null = null;
     rejectReason = 'Dati incompleti';
     actionLoadingId: number | null = null;
+    structureRequests: StructureRequestResponse[] = [];
+    requestsLoading = false;
+    requestActionLoadingId: number | null = null;
+    requestsMessage = '';
+    requestsMessageType: 'success' | 'error' = 'success';
 
     ngOnInit(): void {
         this.loadStructures();
+        this.loadStructureRequests();
     }
 
     get filteredStructures(): StructureAccreditationResponse[] {
@@ -324,6 +404,20 @@ export class AdminStrutture implements OnInit {
             error: () => {
                 this.loading = false;
                 this.showMessage("Non riesco a caricare le strutture dall'API. Riprova tra poco.", 'error');
+            }
+        });
+    }
+
+    loadStructureRequests(): void {
+        this.requestsLoading = true;
+        this.struttureApi.getAdminStructureRequests().subscribe({
+            next: (requests) => {
+                this.structureRequests = [...requests].sort((a, b) => this.toTime(b.createdAt) - this.toTime(a.createdAt));
+                this.requestsLoading = false;
+            },
+            error: () => {
+                this.requestsLoading = false;
+                this.showRequestsMessage('Non riesco a caricare le richieste strutture dall’API.', 'error');
             }
         });
     }
@@ -416,6 +510,47 @@ export class AdminStrutture implements OnInit {
         return severities[status] ?? 'secondary';
     }
 
+    requestStatusLabel(status: StructureRequestStatus): string {
+        const labels: Record<StructureRequestStatus, string> = {
+            INVIATA: 'Inviata',
+            IN_VALUTAZIONE: 'In valutazione',
+            ACCETTATA: 'Accettata',
+            RIFIUTATA: 'Rifiutata',
+            ANNULLATA: 'Annullata'
+        };
+        return labels[status] ?? status;
+    }
+
+    requestStatusSeverity(status: StructureRequestStatus): 'success' | 'secondary' | 'warn' | 'danger' {
+        const severities: Record<StructureRequestStatus, 'success' | 'secondary' | 'warn' | 'danger'> = {
+            INVIATA: 'warn',
+            IN_VALUTAZIONE: 'secondary',
+            ACCETTATA: 'success',
+            RIFIUTATA: 'danger',
+            ANNULLATA: 'secondary'
+        };
+        return severities[status] ?? 'secondary';
+    }
+
+    updateRequestStatus(request: StructureRequestResponse, status: StructureRequestStatus): void {
+        this.requestActionLoadingId = request.id;
+        this.struttureApi.updateStructureRequestStatus(request.id, { status, responseNotes: this.requestStatusLabel(status) }).subscribe({
+            next: (updated) => {
+                this.structureRequests = this.structureRequests.map((item) => item.id === updated.id ? updated : item);
+                this.requestActionLoadingId = null;
+                this.showRequestsMessage('Richiesta aggiornata correttamente', 'success');
+            },
+            error: () => {
+                this.requestActionLoadingId = null;
+                this.showRequestsMessage('Aggiornamento richiesta non riuscito.', 'error');
+            }
+        });
+    }
+
+    isRequestActionLoading(request: StructureRequestResponse): boolean {
+        return this.requestActionLoadingId === request.id;
+    }
+
     formatDate(value?: string | null): string {
         if (!value) {
             return 'Da completare';
@@ -458,6 +593,16 @@ export class AdminStrutture implements OnInit {
         window.setTimeout(() => {
             if (this.message === message) {
                 this.message = '';
+            }
+        }, 4000);
+    }
+
+    private showRequestsMessage(message: string, type: 'success' | 'error'): void {
+        this.requestsMessage = message;
+        this.requestsMessageType = type;
+        window.setTimeout(() => {
+            if (this.requestsMessage === message) {
+                this.requestsMessage = '';
             }
         }, 4000);
     }
