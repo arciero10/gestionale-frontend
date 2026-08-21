@@ -1207,10 +1207,11 @@ export class PostiConvivenza implements OnInit {
             return;
         }
 
-        const posto = this.postoPerRichiesta;
+        const posto = this.selected?.id === this.postoPerRichiesta.id ? this.selected : this.postoPerRichiesta;
+        const structureName = (posto.nome || posto.strutturaProfile?.nome || '').trim();
         const payload: StructureRequestCreateRequest = {
             structureId: posto.catalogoOrigine === 'api' && posto.id > 0 ? posto.id : null,
-            structureName: posto.nome,
+            structureName,
             requestedByName: this.requestReferenteName.trim(),
             requestedByEmail: this.requestEmail.trim(),
             requestedByPhone: this.requestPhone.trim() || null,
@@ -1227,10 +1228,7 @@ export class PostiConvivenza implements OnInit {
             notes: this.formNote.trim() || null
         };
 
-        console.debug('[Posti Convivenza] Invio richiesta struttura:', {
-            structureId: payload.structureId,
-            structureName: payload.structureName
-        });
+        console.debug('[Posti Convivenza] structure request payload', payload);
 
         this.submittingStructureRequest = true;
         this.requestFeedbackMessage = '';
