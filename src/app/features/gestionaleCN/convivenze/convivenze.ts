@@ -10,6 +10,7 @@ import { DEMO_COMUNITA, DEMO_CONVIVENZE, DEMO_POSTI } from '../../demo/demo.mock
 import { ComunitaFigliaAssociata, getCurrentCommunity } from '../data/community-selection.storage';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import { canPerformAction, canSeeConvivenza, getUserAccessContext } from '../data/access-policy.mock';
+import { ConvivenzaDaRichiestaStruttura, readConvivenzeDaRichiesteStruttura } from '../data/convivenze-da-richieste.storage';
 import {
     CategoriaConvivenza,
     SoggettoOrganizzatoreConvivenza,
@@ -551,8 +552,8 @@ export class Convivenze {
 
     readonly categorieForm: CategoriaConvivenza[] = ['Catechistica', 'Annuale', 'Comunitaria', 'Organizzativa'];
     readonly tipiCatechistici = [...TIPI_CONVIVENZA_CATECHISTICA];
-    readonly tipiAnnuali = [...TIPI_CONVIVENZA_ANNUALE];
-    readonly tipiConvivenza = [...TIPI_CONVIVENZA_CATECHISTICA, ...TIPI_CONVIVENZA_ANNUALE];
+    readonly tipiAnnuali = TIPI_CONVIVENZA_ANNUALE.filter((tipo) => tipo !== 'Inizio Corso');
+    readonly tipiConvivenza = [...TIPI_CONVIVENZA_CATECHISTICA, ...this.tipiAnnuali];
 
     readonly tipiCatechisticiWizard: TipoConvivenza[] = [
         '1° Scrutinio',
@@ -571,7 +572,6 @@ export class Convivenze {
 
     readonly tipiComunitaNuova: TipoConvivenza[] = [
         'Convivenza domenicale',
-        'Inizio Corso',
         'Riporto',
         'Pentecoste',
         'Altro'
@@ -650,7 +650,7 @@ export class Convivenze {
         { id: 2, nome: 'Istituto Santa Marta', citta: 'Frascati', regione: 'Lazio' }
     ];
 
-    convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : this.currentCommunity.isPilot ? this.creaConvivenzePilota() : [];
+    convivenze: Convivenza[] = this.isDemo ? this.creaConvivenzeDemo() : [...this.creaConvivenzeDaRichiesteStruttura(), ...(this.currentCommunity.isPilot ? this.creaConvivenzePilota() : [])];
     selected: Convivenza | null = this.convivenze.find((c) => canSeeConvivenza(c, this.userAccessContext) && c.soggettoOrganizzatore === 'Comunità') ?? this.convivenze.find((c) => canSeeConvivenza(c, this.userAccessContext)) ?? null;
 
     get convivenzeFiltrate() {
@@ -999,7 +999,7 @@ Pace.`;
 
     getPostoNome(convivenza: Convivenza) {
         const posto = this.posti.find((item) => item.id === convivenza.strutturaId);
-        return posto ? posto.nome : 'Luogo non ancora assegnato';
+        return posto ? posto.nome : convivenza.luogoTestuale || 'Luogo non ancora assegnato';
     }
 
     getStatoSeverity(stato: StatoConvivenza) {
@@ -1093,6 +1093,41 @@ Pace.`;
                 statoRichiestaStruttura: 'Confermata'
             }
         ];
+    }
+
+    private creaConvivenzeDaRichiesteStruttura(): Convivenza[] {
+        return readConvivenzeDaRichiesteStruttura().map((item) => this.creaConvivenzaDaRichiesta(item));
+    }
+
+    private creaConvivenzaDaRichiesta(item: ConvivenzaDaRichiestaStruttura): Convivenza {
+        const tipo = item.tipoConvivenza as TipoConvivenza;
+        const isCatechistica = isTipoConvivenzaCatechistica(item.tipoConvivenza);
+        const stato: StatoConvivenza = item.status === 'RICHIESTA_INVIATA' || item.status === 'IN_ATTESA_STRUTTURA'
+            ? 'In richiesta'
+            : item.status === 'CONFERMATA'
+                ? 'Confermata'
+                : item.status === 'ANNULLATA'
+                    ? 'Annullata'
+                    : 'Bozza';
+
+        return {
+            ...this.baseConvivenza(item.id, item.titolo, isCatechistica ? 'Catechistica' : 'Annuale', tipo, isCatechistica ? 'Equipe dei catechisti' : 'Comunità', stato),
+            comunitaDestinatariaNome: item.communityName,
+            strutturaId: item.structureId,
+            dataInizio: item.startDate,
+            dataFine: item.endDate,
+            partecipantiPrevisti: item.peopleCount,
+            partecipantiConfermati: 0,
+            luogoTestuale: item.structureName,
+            citta: item.city || '',
+            note: item.notes || '',
+            statoRichiestaStruttura: item.status === 'RICHIESTA_INVIATA' || item.status === 'IN_ATTESA_STRUTTURA' ? 'Inviata' : item.status === 'CONFERMATA' ? 'Confermata' : 'Bozza',
+            aggregati: {
+                ...this.aggregatiVuoti(),
+                adulti: item.adultsCount ?? Math.max(item.peopleCount - (item.childrenCount ?? 0), 0),
+                bambini: item.childrenCount ?? 0
+            }
+        };
     }
 
     private creaConvivenzeDemo(): Convivenza[] {

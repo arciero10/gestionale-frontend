@@ -196,17 +196,12 @@ function formatPostiDateIt(value: string | Date | null | undefined): string {
                         </div>
                         <div class="fci-field">
                             <label>Chi organizza</label>
-                            <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="chiOrganizzaOptions" [(ngModel)]="formChiOrganizza"></p-select>
+                            <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="chiOrganizzaOptions" [(ngModel)]="formChiOrganizza" (ngModelChange)="onOrganizerChange()"></p-select>
                         </div>
-                        @if (hasComunitaFiglie) {
+                        @if (showComunitaDestinatariaField()) {
                             <div class="fci-field">
                                 <label>Comunità destinataria</label>
                                 <p-select appendTo="body" panelStyleClass="modal-dropdown-panel" [options]="comunitaFiglieOptions" [(ngModel)]="formComunitaDestinataria" placeholder="Seleziona comunità..."></p-select>
-                            </div>
-                        } @else {
-                            <div class="fci-field">
-                                <label>Comunità destinataria</label>
-                                <div class="fci-readonly">{{ comunitaNome }}</div>
                             </div>
                         }
                         <div class="fci-field fci-col-span-2">
@@ -973,10 +968,11 @@ export class PostiConvivenza implements OnInit {
     readonly comunitaFiglieOptions = (this.currentCommunity.comunitaFiglieAssociate ?? []).map(
         (f) => `${f.nomeComunita} – ${f.parrocchiaNome}`
     );
-    readonly chiOrganizzaOptions = ['Comunità', 'Equipe dei catechisti'];
+    readonly canOrganizeAsEquipe = this.userAccessContext.isCatechista && this.hasComunitaFiglie;
+    readonly chiOrganizzaOptions = this.getOrganizerOptions();
     readonly tipiConvivenzaForm = [
         { label: '── Convivenze annuali ──', value: null, disabled: true },
-        ...TIPI_CONVIVENZA_ANNUALE.map((t) => ({ label: t, value: t, disabled: false })),
+        ...TIPI_CONVIVENZA_ANNUALE.filter((t) => t !== 'Inizio Corso').map((t) => ({ label: t, value: t, disabled: false })),
         { label: '── Tappe catechistiche ──', value: null, disabled: true },
         ...TAPPE_UFFICIALI_CAMMINO.map((t) => ({ label: t, value: t, disabled: false }))
     ];
@@ -985,7 +981,7 @@ export class PostiConvivenza implements OnInit {
     postoPerRichiesta: PostoConCensimento | null = null;
 
     showFormConvivenza = false;
-    formChiOrganizza = 'Comunità';
+    formChiOrganizza = this.getDefaultOrganizerOption();
     formComunitaDestinataria = '';
     formTipoConvivenza: string | null = null;
     formDataInizio = '';
@@ -1111,12 +1107,12 @@ export class PostiConvivenza implements OnInit {
     private preparaFormRichiestaDaContesto() {
         const authState = this.authService.state();
         const fullName = [authState.firstName, authState.lastName].filter(Boolean).join(' ').trim();
-        this.formChiOrganizza = 'Comunità';
-        this.formComunitaDestinataria = this.comunitaNome;
+        this.formChiOrganizza = this.getDefaultOrganizerOption();
+        this.formComunitaDestinataria = this.comunitaFiglieOptions[0] ?? '';
         this.requestReferenteName = this.requestReferenteName || fullName;
         this.requestEmail = this.requestEmail || authState.email || '';
         this.requestPhone = this.requestPhone || '';
-        this.requestCommunityName = this.convivenzaBozza?.comunitaDestinatariaNome || this.comunitaNome;
+        this.requestCommunityName = this.convivenzaBozza?.comunitaDestinatariaNome || this.getCommunityNameForRequest();
         this.requestParishName = this.currentCommunity.parrocchiaNome || '';
         this.requestCity = this.currentCommunity.comune || this.postoPerRichiesta?.citta || '';
         this.formTipoConvivenza = this.convivenzaBozza?.tipoConvivenza || null;
@@ -1166,9 +1162,7 @@ export class PostiConvivenza implements OnInit {
 
         this.formValidationError = '';
 
-        const comunitaDestinatariaNome = this.hasComunitaFiglie
-            ? (this.formComunitaDestinataria || this.comunitaNome)
-            : this.comunitaNome;
+        const comunitaDestinatariaNome = this.getCommunityNameForRequest();
 
         if (!this.convivenzaBozza) {
             const id = Date.now();
@@ -1180,7 +1174,7 @@ export class PostiConvivenza implements OnInit {
                 dataInizio: this.formDataInizio,
                 dataFine: this.formDataFine,
                 stato: 'Bozza',
-                soggettoOrganizzatore: this.formChiOrganizza,
+                soggettoOrganizzatore: this.formChiOrganizza === 'Equipe dei catechisti' ? 'Equipe dei catechisti' : this.getCommunityNameForRequest(),
                 equipeOrganizzatriceNome: this.formChiOrganizza === 'Equipe dei catechisti' ? 'Equipe dei catechisti' : '',
                 partecipantiPrevisti: Number(this.formPartecipanti),
                 note: this.formNote
@@ -1202,6 +1196,42 @@ export class PostiConvivenza implements OnInit {
         this.select(posto, true);
     }
 
+    showComunitaDestinatariaField() {
+        return this.canOrganizeAsEquipe && this.formChiOrganizza === 'Equipe dei catechisti';
+    }
+
+    onOrganizerChange() {
+        this.requestCommunityName = this.getCommunityNameForRequest();
+
+        if (!this.showComunitaDestinatariaField()) {
+            this.formComunitaDestinataria = '';
+        } else if (!this.formComunitaDestinataria) {
+            this.formComunitaDestinataria = this.comunitaFiglieOptions[0] ?? '';
+        }
+    }
+
+    private getOrganizerOptions(): string[] {
+        const options = [this.comunitaNome, ...this.comunitaFiglieOptions];
+
+        if (this.canOrganizeAsEquipe) {
+            options.push('Equipe dei catechisti');
+        }
+
+        return Array.from(new Set(options));
+    }
+
+    private getDefaultOrganizerOption(): string {
+        return this.chiOrganizzaOptions[0] ?? this.comunitaNome;
+    }
+
+    private getCommunityNameForRequest(): string {
+        if (this.formChiOrganizza === 'Equipe dei catechisti') {
+            return this.formComunitaDestinataria || this.comunitaFiglieOptions[0] || this.comunitaNome;
+        }
+
+        return this.formChiOrganizza || this.comunitaNome;
+    }
+
     private inviaRichiestaReale() {
         if (!this.postoPerRichiesta || !this.formTipoConvivenza || !this.formPartecipanti) {
             return;
@@ -1215,7 +1245,7 @@ export class PostiConvivenza implements OnInit {
             requestedByName: this.requestReferenteName.trim(),
             requestedByEmail: this.requestEmail.trim(),
             requestedByPhone: this.requestPhone.trim() || null,
-            communityName: this.requestCommunityName.trim() || this.convivenzaBozza?.comunitaDestinatariaNome || this.comunitaNome,
+            communityName: this.getCommunityNameForRequest(),
             parishName: this.requestParishName.trim() || this.currentCommunity.parrocchiaNome,
             city: this.requestCity.trim() || this.currentCommunity.comune || posto.citta,
             eventType: this.formTipoConvivenza,

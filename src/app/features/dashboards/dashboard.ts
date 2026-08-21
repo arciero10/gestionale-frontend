@@ -109,7 +109,7 @@ interface DashboardModule {
                     @for (module of modules; track module.title) {
                         <a [routerLink]="module.route" class="module-card" [ngClass]="'module-card-' + module.tone" [attr.aria-label]="module.title">
                             @if (module.imageUrl) {
-                                <img class="module-image" [src]="module.imageUrl" [alt]="module.title" />
+                                <img class="module-image" [src]="module.imageUrl" [alt]="module.title" (error)="nascondiImmagineCard($event)" />
                             }
                             <div class="module-icon">
                                 <i class="pi" [ngClass]="module.icon"></i>
@@ -716,7 +716,8 @@ export class Dashboard {
                 status: 'In sviluppo',
                 route: `${this.basePath}/convivenze`,
                 tone: 'convivenze',
-                cta: 'Entra'
+                cta: 'Entra',
+                imageUrl: 'assets/images/dashboard/convivenze.jpg'
             },
             {
                 title: 'Posti di convivenza',
@@ -814,6 +815,13 @@ export class Dashboard {
     annullaTappa() {
         this.tappaInBozza = this.tappaCammino;
         this.tappaInModifica = false;
+    }
+
+    nascondiImmagineCard(event: Event) {
+        const image = event.target instanceof HTMLImageElement ? event.target : null;
+        if (image) {
+            image.style.display = 'none';
+        }
     }
 
     private leggiTappaSalvata(): TappaCammino {

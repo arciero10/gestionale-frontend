@@ -22,6 +22,7 @@ import {
     formatDateIt
 } from './richieste-strutture.models';
 import { StructureRequestResponse, StruttureApiService } from '../../strutture/strutture-api.service';
+import { convivenzaIdFromStructureRequestId, upsertConvivenzaDaRichiestaStruttura } from '../data/convivenze-da-richieste.storage';
 
 @Component({
     selector: 'app-richieste-strutture',
@@ -88,6 +89,7 @@ import { StructureRequestResponse, StruttureApiService } from '../../strutture/s
 
                             <div class="actions">
                                 <button pButton type="button" label="Salva bozza email" icon="pi pi-save" (click)="salvaBozzaEmailReale()"></button>
+                                <button pButton type="button" label="Segna come inviata" icon="pi pi-send" (click)="segnaEmailRealeInviata()"></button>
                             </div>
                         </section>
                     }
@@ -941,7 +943,19 @@ cordiali saluti.`;
                 updatedAt: new Date().toISOString()
             })
         );
-        this.messaggioUtente = 'Bozza email salvata localmente. Invio reale email non ancora attivo.';
+        this.salvaConvivenzaDaRichiestaReale('BOZZA');
+        this.messaggioUtente = 'Bozza email salvata. La convivenza è stata collegata al modulo Convivenze.';
+    }
+
+    segnaEmailRealeInviata() {
+        if (!this.structureRequestReale) {
+            this.messaggioUtente = 'Nessuna richiesta struttura caricata.';
+            return;
+        }
+
+        this.salvaBozzaEmailReale();
+        this.salvaConvivenzaDaRichiestaReale('RICHIESTA_INVIATA');
+        this.messaggioUtente = 'Richiesta segnata come inviata. La convivenza è ora visibile nel flusso Convivenze.';
     }
 
     apriNuovaRichiesta() {
@@ -1111,6 +1125,35 @@ cordiali saluti.`;
         };
 
         return this.service.creaRichiesta(payload);
+    }
+
+    private salvaConvivenzaDaRichiestaReale(status: 'BOZZA' | 'RICHIESTA_INVIATA') {
+        if (!this.structureRequestReale) {
+            return;
+        }
+
+        const request = this.structureRequestReale;
+        const tipoConvivenza = request.eventType || request.convivenzaType || 'Convivenza da verificare';
+
+        upsertConvivenzaDaRichiestaStruttura({
+            id: convivenzaIdFromStructureRequestId(request.id),
+            structureRequestId: request.id,
+            structureId: request.structureId ?? null,
+            structureName: request.structureName || 'Struttura da verificare',
+            titolo: tipoConvivenza,
+            tipoConvivenza,
+            communityName: request.communityName || this.comunitaCoinvolteTesto,
+            parishName: request.parishName,
+            city: request.city,
+            startDate: request.startDate,
+            endDate: request.endDate,
+            peopleCount: request.peopleCount,
+            adultsCount: request.adultsCount,
+            childrenCount: request.childrenCount,
+            notes: request.notes,
+            status,
+            updatedAt: new Date().toISOString()
+        });
     }
 
     private refresh(selectedId: number) {
