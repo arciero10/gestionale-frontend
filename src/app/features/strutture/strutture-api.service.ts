@@ -139,9 +139,17 @@ export class StruttureApiService {
         return this.http.post<StructureRequestResponse>(`${this.baseUrl}/structure-requests`, payload);
     }
 
+    getStructureRequest(id: number): Observable<StructureRequestResponse> {
+        return this.http.get<StructureRequestResponse>(`${this.baseUrl}/structure-requests/${id}`);
+    }
+
     getAdminStructureRequests(status?: StructureRequestStatus): Observable<StructureRequestResponse[]> {
         const suffix = status ? `?status=${encodeURIComponent(status)}` : '';
         return this.http.get<StructureRequestResponse[]>(`${this.baseUrl}/admin/structure-requests${suffix}`);
+    }
+
+    getAdminStructureRequest(id: number): Observable<StructureRequestResponse> {
+        return this.http.get<StructureRequestResponse>(`${this.baseUrl}/admin/structure-requests/${id}`);
     }
 
     updateStructureRequestStatus(id: number, payload: StructureRequestStatusUpdateRequest): Observable<StructureRequestResponse> {

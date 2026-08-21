@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { catchError } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -20,6 +21,7 @@ import {
     creaOggettoCompleto,
     formatDateIt
 } from './richieste-strutture.models';
+import { StructureRequestResponse, StruttureApiService } from '../../strutture/strutture-api.service';
 
 @Component({
     selector: 'app-richieste-strutture',
@@ -46,7 +48,46 @@ import {
                 <span>Le richieste alle strutture devono contenere solo le informazioni necessarie all'organizzazione della convivenza. Prima di condividere dati personali o particolari verificare i consensi privacy.</span>
             </section>
 
-            @if (isNuovaRoute || formVisibile) {
+            @if (preparazioneMailReale) {
+                <section class="detail-card">
+                    <div class="detail-head">
+                        <div>
+                            <span class="code">[{{ mailCodiceRichiesta }}]</span>
+                            <h2>Preparazione email struttura</h2>
+                        </div>
+                        <span class="status-badge stato-bozza">Da inviare</span>
+                    </div>
+
+                    @if (preparazioneMailLoading) {
+                        <div class="empty-state">Caricamento richiesta struttura...</div>
+                    } @else if (preparazioneMailErrore) {
+                        <div class="empty-state">{{ preparazioneMailErrore }}</div>
+                    } @else if (structureRequestReale) {
+                        <dl class="detail-grid">
+                            <div><dt>Struttura</dt><dd>{{ structureRequestReale.structureName }}</dd></div>
+                            <div><dt>Comunità</dt><dd>{{ structureRequestReale.communityName || 'Da completare' }}</dd></div>
+                            <div><dt>Convivenza</dt><dd>{{ structureRequestReale.eventType || structureRequestReale.convivenzaType }}</dd></div>
+                            <div><dt>Date</dt><dd>dal {{ formatDateIt(structureRequestReale.startDate) }} al {{ formatDateIt(structureRequestReale.endDate) }}</dd></div>
+                            <div><dt>Partecipanti</dt><dd>{{ structureRequestReale.peopleCount }} persone</dd></div>
+                            <div><dt>Data richiesta</dt><dd>{{ formatDateIt(structureRequestReale.createdAt) }}</dd></div>
+                        </dl>
+
+                        <section class="mail-preview">
+                            <h3>Oggetto email</h3>
+                            <div class="subject-row">
+                                <div>
+                                    <span class="locked-code">[{{ mailCodiceRichiesta }}]</span>
+                                    <input pInputText [(ngModel)]="mailOggettoPersonalizzato" />
+                                </div>
+                                <small>Oggetto completo: {{ mailOggettoCompleto }}</small>
+                            </div>
+
+                            <h3>Corpo email</h3>
+                            <textarea pTextarea rows="18" [(ngModel)]="mailCorpoEmail"></textarea>
+                        </section>
+                    }
+                </section>
+            } @else if (isNuovaRoute || formVisibile) {
                 <section class="request-form-card">
                     <div class="form-head">
                         <div>
@@ -658,6 +699,7 @@ export class RichiesteStrutture implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly authService = inject(AuthService);
+    private readonly struttureApi = inject(StruttureApiService);
     private readonly currentCommunity = getCurrentCommunity();
 
     readonly senderMailbox = GRAPH_SENDER_MAILBOX_PLACEHOLDER;
@@ -677,6 +719,13 @@ export class RichiesteStrutture implements OnInit {
     strutturaBloccata = false;
     corpoModificato = false;
     modificaSelezionata = false;
+    preparazioneMailReale = false;
+    preparazioneMailLoading = false;
+    preparazioneMailErrore = '';
+    structureRequestReale: StructureRequestResponse | null = null;
+    mailCodiceRichiesta = '';
+    mailOggettoPersonalizzato = 'Richiesta disponibilità convivenza';
+    mailCorpoEmail = '';
     form = this.creaFormVuoto();
     sezioneAttiva: 'Bozze' | 'Inviate' | 'Ricevute' = this.computeDefaultSection();
 
@@ -730,6 +779,10 @@ export class RichiesteStrutture implements OnInit {
         return creaOggettoCompleto(this.form.codiceRichiesta, this.form.oggettoPersonalizzato);
     }
 
+    get mailOggettoCompleto() {
+        return creaOggettoCompleto(this.mailCodiceRichiesta, this.mailOggettoPersonalizzato);
+    }
+
     get strutturaSelezionata() {
         return this.service.getStrutturaById(this.form.strutturaId ?? 0);
     }
@@ -749,6 +802,15 @@ export class RichiesteStrutture implements OnInit {
     }
 
     ngOnInit() {
+        const structureRequestIdParam = this.route.snapshot.queryParamMap.get('structureRequestId');
+        if (structureRequestIdParam) {
+            const structureRequestId = Number(structureRequestIdParam);
+            if (Number.isFinite(structureRequestId) && structureRequestId > 0) {
+                this.caricaPreparazioneMailReale(structureRequestId);
+                return;
+            }
+        }
+
         const richiestaIdParam = this.route.snapshot.queryParamMap.get('richiestaId');
         if (richiestaIdParam) {
             const richiestaId = Number(richiestaIdParam);
@@ -773,6 +835,66 @@ export class RichiesteStrutture implements OnInit {
             this.corpoModificato = false;
             this.aggiornaCorpoDaSelezioni(true);
         }
+    }
+
+    private caricaPreparazioneMailReale(id: number) {
+        this.preparazioneMailReale = true;
+        this.preparazioneMailLoading = true;
+        this.preparazioneMailErrore = '';
+        this.structureRequestReale = null;
+        this.richiestaIdFlusso = id;
+
+        this.struttureApi.getStructureRequest(id)
+            .pipe(catchError(() => this.struttureApi.getAdminStructureRequest(id)))
+            .subscribe({
+                next: (request) => {
+                    this.structureRequestReale = request;
+                    this.mailCodiceRichiesta = this.creaCodiceRichiestaDaStructureRequest(request.id, request.createdAt);
+                    this.mailOggettoPersonalizzato = 'Richiesta disponibilità convivenza';
+                    this.mailCorpoEmail = this.creaCorpoEmailDaStructureRequest(request);
+                    this.messaggioUtente = 'Richiesta registrata. Prepara la comunicazione email alla struttura.';
+                },
+                error: (error) => {
+                    console.error('[Richieste Strutture] Impossibile caricare la richiesta struttura reale', error);
+                    this.preparazioneMailErrore = 'Non è stato possibile caricare la richiesta salvata. Riprova più tardi.';
+                },
+                complete: () => {
+                    this.preparazioneMailLoading = false;
+                }
+            });
+    }
+
+    private creaCodiceRichiestaDaStructureRequest(id: number, createdAt?: string) {
+        const year = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
+        const safeYear = Number.isFinite(year) ? year : new Date().getFullYear();
+        return `EC-${safeYear}-${String(id).padStart(6, '0')}`;
+    }
+
+    private creaCorpoEmailDaStructureRequest(request: StructureRequestResponse) {
+        return `Gentili,
+
+con la presente chiediamo disponibilità presso la vostra struttura per una convivenza.
+
+Struttura richiesta:
+${request.structureName}
+
+Comunità:
+${request.communityName || 'Da completare'}
+
+Tipo convivenza:
+${request.eventType || request.convivenzaType}
+
+Date:
+dal ${formatDateIt(request.startDate)} al ${formatDateIt(request.endDate)}
+
+Numero indicativo partecipanti:
+${request.peopleCount}
+
+Note:
+${request.notes || 'Nessuna nota indicata'}
+
+In attesa di un vostro cortese riscontro,
+cordiali saluti.`;
     }
 
     apriNuovaRichiesta() {

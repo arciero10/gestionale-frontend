@@ -148,16 +148,10 @@ function formatPostiDateIt(value: string | Date | null | undefined): string {
                     [style.color]="pageRequestFeedbackType === 'success' ? '#166534' : '#991b1b'">
                     @if (pageRequestFeedbackType === 'success') {
                         <div style="display:grid;gap:.35rem">
-                            <strong style="font-size:1.05rem">Richiesta inviata correttamente</strong>
-                            <span style="color:#166534;font-weight:700">La richiesta è stata registrata. Puoi ora preparare la comunicazione email alla struttura oppure tornare al catalogo.</span>
+                            <strong style="font-size:1.05rem">{{ pageRequestFeedbackMessage }}</strong>
                             @if (lastCreatedStructureRequestId) {
                                 <span style="font-size:.82rem;color:#15803d;font-weight:800">Riferimento richiesta: #{{ lastCreatedStructureRequestId }}</span>
                             }
-                        </div>
-                        <div style="display:flex;flex-wrap:wrap;gap:.6rem">
-                            <button pButton type="button" label="Prepara email alla struttura" icon="pi pi-envelope" (click)="preparaEmailAllaStruttura()"></button>
-                            <button pButton type="button" label="Vai alla richiesta" icon="pi pi-external-link" severity="secondary" outlined (click)="vaiAllaRichiestaCreata()"></button>
-                            <button pButton type="button" label="Torna al catalogo" icon="pi pi-list" severity="secondary" text (click)="rimaniNelCatalogo()"></button>
                         </div>
                     } @else {
                         <strong>{{ pageRequestFeedbackMessage }}</strong>
@@ -1240,7 +1234,7 @@ export class PostiConvivenza implements OnInit {
         this.struttureApi.createStructureRequest(payload).subscribe({
             next: (response) => {
                 this.pageRequestFeedbackType = 'success';
-                this.pageRequestFeedbackMessage = 'Richiesta inviata correttamente. La segreteria prenderà in carico la richiesta.';
+                this.pageRequestFeedbackMessage = 'Richiesta registrata. Preparazione email in corso...';
                 this.lastCreatedStructureRequestId = response.id ?? null;
                 this.lastCreatedStructureRequestName = response.structureName || payload.structureName || posto.nome;
 
@@ -1255,6 +1249,16 @@ export class PostiConvivenza implements OnInit {
                 this.postoPerRichiesta = null;
                 this.requestFeedbackMessage = '';
                 this.requestFeedbackType = '';
+
+                if (this.lastCreatedStructureRequestId) {
+                    setTimeout(() => {
+                        this.router.navigate(['/gestionale-cn/richieste-strutture'], {
+                            queryParams: { structureRequestId: this.lastCreatedStructureRequestId }
+                        });
+                    }, 450);
+                } else {
+                    this.pageRequestFeedbackMessage = 'Richiesta salvata. La preparazione email sarà collegata nel prossimo step.';
+                }
             },
             error: (error) => {
                 console.error('[Posti di Convivenza] Invio richiesta struttura non riuscito', error);
@@ -1265,34 +1269,6 @@ export class PostiConvivenza implements OnInit {
                 this.submittingStructureRequest = false;
             }
         });
-    }
-
-    preparaEmailAllaStruttura() {
-        this.router.navigate(['/gestionale-cn/richieste-strutture'], {
-            queryParams: this.createPostRequestActionQueryParams('email')
-        });
-    }
-
-    vaiAllaRichiestaCreata() {
-        this.router.navigate(['/gestionale-cn/richieste-strutture'], {
-            queryParams: this.createPostRequestActionQueryParams('detail')
-        });
-    }
-
-    rimaniNelCatalogo() {
-        this.pageRequestFeedbackMessage = '';
-        this.pageRequestFeedbackType = '';
-        this.lastCreatedStructureRequestId = null;
-        this.lastCreatedStructureRequestName = '';
-    }
-
-    private createPostRequestActionQueryParams(action: 'email' | 'detail') {
-        return {
-            source: 'posti-convivenza',
-            action,
-            ...(this.lastCreatedStructureRequestId ? { structureRequestId: this.lastCreatedStructureRequestId } : {}),
-            ...(this.lastCreatedStructureRequestName ? { structureName: this.lastCreatedStructureRequestName } : {})
-        };
     }
 
     private validateStructureRequestForm() {
