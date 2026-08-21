@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError } from 'rxjs/operators';
+import { finalize, catchError } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -70,6 +70,7 @@ import { StructureRequestResponse, StruttureApiService } from '../../strutture/s
                             <div><dt>Date</dt><dd>dal {{ formatDateIt(structureRequestReale.startDate) }} al {{ formatDateIt(structureRequestReale.endDate) }}</dd></div>
                             <div><dt>Partecipanti</dt><dd>{{ structureRequestReale.peopleCount }} persone</dd></div>
                             <div><dt>Data richiesta</dt><dd>{{ formatDateIt(structureRequestReale.createdAt) }}</dd></div>
+                            <div><dt>Stato</dt><dd>{{ structureRequestReale.status }}</dd></div>
                         </dl>
 
                         <section class="mail-preview">
@@ -84,6 +85,10 @@ import { StructureRequestResponse, StruttureApiService } from '../../strutture/s
 
                             <h3>Corpo email</h3>
                             <textarea pTextarea rows="18" [(ngModel)]="mailCorpoEmail"></textarea>
+
+                            <div class="actions">
+                                <button pButton type="button" label="Salva bozza email" icon="pi pi-save" (click)="salvaBozzaEmailReale()"></button>
+                            </div>
                         </section>
                     }
                 </section>
@@ -361,6 +366,7 @@ import { StructureRequestResponse, StruttureApiService } from '../../strutture/s
                 </div>
             }
 
+            @if (!preparazioneMailReale) {
             <section class="tech-note">
                 <h2>Contratti backend futuri</h2>
                 <p>L'invio reale tramite Microsoft Graph sarà collegato al backend. Nessun client secret è presente nel frontend.</p>
@@ -371,6 +377,7 @@ import { StructureRequestResponse, StruttureApiService } from '../../strutture/s
                 </div>
                 <small>Regex risposte: {{ regexDocumentata.source }}</small>
             </section>
+            }
         </section>
     `,
     styles: [
@@ -845,23 +852,45 @@ export class RichiesteStrutture implements OnInit {
         this.richiestaIdFlusso = id;
 
         this.struttureApi.getStructureRequest(id)
-            .pipe(catchError(() => this.struttureApi.getAdminStructureRequest(id)))
+            .pipe(
+                catchError(() => this.struttureApi.getAdminStructureRequest(id)),
+                finalize(() => {
+                    this.preparazioneMailLoading = false;
+                })
+            )
             .subscribe({
                 next: (request) => {
-                    this.structureRequestReale = request;
-                    this.mailCodiceRichiesta = this.creaCodiceRichiestaDaStructureRequest(request.id, request.createdAt);
-                    this.mailOggettoPersonalizzato = 'Richiesta disponibilità convivenza';
-                    this.mailCorpoEmail = this.creaCorpoEmailDaStructureRequest(request);
+                    this.preparaMailDaStructureRequest(request);
                     this.messaggioUtente = 'Richiesta registrata. Prepara la comunicazione email alla struttura.';
                 },
                 error: (error) => {
                     console.error('[Richieste Strutture] Impossibile caricare la richiesta struttura reale', error);
-                    this.preparazioneMailErrore = 'Non è stato possibile caricare la richiesta salvata. Riprova più tardi.';
-                },
-                complete: () => {
-                    this.preparazioneMailLoading = false;
+                    const cachedRequest = this.readCachedStructureRequest(id);
+                    if (cachedRequest) {
+                        this.preparaMailDaStructureRequest(cachedRequest);
+                        this.messaggioUtente = 'Preparazione email caricata dai dati appena salvati.';
+                        return;
+                    }
+                    this.preparazioneMailErrore = 'Non è stato possibile caricare la richiesta struttura.';
                 }
             });
+    }
+
+    private readCachedStructureRequest(id: number): StructureRequestResponse | null {
+        try {
+            const raw = localStorage.getItem(`structure-request-${id}`);
+            return raw ? (JSON.parse(raw) as StructureRequestResponse) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private preparaMailDaStructureRequest(request: StructureRequestResponse) {
+        this.structureRequestReale = request;
+        this.mailCodiceRichiesta = this.creaCodiceRichiestaDaStructureRequest(request.id, request.createdAt);
+        this.mailOggettoPersonalizzato = 'Richiesta disponibilità convivenza';
+        this.mailCorpoEmail = this.creaCorpoEmailDaStructureRequest(request);
+        this.preparazioneMailErrore = '';
     }
 
     private creaCodiceRichiestaDaStructureRequest(id: number, createdAt?: string) {
@@ -895,6 +924,24 @@ ${request.notes || 'Nessuna nota indicata'}
 
 In attesa di un vostro cortese riscontro,
 cordiali saluti.`;
+    }
+
+    salvaBozzaEmailReale() {
+        if (!this.structureRequestReale) {
+            this.messaggioUtente = 'Nessuna richiesta struttura caricata.';
+            return;
+        }
+
+        localStorage.setItem(
+            `structure-request-email-draft-${this.structureRequestReale.id}`,
+            JSON.stringify({
+                structureRequestId: this.structureRequestReale.id,
+                subject: this.mailOggettoCompleto,
+                body: this.mailCorpoEmail,
+                updatedAt: new Date().toISOString()
+            })
+        );
+        this.messaggioUtente = 'Bozza email salvata localmente. Invio reale email non ancora attivo.';
     }
 
     apriNuovaRichiesta() {
