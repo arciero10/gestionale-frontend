@@ -1227,6 +1227,11 @@ export class PostiConvivenza implements OnInit {
             notes: this.formNote.trim() || null
         };
 
+        console.debug('[Posti Convivenza] Invio richiesta struttura:', {
+            structureId: payload.structureId,
+            structureName: payload.structureName
+        });
+
         this.submittingStructureRequest = true;
         this.requestFeedbackMessage = '';
         this.requestFeedbackType = '';
