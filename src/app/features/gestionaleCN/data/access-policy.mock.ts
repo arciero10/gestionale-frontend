@@ -52,9 +52,9 @@ export function getUserAccessContext(): UserAccessContext {
     const permessiOperativi = readOperativeValues(profile);
     const isResponsabile = carismi.includes('responsabile');
     const isOstiario = carismi.includes('ostiario');
-    const isCatechista = carismi.includes('catechista') || profile?.isCatechista === true;
     const isCollaboratoreConvivenze = permessiOperativi.some((value) => value.includes('collaboratore convivenze') || value.includes('create_convivenza'));
     const childCommunities = community.comunitaFiglieAssociate ?? [];
+    const isCatechista = (carismi.includes('catechista') || profile?.isCatechista === true) && childCommunities.length > 0;
     const communityName = `${community.nomeComunita} - ${community.parrocchiaNome}`;
 
     return {

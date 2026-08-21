@@ -21,6 +21,7 @@ interface DashboardModule {
     route: string;
     tone: 'community' | 'convivenze' | 'posti' | 'viaggi' | 'struttura';
     cta: 'Apri' | 'Entra' | 'Vai al modulo';
+    imageUrl?: string;
 }
 
 @Component({
@@ -107,6 +108,9 @@ interface DashboardModule {
                 <div class="dashboard-grid">
                     @for (module of modules; track module.title) {
                         <a [routerLink]="module.route" class="module-card" [ngClass]="'module-card-' + module.tone" [attr.aria-label]="module.title">
+                            @if (module.imageUrl) {
+                                <img class="module-image" [src]="module.imageUrl" [alt]="module.title" />
+                            }
                             <div class="module-icon">
                                 <i class="pi" [ngClass]="module.icon"></i>
                             </div>
@@ -355,7 +359,6 @@ interface DashboardModule {
             .module-card {
                 --card-accent: #4f7da3;
                 min-height: 190px;
-                max-height: 230px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -370,6 +373,19 @@ interface DashboardModule {
                     transform 180ms ease,
                     box-shadow 180ms ease,
                     border-color 180ms ease;
+            }
+
+            .module-card:has(.module-image) {
+                justify-content: flex-start;
+                padding-top: 0.85rem;
+            }
+
+            .module-image {
+                width: 100%;
+                height: clamp(90px, 8vw, 120px);
+                object-fit: cover;
+                border-radius: 12px;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
             }
 
             .module-card:hover {
@@ -438,6 +454,12 @@ interface DashboardModule {
 
             .module-card-struttura {
                 --card-accent: #7c3aed;
+            }
+
+            @media (max-width: 1200px) {
+                .module-image {
+                    height: 96px;
+                }
             }
 
             @media (max-width: 1024px) {
@@ -621,6 +643,10 @@ export class Dashboard {
         return this.isDemo ? DEMO_POSTI.length : 5;
     }
 
+    canShowComunitaFiglie(): boolean {
+        return !this.isDemo && this.userAccessContext.isCatechista && this.userAccessContext.childCommunityIds.length > 0;
+    }
+
     get modules(): DashboardModule[] {
         if (this.isStrutturaProfile) {
             return [
@@ -698,7 +724,8 @@ export class Dashboard {
                 status: 'In sviluppo',
                 route: `${this.basePath}/posti-convivenza`,
                 tone: 'posti',
-                cta: 'Vai al modulo'
+                cta: 'Vai al modulo',
+                imageUrl: 'assets/images/posti-convivenza/posti-convivenza-hero.jpg'
             },
             {
                 title: 'Viaggi / Pellegrinaggi',
@@ -739,7 +766,7 @@ export class Dashboard {
             );
         }
 
-        if (!this.isDemo && this.currentUserCarismi.includes('catechista')) {
+        if (this.canShowComunitaFiglie()) {
             modules.push(
                 {
                     title: 'Comunità figlie',

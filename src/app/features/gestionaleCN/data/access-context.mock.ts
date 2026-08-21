@@ -1,4 +1,5 @@
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from './permessi-carisma.mock';
+import { getCurrentCommunity } from './community-selection.storage';
 
 export type AccessContextId = 'comunita' | 'responsabile' | 'catechista' | 'collaboratore_convivenze';
 
@@ -15,8 +16,9 @@ export const SELECTED_ACCESS_CONTEXT_KEY = 'eventiComunità.selectedAccessContex
 export function getAccessContexts(): AccessContextOption[] {
     const carismi = readUserCarismi();
     const permissions = getPermessiByCarismi(carismi);
+    const childCommunities = getCurrentCommunity().comunitaFiglieAssociate ?? [];
     const isResponsabile = carismi.includes('responsabile');
-    const isCatechista = carismi.includes('catechista') && permissions.includes('VIEW_COMUNITA_FIGLIE');
+    const isCatechista = carismi.includes('catechista') && permissions.includes('VIEW_COMUNITA_FIGLIE') && childCommunities.length > 0;
     const contexts: AccessContextOption[] = [];
 
     if (isResponsabile) {
