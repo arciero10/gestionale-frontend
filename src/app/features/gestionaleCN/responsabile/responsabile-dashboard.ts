@@ -2,46 +2,68 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
+import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 
-type FlowTone = 'community' | 'convivenze' | 'structures' | 'travel' | 'quiet';
+type ModuleTone = 'community' | 'convivenze' | 'posti' | 'viaggi' | 'catechista' | 'quiet';
 
-type FlowItem = {
+interface DashboardModule {
+    key: string;
     title: string;
     description: string;
     icon: string;
     route: string;
+    tone: ModuleTone;
+    cta: string;
+    status?: string;
+    imageUrl?: string;
     primary?: boolean;
-};
-
-type FlowSection = {
-    title: string;
-    description: string;
-    icon: string;
-    tone: FlowTone;
-    items: FlowItem[];
-};
+}
 
 @Component({
     selector: 'app-responsabile-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterLink, ButtonModule],
+    imports: [CommonModule, RouterLink, ButtonModule, TagModule],
     template: `
         <section class="responsabile-dashboard">
-            <header class="responsabile-hero">
-                <div class="hero-copy">
-                    <span class="eyebrow">Area Responsabile</span>
+            <aside class="community-summary" aria-label="Comunità attiva">
+                <div>
+                    <span class="summary-eyebrow">Area Responsabile</span>
                     <h1>Dashboard responsabile</h1>
-                    <p class="community-name">{{ community.nomeComunita }} - {{ community.parrocchiaNome }}</p>
-                    <p class="hero-text">Gestisci comunità, convivenze e richieste alle strutture da un'unica base operativa.</p>
+                    <p class="summary-parish">{{ communityLabel }}</p>
+                    <p class="summary-text">Gestisci comunità, membri, convivenze e richieste struttura con gli strumenti abilitati per il tuo profilo.</p>
                 </div>
 
-                <div class="hero-actions" aria-label="Azioni principali responsabile">
+                <dl>
+                    <div>
+                        <dt>Comunità</dt>
+                        <dd>{{ community.nomeComunita }}</dd>
+                    </div>
+                    <div>
+                        <dt>Parrocchia</dt>
+                        <dd>{{ community.parrocchiaNome }}</dd>
+                    </div>
+                    <div>
+                        <dt>Comunità figlie</dt>
+                        <dd>{{ hasChildCommunities() ? userContext.childCommunityNames.length : 'Non presenti' }}</dd>
+                    </div>
+                    <div>
+                        <dt>Area catechista</dt>
+                        <dd>{{ canShowCatechistArea() ? 'Disponibile' : 'Non prevista' }}</dd>
+                    </div>
+                </dl>
+            </aside>
+
+            <section class="quick-actions" aria-label="Azioni principali">
+                @if (canShowModule('nuova-convivenza')) {
                     <a pButton routerLink="/gestionale-cn/convivenze" label="Nuova convivenza" icon="pi pi-calendar-plus"></a>
+                }
+                @if (canShowModule('richieste-strutture')) {
                     <a pButton routerLink="/gestionale-cn/richieste-strutture/nuova" label="Nuova richiesta struttura" icon="pi pi-send" severity="secondary"></a>
-                    <button pButton type="button" label="Invita struttura" icon="pi pi-building" outlined (click)="copyStructureInviteLink()"></button>
-                </div>
-            </header>
+                }
+                <button pButton type="button" label="Invita struttura" icon="pi pi-building" outlined (click)="copyStructureInviteLink()"></button>
+            </section>
 
             @if (inviteStructureFeedback) {
                 <section class="invite-feedback">
@@ -51,36 +73,26 @@ type FlowSection = {
                 </section>
             }
 
-            <section class="flow-grid" aria-label="Macro aree operative">
-                @for (section of sections; track section.title) {
-                    <article class="flow-panel" [class]="'flow-panel tone-' + section.tone">
-                        <header class="flow-head">
-                            <span class="flow-icon"><i [class]="section.icon"></i></span>
-                            <div>
-                                <h2>{{ section.title }}</h2>
-                                <p>{{ section.description }}</p>
-                            </div>
-                        </header>
-
-                        <div class="flow-list">
-                            @for (item of section.items; track item.title) {
-                                <a [routerLink]="item.route" class="flow-item" [class.primary-item]="item.primary">
-                                    <span><i [class]="item.icon"></i></span>
-                                    <div>
-                                        <strong>{{ item.title }}</strong>
-                                        <small>{{ item.description }}</small>
-                                    </div>
-                                    <i class="pi pi-arrow-right"></i>
-                                </a>
-                            }
-                        </div>
-                    </article>
+            <section class="dashboard-grid" aria-label="Funzioni responsabile">
+                @for (module of visibleModules; track module.key) {
+                    <a [routerLink]="module.route" class="module-card" [class.primary-card]="module.primary" [ngClass]="'module-card-' + module.tone" [attr.aria-label]="module.title">
+                        @if (module.imageUrl) {
+                            <img class="module-image" [src]="module.imageUrl" [alt]="module.title" (error)="nascondiImmagineCard($event)" />
+                        }
+                        <div class="module-icon"><i class="pi" [ngClass]="module.icon"></i></div>
+                        <h2>{{ module.title }}</h2>
+                        <p>{{ module.description }}</p>
+                        @if (module.status) {
+                            <p-tag [value]="module.status"></p-tag>
+                        }
+                        <span class="module-button">{{ module.cta }}</span>
+                    </a>
                 }
             </section>
 
             <section class="approval-panel">
                 <div>
-                    <span class="eyebrow">Operatività comunità</span>
+                    <span class="summary-eyebrow">Operatività comunità</span>
                     <h2>Richieste da approvare</h2>
                     <p>Nessuna convivenza, invito o permesso operativo richiede approvazione in questo momento.</p>
                 </div>
@@ -95,31 +107,33 @@ type FlowSection = {
             .responsabile-dashboard {
                 max-width: 1180px;
                 margin: 0 auto;
-                padding: clamp(.75rem, 1.8vw, 1.25rem);
+                padding: clamp(.85rem, 2vw, 1.35rem);
                 display: grid;
                 gap: 1rem;
             }
 
-            .responsabile-hero,
-            .flow-panel,
-            .approval-panel {
+            .community-summary,
+            .module-card,
+            .approval-panel,
+            .invite-feedback {
                 border: 1px solid rgba(255, 255, 255, .72);
                 border-radius: 16px;
                 background: rgba(255, 252, 245, .95);
                 box-shadow: 0 16px 34px rgba(31, 41, 55, .16);
-                backdrop-filter: blur(10px);
             }
 
-            .responsabile-hero {
-                padding: 1.25rem;
+            .community-summary {
+                min-height: 126px;
+                padding: 1.1rem 1.2rem;
                 display: grid;
-                grid-template-columns: minmax(0, 1fr) auto;
+                grid-template-columns: minmax(16rem, 1fr) minmax(0, 1.4fr);
                 gap: 1rem;
                 align-items: center;
             }
 
-            .eyebrow {
+            .summary-eyebrow {
                 display: block;
+                margin-bottom: .35rem;
                 color: #476078;
                 font-size: .78rem;
                 font-weight: 900;
@@ -134,23 +148,45 @@ type FlowSection = {
             h1,
             h2 { color: #111827; line-height: 1.15; }
 
-            h1 { margin-top: .25rem; font-size: clamp(1.55rem, 2.4vw, 2.1rem); }
+            h1 { font-size: clamp(1.55rem, 2.4vw, 2.1rem); }
             h2 { font-size: 1.1rem; }
 
-            p,
-            small { color: #334155; line-height: 1.42; font-weight: 680; }
+            p { color: #334155; line-height: 1.42; font-weight: 680; }
 
-            .community-name { margin-top: .35rem; font-weight: 850; }
-            .hero-text { margin-top: .45rem; max-width: 42rem; }
+            .summary-parish { margin-top: .35rem; color: #0f172a; font-weight: 850; }
+            .summary-text { margin-top: .45rem; max-width: 43rem; }
 
-            .hero-actions {
+            .community-summary dl {
                 display: grid;
-                gap: .55rem;
-                min-width: min(100%, 17rem);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: .65rem;
+                margin: 0;
             }
 
-            .hero-actions a[pButton],
-            .hero-actions button[pButton] { justify-content: center; min-height: 42px; }
+            .community-summary dl div {
+                min-height: 3.25rem;
+                padding: .55rem .7rem;
+                display: grid;
+                align-content: center;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, .7);
+                border: 1px solid rgba(31, 41, 55, .08);
+            }
+
+            dt { color: #475569; font-size: .75rem; font-weight: 760; }
+            dd { margin: .15rem 0 0; color: #0f172a; font-weight: 850; line-height: 1.18; }
+
+            .quick-actions {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: .75rem;
+            }
+
+            .quick-actions a[pButton],
+            .quick-actions button[pButton] {
+                justify-content: center;
+                min-height: 46px;
+            }
 
             .invite-feedback {
                 display: flex;
@@ -158,96 +194,97 @@ type FlowSection = {
                 gap: .55rem;
                 align-items: center;
                 padding: .75rem .95rem;
-                border-radius: 14px;
                 color: #0f172a;
                 background: rgba(236, 253, 245, .96);
-                border: 1px solid #bbf7d0;
+                border-color: #bbf7d0;
                 font-weight: 820;
             }
 
             .invite-feedback i { color: #15803d; }
             .invite-feedback code { color: #14532d; overflow-wrap: anywhere; }
 
-            .flow-grid {
+            .dashboard-grid {
                 display: grid;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
+                grid-template-columns: repeat(4, minmax(0, 1fr));
                 gap: 1rem;
             }
 
-            .flow-panel {
-                --accent: #547fa3;
+            .module-card {
+                --card-accent: #4f7da3;
+                min-height: 214px;
                 padding: 1rem;
-                border-top: 4px solid var(--accent);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: .65rem;
+                color: #0f172a;
+                text-align: center;
+                text-decoration: none;
+                border-top: 4px solid var(--card-accent);
+                transition: transform 180ms ease, box-shadow 180ms ease;
             }
 
-            .flow-head {
-                display: grid;
-                grid-template-columns: 2.75rem minmax(0, 1fr);
-                gap: .75rem;
-                align-items: start;
-                margin-bottom: .9rem;
+            .module-card:has(.module-image) {
+                justify-content: flex-start;
+                padding-top: .85rem;
             }
 
-            .flow-icon,
-            .flow-item > span {
-                display: inline-flex;
+            .module-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 22px 42px rgba(31, 41, 55, .22);
+            }
+
+            .module-image {
+                width: 100%;
+                height: clamp(90px, 8vw, 120px);
+                object-fit: cover;
+                border-radius: 12px;
+            }
+
+            .module-icon {
+                width: 3rem;
+                height: 3rem;
+                display: flex;
                 align-items: center;
                 justify-content: center;
                 border-radius: 14px;
-                color: var(--accent);
-                background: color-mix(in srgb, var(--accent), transparent 90%);
+                color: var(--card-accent);
+                background: color-mix(in srgb, var(--card-accent), transparent 90%);
             }
 
-            .flow-icon { width: 2.75rem; height: 2.75rem; }
-            .flow-icon i { font-size: 1.25rem; }
+            .module-icon .pi { font-size: 1.45rem; }
+            .module-card h2 { font-size: 1.08rem; }
+            .module-card p { min-height: 2.45rem; font-size: .9rem; }
 
-            .flow-list { display: grid; gap: .6rem; }
-
-            .flow-item {
-                display: grid;
-                grid-template-columns: 2.35rem minmax(0, 1fr) auto;
-                gap: .65rem;
+            .module-button {
+                min-height: 44px;
+                width: 100%;
+                display: inline-flex;
                 align-items: center;
-                min-height: 4.15rem;
-                padding: .7rem;
-                border-radius: 13px;
-                color: #0f172a;
-                text-decoration: none;
-                background: rgba(255, 255, 255, .72);
-                border: 1px solid rgba(31, 41, 55, .08);
-                transition: transform 160ms ease, box-shadow 160ms ease;
-            }
-
-            .flow-item:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 12px 24px rgba(15, 23, 42, .14);
-            }
-
-            .flow-item > span { width: 2.35rem; height: 2.35rem; border-radius: 12px; }
-            .flow-item strong { display: block; color: #0f172a; }
-            .flow-item small { display: block; margin-top: .12rem; font-size: .82rem; }
-            .flow-item > .pi { color: #64748b; }
-
-            .primary-item {
+                justify-content: center;
+                margin-top: auto;
+                border-radius: 10px;
                 color: #fff;
-                background: var(--accent);
-                border-color: var(--accent);
+                background: var(--card-accent);
+                font-weight: 850;
             }
 
-            .primary-item strong,
-            .primary-item small,
-            .primary-item > .pi { color: #fff; }
+            .primary-card { box-shadow: 0 18px 38px rgba(47, 134, 124, .22); }
 
-            .primary-item > span {
-                color: #fff;
-                background: rgba(255, 255, 255, .18);
+            :host ::ng-deep .module-card .p-tag {
+                padding: .22rem .55rem;
+                background: rgba(255, 255, 255, .78);
+                color: #374151;
+                border: 1px solid rgba(31, 41, 55, .1);
             }
 
-            .tone-community { --accent: #547fa3; }
-            .tone-convivenze { --accent: #2f867c; }
-            .tone-structures { --accent: #b86f35; }
-            .tone-travel { --accent: #8a3f4c; }
-            .tone-quiet { --accent: #4f46e5; }
+            .module-card-community { --card-accent: #547fa3; }
+            .module-card-convivenze { --card-accent: #2f867c; }
+            .module-card-posti { --card-accent: #b86f35; }
+            .module-card-viaggi { --card-accent: #8a3f4c; }
+            .module-card-catechista { --card-accent: #4f46e5; }
+            .module-card-quiet { --card-accent: #64748b; }
 
             .approval-panel {
                 padding: 1rem 1.15rem;
@@ -257,7 +294,7 @@ type FlowSection = {
                 gap: 1rem;
             }
 
-            .approval-panel h2 { margin: .2rem 0 .25rem; }
+            .approval-panel h2 { margin-bottom: .25rem; }
 
             .approval-state {
                 display: inline-flex;
@@ -271,17 +308,17 @@ type FlowSection = {
                 white-space: nowrap;
             }
 
-            @media (max-width: 1100px) {
-                .responsabile-hero,
-                .flow-grid { grid-template-columns: 1fr; }
+            @media (max-width: 1120px) {
+                .community-summary,
+                .quick-actions { grid-template-columns: 1fr; }
 
-                .hero-actions {
-                    grid-template-columns: repeat(3, minmax(0, 1fr));
-                }
+                .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             }
 
             @media (max-width: 720px) {
-                .hero-actions { grid-template-columns: 1fr; }
+                .responsabile-dashboard { padding: .85rem; }
+                .community-summary dl,
+                .dashboard-grid { grid-template-columns: 1fr; }
 
                 .approval-panel {
                     align-items: stretch;
@@ -293,11 +330,169 @@ type FlowSection = {
 })
 export class ResponsabileDashboard {
     readonly community = getCurrentCommunity();
+    readonly userContext = getUserAccessContext();
     readonly publicStructureInvitePath = '/area-strutture';
     inviteStructureFeedback = '';
 
+    readonly modules: DashboardModule[] = [
+        {
+            key: 'comunita',
+            title: 'La mia comunità',
+            description: 'Scheda, anagrafica e riferimenti della comunità.',
+            icon: 'pi-users',
+            route: '/gestionale-cn/comunita',
+            tone: 'community',
+            cta: 'Apri',
+            status: 'Attivo'
+        },
+        {
+            key: 'membri',
+            title: 'Membri comunità',
+            description: 'Censimento fratelli, inviti e consensi.',
+            icon: 'pi-user-plus',
+            route: '/gestionale-cn/membri-comunita',
+            tone: 'community',
+            cta: 'Gestisci',
+            status: 'Attivo'
+        },
+        {
+            key: 'convivenze',
+            title: 'Convivenze',
+            description: 'Programmazione corrente della comunità.',
+            icon: 'pi-calendar',
+            route: '/gestionale-cn/convivenze',
+            tone: 'convivenze',
+            cta: 'Entra',
+            status: 'Attivo',
+            imageUrl: 'assets/images/dashboard/convivenze.jpg'
+        },
+        {
+            key: 'nuova-convivenza',
+            title: 'Nuova convivenza',
+            description: 'Avvia un nuovo flusso organizzativo.',
+            icon: 'pi-calendar-plus',
+            route: '/gestionale-cn/convivenze',
+            tone: 'convivenze',
+            cta: 'Crea',
+            status: 'Attivo',
+            primary: true
+        },
+        {
+            key: 'storico-convivenze',
+            title: 'Storico convivenze',
+            description: 'Convivenze concluse e archiviate.',
+            icon: 'pi-history',
+            route: '/gestionale-cn/convivenze/storico',
+            tone: 'convivenze',
+            cta: 'Consulta',
+            status: 'Attivo'
+        },
+        {
+            key: 'posti-convivenza',
+            title: 'Posti di Convivenza',
+            description: 'Catalogo strutture approvate e posti disponibili.',
+            icon: 'pi-building',
+            route: '/gestionale-cn/posti-convivenza',
+            tone: 'posti',
+            cta: 'Vai al modulo',
+            status: 'Attivo',
+            imageUrl: 'assets/images/posti-convivenza/posti-convivenza-hero.jpg'
+        },
+        {
+            key: 'richieste-strutture',
+            title: 'Richieste strutture',
+            description: 'Richieste disponibilità e preparazione comunicazioni.',
+            icon: 'pi-send',
+            route: '/gestionale-cn/richieste-strutture',
+            tone: 'posti',
+            cta: 'Apri',
+            status: 'Attivo'
+        },
+        {
+            key: 'viaggi',
+            title: 'Viaggi / Pellegrinaggi',
+            description: 'Modulo viaggi e pellegrinaggi.',
+            icon: 'pi-map',
+            route: '/gestionale-cn/viaggi',
+            tone: 'viaggi',
+            cta: 'Apri',
+            status: 'Prossimamente'
+        },
+        {
+            key: 'permessi',
+            title: 'Permessi assegnati',
+            description: 'Autorizzazioni operative già approvate.',
+            icon: 'pi-shield',
+            route: '/gestionale-cn/comunita',
+            tone: 'quiet',
+            cta: 'Consulta',
+            status: 'Attivo'
+        },
+        {
+            key: 'comunita-figlie',
+            title: 'Comunità figlie',
+            description: 'Comunità seguite nel contesto catechisti.',
+            icon: 'pi-sitemap',
+            route: '/gestionale-cn/catechista/comunita-figlie',
+            tone: 'catechista',
+            cta: 'Apri',
+            status: 'Attivo'
+        },
+        {
+            key: 'convivenze-catechistiche',
+            title: 'Convivenze catechistiche',
+            description: 'Convivenze organizzate dall’equipe per comunità figlie.',
+            icon: 'pi-calendar-plus',
+            route: '/gestionale-cn/catechista/convivenze',
+            tone: 'catechista',
+            cta: 'Apri',
+            status: 'Attivo'
+        }
+    ];
+
+    get communityLabel(): string {
+        return `${this.community.nomeComunita} - ${this.community.parrocchiaNome}`;
+    }
+
     get publicStructureInviteUrl(): string {
         return `${window.location.origin}${this.publicStructureInvitePath}`;
+    }
+
+    get visibleModules(): DashboardModule[] {
+        return this.modules.filter((module) => this.canShowModule(module.key));
+    }
+
+    hasChildCommunities(): boolean {
+        return this.userContext.childCommunityIds.length > 0;
+    }
+
+    canManageChildCommunities(): boolean {
+        return this.hasChildCommunities() && this.userContext.isCatechista;
+    }
+
+    canShowCatechistArea(): boolean {
+        return this.canManageChildCommunities();
+    }
+
+    canInviteMembers(): boolean {
+        return canPerformAction('aggiungi-membro', this.userContext);
+    }
+
+    canShowModule(moduleKey: string): boolean {
+        switch (moduleKey) {
+            case 'membri':
+            case 'permessi':
+                return this.canInviteMembers();
+            case 'nuova-convivenza':
+                return canPerformAction('nuova-convivenza', this.userContext);
+            case 'richieste-strutture':
+                return canPerformAction('invia-richiesta-struttura', this.userContext);
+            case 'comunita-figlie':
+            case 'convivenze-catechistiche':
+                return this.canShowCatechistArea();
+            default:
+                return true;
+        }
     }
 
     copyStructureInviteLink(): void {
@@ -306,85 +501,10 @@ export class ResponsabileDashboard {
         window.setTimeout(() => (this.inviteStructureFeedback = ''), 4500);
     }
 
-    readonly sections: FlowSection[] = [
-        {
-            title: 'Comunità',
-            description: 'Anagrafica, membri e autorizzazioni operative.',
-            icon: 'pi pi-users',
-            tone: 'community',
-            items: [
-                {
-                    title: 'La tua Comunità',
-                    description: 'Scheda e dati della comunità',
-                    icon: 'pi pi-home',
-                    route: '/gestionale-cn/comunita'
-                },
-                {
-                    title: 'Membri comunità / Censimento fratelli',
-                    description: 'Censimento, inviti e anagrafica',
-                    icon: 'pi pi-user-plus',
-                    route: '/gestionale-cn/comunita'
-                },
-                {
-                    title: 'Permessi assegnati',
-                    description: 'Autorizzazioni già approvate',
-                    icon: 'pi pi-shield',
-                    route: '/gestionale-cn/comunita'
-                }
-            ]
-        },
-        {
-            title: 'Convivenze',
-            description: 'Pianificazione, convivenze attive e storico.',
-            icon: 'pi pi-calendar',
-            tone: 'convivenze',
-            items: [
-                {
-                    title: 'Convivenze attive',
-                    description: 'Programmazione corrente',
-                    icon: 'pi pi-calendar',
-                    route: '/gestionale-cn/convivenze'
-                },
-                {
-                    title: 'Nuova convivenza',
-                    description: 'Avvia un nuovo flusso operativo',
-                    icon: 'pi pi-calendar-plus',
-                    route: '/gestionale-cn/convivenze',
-                    primary: true
-                },
-                {
-                    title: 'Storico convivenze',
-                    description: 'Convivenze concluse e archiviate',
-                    icon: 'pi pi-history',
-                    route: '/gestionale-cn/convivenze/storico'
-                }
-            ]
-        },
-        {
-            title: 'Strutture e viaggi',
-            description: 'Posti, richieste disponibilità e pellegrinaggi.',
-            icon: 'pi pi-building',
-            tone: 'structures',
-            items: [
-                {
-                    title: 'Posti di Convivenza',
-                    description: 'Catalogo strutture approvate',
-                    icon: 'pi pi-building',
-                    route: '/gestionale-cn/posti-convivenza'
-                },
-                {
-                    title: 'Richieste strutture',
-                    description: 'Richieste e risposte dalle strutture',
-                    icon: 'pi pi-send',
-                    route: '/gestionale-cn/richieste-strutture'
-                },
-                {
-                    title: 'Viaggi / Pellegrinaggi',
-                    description: 'Modulo viaggi e pellegrinaggi',
-                    icon: 'pi pi-map',
-                    route: '/gestionale-cn/viaggi'
-                }
-            ]
+    nascondiImmagineCard(event: Event): void {
+        const image = event.target instanceof HTMLImageElement ? event.target : null;
+        if (image) {
+            image.style.display = 'none';
         }
-    ];
+    }
 }
