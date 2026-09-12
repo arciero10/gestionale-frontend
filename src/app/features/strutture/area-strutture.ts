@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -24,7 +24,9 @@ import {
     saveStrutturaProfile,
     statusLabelStruttura
 } from './struttura-profile.storage';
-import { StruttureApiService } from './strutture-api.service';
+import { StructureRequestResponse, StruttureApiService } from './strutture-api.service';
+
+const VISIBLE_STRUCTURE_REQUESTS_KEY = 'eventiComunità.structureRequests.visibleToStructure';
 
 const structurePageStyles = `
     .structure-entry {
@@ -117,6 +119,12 @@ const structurePageStyles = `
     dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
     .photo-card,
     .promo-card { display: grid; gap: .55rem; }
+    .request-list { display: grid; gap: .85rem; margin-top: 1rem; }
+    .request-card { display: grid; gap: .85rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 12px 26px rgba(15,23,42,.08); }
+    .request-card header { align-items: center; }
+    .request-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
+    .request-grid div { padding: .75rem; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; }
+    .request-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
     .photo-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
     .photo-actions button { min-height: 34px; }
     .badge { width: fit-content; padding: .28rem .55rem; border-radius: 999px; background: #dbeafe; color: #1e40af; font-size: .75rem; font-weight: 900; }
@@ -125,6 +133,7 @@ const structurePageStyles = `
     .preview-modal article { width: min(56rem, 100%); display: grid; gap: .75rem; padding: 1rem; border-radius: 20px; background: #fff; box-shadow: 0 28px 70px rgba(0,0,0,.28); }
     @media (max-width: 980px) {
         .hero-profile,
+        .request-grid,
         .metrics,
         .dashboard-cards,
         .photo-grid,
@@ -286,7 +295,7 @@ export class AreaStruttureAccesso {
                             <div class="metric"><span>Posti letto</span><strong>{{ profile.postiLetto ?? 'Da completare' }}</strong></div>
                             <div class="metric"><span>Camere</span><strong>{{ profile.camere ?? 'Da completare' }}</strong></div>
                             <div class="metric"><span>Promo attive</span><strong>{{ promoAttive.length }}</strong></div>
-                            <div class="metric"><span>Richieste ricevute</span><strong>0</strong></div>
+                            <div class="metric"><span>Richieste ricevute</span><strong>{{ richiesteRicevute }}</strong></div>
                             <div class="metric"><span>Foto caricate</span><strong>{{ profile.foto.length }}</strong></div>
                         </div>
                     </div>
@@ -312,6 +321,7 @@ export class AreaStruttureDashboard {
     readonly status = readProfileStatus();
     readonly statusLabel = statusLabelStruttura(this.status);
     readonly promoAttive = activePromo(this.profile);
+    readonly richiesteRicevute = readVisibleStructureRequestsForProfile(this.profile).length;
 
     get cover() {
         return fotoCopertina(this.profile);
@@ -343,7 +353,7 @@ export class AreaStruttureDashboard {
             { title: 'Profilo struttura', text: 'Dati anagrafici, descrizione, capienza e condizioni.', icon: 'pi-id-card', route: '/area-strutture/profilo', state: this.profile ? 'Attivo' : 'Da completare' },
             { title: 'Foto struttura', text: 'Copertina, camere, sale, cappella, mensa ed esterni.', icon: 'pi-images', route: '/area-strutture/foto', state: this.profile?.foto.length ? 'Attivo' : 'Da completare' },
             { title: 'Offerte e promo', text: 'Promozioni e disponibilità commerciali.', icon: 'pi-tags', route: '/area-strutture/offerte', state: this.promoAttive.length ? 'Attivo' : 'Da completare' },
-            { title: 'Richieste ricevute', text: 'Richieste di disponibilità dalle comunità.', icon: 'pi-inbox', route: '/area-strutture/richieste', state: 'In sviluppo' },
+            { title: 'Richieste ricevute', text: 'Richieste di disponibilità dalle comunità.', icon: 'pi-inbox', route: '/area-strutture/richieste', state: this.richiesteRicevute ? `${this.richiesteRicevute} ricevute` : 'Nessuna richiesta' },
             { title: 'Stato accreditamento', text: 'Esito della verifica del Global Admin.', icon: 'pi-shield', route: '/area-strutture/profilo', state: this.statusLabel },
             { title: 'Dati da completare', text: 'Controlla eventuali informazioni mancanti.', icon: 'pi-list-check', route: '/area-strutture/profilo', state: this.datiMancanti ? 'Da completare' : 'Attivo' }
         ];
@@ -877,7 +887,7 @@ export class AreaStruttureOfferte {
 @Component({
     selector: 'app-area-strutture-richieste',
     standalone: true,
-    imports: [CommonModule, RouterLink, ButtonModule],
+    imports: [CommonModule, RouterLink, ButtonModule, TagModule],
     template: `
         <main class="structure-entry">
             <section class="editor-card">
@@ -888,17 +898,119 @@ export class AreaStruttureOfferte {
                     <div>
                         <span>Area Strutture</span>
                         <h1>Richieste ricevute</h1>
-                        <p>Le richieste delle comunità compariranno qui quando il backend sarà attivo.</p>
+                        <p>Consulta le richieste inviate dalle comunità alla tua struttura.</p>
                     </div>
                     <a pButton routerLink="/area-strutture/dashboard" label="Dashboard" icon="pi pi-th-large" outlined></a>
                 </header>
-                <div class="status-box info"><strong>Nessuna richiesta ricevuta</strong><p>Il flusso è pronto per localStorage/backend futuro.</p></div>
+
+                @if (loading) {
+                    <div class="status-box info"><strong>Caricamento richieste ricevute...</strong></div>
+                } @else if (!profile) {
+                    <div class="status-box info">
+                        <strong>Nessun profilo struttura trovato</strong>
+                        <p>Accredita la struttura o accedi con il profilo referente per consultare le richieste ricevute.</p>
+                    </div>
+                } @else if (!requests.length) {
+                    <div class="status-box info">
+                        <strong>Nessuna richiesta ricevuta</strong>
+                        <p>Le richieste inviate dalle comunità compariranno qui.</p>
+                    </div>
+                } @else {
+                    @if (message) {
+                        <div class="status-box success">{{ message }}</div>
+                    }
+                    <div class="request-list">
+                        @for (request of requests; track request.id) {
+                            <article class="request-card">
+                                <header>
+                                    <div>
+                                        <span>{{ request.communityName || 'Comunità da verificare' }}</span>
+                                        <h2>{{ request.eventType || request.convivenzaType }}</h2>
+                                        <p>{{ request.parishName || request.city || 'Parrocchia da completare' }}</p>
+                                    </div>
+                                    <p-tag [value]="statusLabel(request.status)" [severity]="statusSeverity(request.status)"></p-tag>
+                                </header>
+                                <div class="request-grid">
+                                    <div><dt>Date</dt><dd>dal {{ formatDate(request.startDate) }} al {{ formatDate(request.endDate) }}</dd></div>
+                                    <div><dt>Partecipanti</dt><dd>{{ request.peopleCount }} persone</dd></div>
+                                    <div><dt>Data invio</dt><dd>{{ formatDate(request.sentAt || request.updatedAt || request.createdAt) }}</dd></div>
+                                    <div><dt>Referente</dt><dd>{{ request.requestedByName }}</dd></div>
+                                    <div><dt>Email</dt><dd>{{ request.requestedByEmail }}</dd></div>
+                                    <div><dt>Telefono</dt><dd>{{ request.requestedByPhone || 'Non indicato' }}</dd></div>
+                                </div>
+                                @if (request.notes) {
+                                    <p>{{ request.notes }}</p>
+                                }
+                                <div class="request-actions">
+                                    <button pButton type="button" label="Accetta" icon="pi pi-check" disabled></button>
+                                    <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="secondary" outlined disabled></button>
+                                    <button pButton type="button" label="Chiedi informazioni" icon="pi pi-comments" severity="secondary" outlined disabled></button>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
             </section>
         </main>
     `,
     styles: [structurePageStyles]
 })
-export class AreaStruttureRichieste {}
+export class AreaStruttureRichieste implements OnInit {
+    private readonly struttureApi = inject(StruttureApiService);
+    readonly profile = readStrutturaProfile();
+    requests: StructureRequestResponse[] = [];
+    loading = false;
+    message = '';
+
+    ngOnInit() {
+        this.requests = readVisibleStructureRequestsForProfile(this.profile);
+        const structureId = toStructureApiId(this.profile);
+
+        if (!structureId) {
+            return;
+        }
+
+        this.loading = true;
+        firstValueFrom(this.struttureApi.getStructureRequestsForStructure(structureId))
+            .then((requests) => {
+                this.requests = requests.length ? requests : this.requests;
+                this.message = requests.length ? 'Richieste aggiornate.' : '';
+            })
+            .catch(() => {
+                this.message = this.requests.length ? 'Richieste caricate dai dati locali.' : '';
+            })
+            .finally(() => {
+                this.loading = false;
+            });
+    }
+
+    statusLabel(status: string | undefined) {
+        if (status === 'IN_ATTESA_STRUTTURA') return 'In attesa struttura';
+        if (status === 'INVIATA') return 'Inviata';
+        if (status === 'ACCETTATA') return 'Accettata';
+        if (status === 'RIFIUTATA') return 'Rifiutata';
+        return status || 'Da verificare';
+    }
+
+    statusSeverity(status: string | undefined): 'success' | 'secondary' | 'warn' | 'danger' {
+        if (status === 'ACCETTATA') return 'success';
+        if (status === 'RIFIUTATA' || status === 'ANNULLATA') return 'danger';
+        if (status === 'INVIATA' || status === 'IN_ATTESA_STRUTTURA') return 'warn';
+        return 'secondary';
+    }
+
+    formatDate(value: string | null | undefined) {
+        if (!value) {
+            return 'Da completare';
+        }
+
+        try {
+            return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
+        } catch {
+            return value;
+        }
+    }
+}
 
 @Component({
     selector: 'app-area-strutture-attesa',
@@ -926,4 +1038,38 @@ export class AreaStruttureRichieste {}
 })
 export class AreaStruttureInAttesa {
     readonly statusLabel = statusLabelStruttura(readProfileStatus());
+}
+
+function toStructureApiId(profile: StrutturaProfileMock | null): number | null {
+    const id = Number(profile?.id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function readVisibleStructureRequestsForProfile(profile: StrutturaProfileMock | null): StructureRequestResponse[] {
+    if (!profile) {
+        return [];
+    }
+
+    let requests: StructureRequestResponse[] = [];
+
+    try {
+        const raw = localStorage.getItem(VISIBLE_STRUCTURE_REQUESTS_KEY);
+        requests = raw ? JSON.parse(raw) as StructureRequestResponse[] : [];
+    } catch {
+        requests = [];
+    }
+
+    const structureId = toStructureApiId(profile);
+    const structureName = profile.nome.trim().toLowerCase();
+
+    return requests
+        .filter((request) => request.visibleToStructure === true || request.status === 'INVIATA' || request.status === 'IN_ATTESA_STRUTTURA')
+        .filter((request) => {
+            if (structureId && request.structureId === structureId) {
+                return true;
+            }
+
+            return Boolean(structureName) && String(request.structureName ?? '').trim().toLowerCase() === structureName;
+        })
+        .sort((a, b) => String(b.sentAt || b.updatedAt || b.createdAt).localeCompare(String(a.sentAt || a.updatedAt || a.createdAt)));
 }

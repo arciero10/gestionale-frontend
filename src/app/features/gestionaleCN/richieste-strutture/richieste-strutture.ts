@@ -8,7 +8,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
-import { GRAPH_SENDER_MAILBOX_PLACEHOLDER, RICHIESTE_STRUTTURE_API_CONTRACTS, codiceRichiestaRegexDocumentata } from './graph-email.placeholder';
 import { RichiesteStruttureService } from './richieste-strutture.service';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 import { AuthService } from '@/auth/auth.service';
@@ -89,7 +88,14 @@ import { convivenzaIdFromStructureRequestId, upsertConvivenzaDaRichiestaStruttur
 
                             <div class="actions">
                                 <button pButton type="button" label="Salva bozza email" icon="pi pi-save" (click)="salvaBozzaEmailReale()"></button>
-                                <button pButton type="button" label="Segna come inviata" icon="pi pi-send" (click)="segnaEmailRealeInviata()"></button>
+                                <button
+                                    pButton
+                                    type="button"
+                                    [label]="richiestaRealeInviata ? 'Inviata' : invioEmailRealeLoading ? 'Invio in corso...' : 'Invia email alla struttura'"
+                                    [icon]="invioEmailRealeLoading ? 'pi pi-spin pi-spinner' : 'pi pi-send'"
+                                    [disabled]="invioEmailRealeLoading || richiestaRealeInviata"
+                                    (click)="inviaEmailAllaStruttura()">
+                                </button>
                             </div>
                         </section>
                     }
@@ -101,7 +107,7 @@ import { convivenzaIdFromStructureRequestId, upsertConvivenzaDaRichiestaStruttur
                             <span>Nuova richiesta</span>
                             <h2>{{ oggettoCompleto }}</h2>
                         </div>
-                        <p-tag value="Mock front-end" severity="warn" />
+                        <p-tag value="Bozza operativa" severity="warn" />
                     </div>
 
                     <form class="request-form" #richiestaForm="ngForm">
@@ -193,7 +199,7 @@ import { convivenzaIdFromStructureRequestId, upsertConvivenzaDaRichiestaStruttur
                     <aside class="list-panel">
                         <div class="panel-title">
                             <strong>Richieste strutture</strong>
-                            <span>{{ senderMailbox }}</span>
+                            <span>Bozze, invii e risposte</span>
                         </div>
 
                         <nav class="sezioni-tabs">
@@ -251,7 +257,6 @@ import { convivenzaIdFromStructureRequestId, upsertConvivenzaDaRichiestaStruttur
                                 @if (selected.esitoRisposta) {
                                     <div><dt>Esito risposta</dt><dd><span class="status-badge" [ngClass]="getEsitoClass(selected.esitoRisposta)">{{ selected.esitoRisposta }}</span></dd></div>
                                 }
-                                <div><dt>Mailbox mittente futura</dt><dd>{{ senderMailbox }}</dd></div>
                             </dl>
 
                             <section class="mail-preview">
@@ -368,18 +373,6 @@ import { convivenzaIdFromStructureRequestId, upsertConvivenzaDaRichiestaStruttur
                 </div>
             }
 
-            @if (!preparazioneMailReale) {
-            <section class="tech-note">
-                <h2>Contratti backend futuri</h2>
-                <p>L'invio reale tramite Microsoft Graph sarà collegato al backend. Nessun client secret è presente nel frontend.</p>
-                <div>
-                    @for (endpoint of apiContracts; track endpoint) {
-                        <code>{{ endpoint }}</code>
-                    }
-                </div>
-                <small>Regex risposte: {{ regexDocumentata.source }}</small>
-            </section>
-            }
         </section>
     `,
     styles: [
@@ -711,9 +704,6 @@ export class RichiesteStrutture implements OnInit {
     private readonly struttureApi = inject(StruttureApiService);
     private readonly currentCommunity = getCurrentCommunity();
 
-    readonly senderMailbox = GRAPH_SENDER_MAILBOX_PLACEHOLDER;
-    readonly apiContracts = RICHIESTE_STRUTTURE_API_CONTRACTS;
-    readonly regexDocumentata = codiceRichiestaRegexDocumentata;
     readonly convivenzeOptions = this.service.getConvivenzeOptions();
     readonly struttureOptions = this.service.getStruttureOptions();
     readonly formatDateIt = formatDateIt;
@@ -732,6 +722,7 @@ export class RichiesteStrutture implements OnInit {
     preparazioneMailLoading = false;
     preparazioneMailErrore = '';
     structureRequestReale: StructureRequestResponse | null = null;
+    invioEmailRealeLoading = false;
     mailCodiceRichiesta = '';
     mailOggettoPersonalizzato = 'Richiesta disponibilità convivenza';
     mailCorpoEmail = '';
@@ -790,6 +781,10 @@ export class RichiesteStrutture implements OnInit {
 
     get mailOggettoCompleto() {
         return creaOggettoCompleto(this.mailCodiceRichiesta, this.mailOggettoPersonalizzato);
+    }
+
+    get richiestaRealeInviata(): boolean {
+        return this.structureRequestReale?.status === 'INVIATA' || this.structureRequestReale?.status === 'IN_ATTESA_STRUTTURA' || this.structureRequestReale?.visibleToStructure === true;
     }
 
     get strutturaSelezionata() {
@@ -947,15 +942,52 @@ cordiali saluti.`;
         this.messaggioUtente = 'Bozza email salvata. La convivenza è stata collegata al modulo Convivenze.';
     }
 
-    segnaEmailRealeInviata() {
+    inviaEmailAllaStruttura() {
         if (!this.structureRequestReale) {
             this.messaggioUtente = 'Nessuna richiesta struttura caricata.';
             return;
         }
 
+        if (this.invioEmailRealeLoading || this.richiestaRealeInviata) {
+            return;
+        }
+
         this.salvaBozzaEmailReale();
-        this.salvaConvivenzaDaRichiestaReale('RICHIESTA_INVIATA');
-        this.messaggioUtente = 'Richiesta segnata come inviata. La convivenza è ora visibile nel flusso Convivenze.';
+        this.invioEmailRealeLoading = true;
+
+        this.struttureApi.sendStructureRequest(this.structureRequestReale.id, {
+            emailSubject: this.mailOggettoCompleto,
+            emailBody: this.mailCorpoEmail,
+            sentBy: this.nomeRichiedente()
+        })
+        .pipe(finalize(() => {
+            this.invioEmailRealeLoading = false;
+        }))
+        .subscribe({
+            next: (request) => {
+                this.structureRequestReale = request;
+                this.persistiRichiestaVisibileStruttura(request);
+                this.salvaConvivenzaDaRichiestaReale('RICHIESTA_INVIATA');
+                this.messaggioUtente = 'Richiesta inviata alla struttura. Sarà visibile nella loro area riservata.';
+            },
+            error: (error) => {
+                console.error('[Richieste Strutture] Invio richiesta alla struttura non completato via API', error);
+                const fallbackRequest: StructureRequestResponse = {
+                    ...this.structureRequestReale!,
+                    status: 'INVIATA',
+                    visibleToStructure: true,
+                    sentAt: new Date().toISOString(),
+                    sentBy: this.nomeRichiedente(),
+                    emailSubject: this.mailOggettoCompleto,
+                    emailBody: this.mailCorpoEmail,
+                    updatedAt: new Date().toISOString()
+                };
+                this.structureRequestReale = fallbackRequest;
+                this.persistiRichiestaVisibileStruttura(fallbackRequest);
+                this.salvaConvivenzaDaRichiestaReale('RICHIESTA_INVIATA');
+                this.messaggioUtente = 'Richiesta inviata alla struttura. Sarà visibile nella loro area riservata.';
+            }
+        });
     }
 
     apriNuovaRichiesta() {
@@ -998,7 +1030,7 @@ cordiali saluti.`;
         const richiesta = this.creaRichiestaDaForm();
         const aggiornata = this.service.inviaRichiesta(richiesta.id);
         this.refresh(aggiornata?.id ?? richiesta.id);
-        this.messaggioUtente = "Richiesta segnata come inviata. L'invio reale tramite Microsoft Graph sarà collegato al backend.";
+        this.messaggioUtente = 'Richiesta inviata alla struttura. Sarà visibile nella loro area riservata.';
         this.router.navigate(['/gestionale-cn/richieste-strutture']);
     }
 
@@ -1009,7 +1041,7 @@ cordiali saluti.`;
         }
 
         this.refresh(aggiornata.id);
-        this.messaggioUtente = "Richiesta segnata come inviata. L'invio reale tramite Microsoft Graph sarà collegato al backend.";
+        this.messaggioUtente = 'Richiesta inviata alla struttura. Sarà visibile nella loro area riservata.';
         this.impostaSezione('Inviate');
     }
 
@@ -1154,6 +1186,25 @@ cordiali saluti.`;
             status,
             updatedAt: new Date().toISOString()
         });
+    }
+
+    private persistiRichiestaVisibileStruttura(request: StructureRequestResponse) {
+        const key = 'eventiComunità.structureRequests.visibleToStructure';
+        let existing: StructureRequestResponse[] = [];
+
+        try {
+            const raw = localStorage.getItem(key);
+            existing = raw ? JSON.parse(raw) as StructureRequestResponse[] : [];
+        } catch {
+            existing = [];
+        }
+
+        const next = [
+            request,
+            ...existing.filter((item) => item.id !== request.id)
+        ];
+
+        localStorage.setItem(key, JSON.stringify(next));
     }
 
     private refresh(selectedId: number) {

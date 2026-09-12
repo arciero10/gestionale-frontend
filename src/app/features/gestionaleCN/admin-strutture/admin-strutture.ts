@@ -512,7 +512,9 @@ export class AdminStrutture implements OnInit {
 
     requestStatusLabel(status: StructureRequestStatus): string {
         const labels: Record<StructureRequestStatus, string> = {
+            BOZZA: 'Bozza',
             INVIATA: 'Inviata',
+            IN_ATTESA_STRUTTURA: 'In attesa struttura',
             IN_VALUTAZIONE: 'In valutazione',
             ACCETTATA: 'Accettata',
             RIFIUTATA: 'Rifiutata',
@@ -523,7 +525,9 @@ export class AdminStrutture implements OnInit {
 
     requestStatusSeverity(status: StructureRequestStatus): 'success' | 'secondary' | 'warn' | 'danger' {
         const severities: Record<StructureRequestStatus, 'success' | 'secondary' | 'warn' | 'danger'> = {
+            BOZZA: 'secondary',
             INVIATA: 'warn',
+            IN_ATTESA_STRUTTURA: 'warn',
             IN_VALUTAZIONE: 'secondary',
             ACCETTATA: 'success',
             RIFIUTATA: 'danger',

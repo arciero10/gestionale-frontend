@@ -65,7 +65,7 @@ export interface RejectStructureRequest {
     reason?: string;
 }
 
-export type StructureRequestStatus = 'INVIATA' | 'IN_VALUTAZIONE' | 'ACCETTATA' | 'RIFIUTATA' | 'ANNULLATA';
+export type StructureRequestStatus = 'BOZZA' | 'INVIATA' | 'IN_ATTESA_STRUTTURA' | 'IN_VALUTAZIONE' | 'ACCETTATA' | 'RIFIUTATA' | 'ANNULLATA';
 
 export interface StructureRequestCreateRequest {
     structureId?: number | null;
@@ -89,11 +89,22 @@ export interface StructureRequestCreateRequest {
 export interface StructureRequestResponse extends StructureRequestCreateRequest {
     id: number;
     status: StructureRequestStatus;
+    visibleToStructure?: boolean;
+    sentAt?: string | null;
+    sentBy?: string | null;
+    emailSubject?: string | null;
+    emailBody?: string | null;
     createdAt: string;
     updatedAt?: string | null;
     reviewedAt?: string | null;
     reviewedBy?: string | null;
     responseNotes?: string | null;
+}
+
+export interface StructureRequestSendRequest {
+    emailSubject: string;
+    emailBody: string;
+    sentBy?: string | null;
 }
 
 export interface StructureRequestStatusUpdateRequest {
@@ -141,6 +152,14 @@ export class StruttureApiService {
 
     getStructureRequest(id: number): Observable<StructureRequestResponse> {
         return this.http.get<StructureRequestResponse>(`${this.baseUrl}/structure-requests/${id}`);
+    }
+
+    sendStructureRequest(id: number, payload: StructureRequestSendRequest): Observable<StructureRequestResponse> {
+        return this.http.post<StructureRequestResponse>(`${this.baseUrl}/structure-requests/${id}/send`, payload);
+    }
+
+    getStructureRequestsForStructure(structureId: number): Observable<StructureRequestResponse[]> {
+        return this.http.get<StructureRequestResponse[]>(`${this.baseUrl}/structures/${structureId}/requests`);
     }
 
     getAdminStructureRequests(status?: StructureRequestStatus): Observable<StructureRequestResponse[]> {
