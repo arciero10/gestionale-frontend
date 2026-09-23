@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
 import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
 import { getCurrentCommunity } from '../data/community-selection.storage';
 
@@ -11,12 +10,9 @@ type ModuleTone = 'community' | 'convivenze' | 'posti' | 'viaggi' | 'catechista'
 interface DashboardModule {
     key: string;
     title: string;
-    description: string;
-    icon: string;
     route: string;
     tone: ModuleTone;
     cta: string;
-    status?: string;
     imageUrl?: string;
     primary?: boolean;
 }
@@ -24,7 +20,7 @@ interface DashboardModule {
 @Component({
     selector: 'app-responsabile-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterLink, ButtonModule, TagModule],
+    imports: [CommonModule, RouterLink, ButtonModule],
     template: `
         <section class="responsabile-dashboard">
             <aside class="community-summary" aria-label="Comunità attiva">
@@ -79,12 +75,7 @@ interface DashboardModule {
                         @if (module.imageUrl) {
                             <img class="module-image" [src]="module.imageUrl" [alt]="module.title" (error)="nascondiImmagineCard($event)" />
                         }
-                        <div class="module-icon"><i class="pi" [ngClass]="module.icon"></i></div>
                         <h2>{{ module.title }}</h2>
-                        <p>{{ module.description }}</p>
-                        @if (module.status) {
-                            <p-tag [value]="module.status"></p-tag>
-                        }
                         <span class="module-button">{{ module.cta }}</span>
                     </a>
                 }
@@ -211,13 +202,13 @@ interface DashboardModule {
 
             .module-card {
                 --card-accent: #4f7da3;
-                min-height: 214px;
-                padding: 1rem;
+                min-height: 142px;
+                padding: .85rem;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: .65rem;
+                gap: .7rem;
                 color: #0f172a;
                 text-align: center;
                 text-decoration: none;
@@ -227,7 +218,7 @@ interface DashboardModule {
 
             .module-card:has(.module-image) {
                 justify-content: flex-start;
-                padding-top: .85rem;
+                min-height: 218px;
             }
 
             .module-card:hover {
@@ -237,25 +228,15 @@ interface DashboardModule {
 
             .module-image {
                 width: 100%;
-                height: clamp(90px, 8vw, 120px);
+                height: clamp(92px, 8vw, 116px);
                 object-fit: cover;
-                border-radius: 12px;
+                border-radius: 10px;
             }
 
-            .module-icon {
-                width: 3rem;
-                height: 3rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 14px;
-                color: var(--card-accent);
-                background: color-mix(in srgb, var(--card-accent), transparent 90%);
+            .module-card h2 {
+                margin: 0;
+                font-size: 1.08rem;
             }
-
-            .module-icon .pi { font-size: 1.45rem; }
-            .module-card h2 { font-size: 1.08rem; }
-            .module-card p { min-height: 2.45rem; font-size: .9rem; }
 
             .module-button {
                 min-height: 44px;
@@ -263,7 +244,7 @@ interface DashboardModule {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                margin-top: auto;
+                margin-top: 0;
                 border-radius: 10px;
                 color: #fff;
                 background: var(--card-accent);
@@ -271,13 +252,6 @@ interface DashboardModule {
             }
 
             .primary-card { box-shadow: 0 18px 38px rgba(47, 134, 124, .22); }
-
-            :host ::ng-deep .module-card .p-tag {
-                padding: .22rem .55rem;
-                background: rgba(255, 255, 255, .78);
-                color: #374151;
-                border: 1px solid rgba(31, 41, 55, .1);
-            }
 
             .module-card-community { --card-accent: #547fa3; }
             .module-card-convivenze { --card-accent: #2f867c; }
@@ -338,115 +312,82 @@ export class ResponsabileDashboard {
         {
             key: 'comunita',
             title: 'La mia comunità',
-            description: 'Scheda, anagrafica e riferimenti della comunità.',
-            icon: 'pi-users',
             route: '/gestionale-cn/comunita',
             tone: 'community',
-            cta: 'Apri',
-            status: 'Attivo'
+            cta: 'Apri'
         },
         {
             key: 'membri',
             title: 'Membri comunità',
-            description: 'Censimento fratelli, inviti e consensi.',
-            icon: 'pi-user-plus',
             route: '/gestionale-cn/membri-comunita',
             tone: 'community',
-            cta: 'Gestisci',
-            status: 'Attivo'
+            cta: 'Gestisci'
         },
         {
             key: 'convivenze',
             title: 'Convivenze',
-            description: 'Programmazione corrente della comunità.',
-            icon: 'pi-calendar',
             route: '/gestionale-cn/convivenze',
             tone: 'convivenze',
             cta: 'Entra',
-            status: 'Attivo',
             imageUrl: 'assets/images/dashboard/convivenze.jpg'
         },
         {
             key: 'nuova-convivenza',
             title: 'Nuova convivenza',
-            description: 'Avvia un nuovo flusso organizzativo.',
-            icon: 'pi-calendar-plus',
             route: '/gestionale-cn/convivenze',
             tone: 'convivenze',
             cta: 'Crea',
-            status: 'Attivo',
             primary: true
         },
         {
             key: 'storico-convivenze',
             title: 'Storico convivenze',
-            description: 'Convivenze concluse e archiviate.',
-            icon: 'pi-history',
             route: '/gestionale-cn/convivenze/storico',
             tone: 'convivenze',
-            cta: 'Consulta',
-            status: 'Attivo'
+            cta: 'Consulta'
         },
         {
             key: 'posti-convivenza',
             title: 'Posti di Convivenza',
-            description: 'Catalogo strutture approvate e posti disponibili.',
-            icon: 'pi-building',
             route: '/gestionale-cn/posti-convivenza',
             tone: 'posti',
             cta: 'Vai al modulo',
-            status: 'Attivo',
             imageUrl: 'assets/images/posti-convivenza/posti-convivenza-hero.jpg'
         },
         {
             key: 'richieste-strutture',
             title: 'Richieste strutture',
-            description: 'Richieste disponibilità e preparazione comunicazioni.',
-            icon: 'pi-send',
             route: '/gestionale-cn/richieste-strutture',
             tone: 'posti',
-            cta: 'Apri',
-            status: 'Attivo'
+            cta: 'Apri'
         },
         {
             key: 'viaggi',
             title: 'Viaggi / Pellegrinaggi',
-            description: 'Modulo viaggi e pellegrinaggi.',
-            icon: 'pi-map',
             route: '/gestionale-cn/viaggi',
             tone: 'viaggi',
-            cta: 'Apri',
-            status: 'Prossimamente'
+            cta: 'Apri'
         },
         {
             key: 'permessi',
             title: 'Permessi assegnati',
-            description: 'Autorizzazioni operative già approvate.',
-            icon: 'pi-shield',
             route: '/gestionale-cn/comunita',
             tone: 'quiet',
-            cta: 'Consulta',
-            status: 'Attivo'
+            cta: 'Consulta'
         },
         {
             key: 'comunita-figlie',
             title: 'Comunità figlie',
-            description: 'Comunità seguite nel contesto catechisti.',
-            icon: 'pi-sitemap',
             route: '/gestionale-cn/catechista/comunita-figlie',
             tone: 'catechista',
-            cta: 'Apri',
-            status: 'Attivo'
+            cta: 'Apri'
         },
         {
             key: 'convivenze-catechistiche',
             title: 'Convivenze catechistiche',
-            description: 'Convivenze organizzate dall’equipe per comunità figlie.',
-            icon: 'pi-calendar-plus',
             route: '/gestionale-cn/catechista/convivenze',
             tone: 'catechista',
-            cta: 'Apri',
-            status: 'Attivo'
+            cta: 'Apri'
         }
     ];
 
