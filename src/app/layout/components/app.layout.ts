@@ -16,7 +16,7 @@ import { inject } from '@angular/core';
             <div class="onboarding-layout" [style.--page-background-image]="pageBackgroundStyle()">
                 <div class="onboarding-layout-content">
                     @if (currentUser.state() === 'ready' && !currentUser.context()?.linkedToCommunity) {
-                        <div role="status" class="user-association-status">Il tuo account deve ancora essere associato a una comunità.</div>
+                        <div role="status" class="user-association-status">{{ currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE' ? 'Richiesta di appartenenza in attesa di approvazione.' : 'Il tuo account deve ancora essere associato a una comunità.' }}</div>
                     }
                     @if (currentUser.state() === 'error') {
                         <div role="status" class="user-association-status">Il contesto della comunità non è disponibile. Riprova più tardi.</div>
@@ -35,7 +35,7 @@ import { inject } from '@angular/core';
                 >
                     <div class="layout-content">
                         @if (currentUser.state() === 'ready' && !currentUser.context()?.linkedToCommunity) {
-                            <div role="status" class="user-association-status">Il tuo account deve ancora essere associato a una comunità.</div>
+                            <div role="status" class="user-association-status">{{ currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE' ? 'Richiesta di appartenenza in attesa di approvazione.' : 'Il tuo account deve ancora essere associato a una comunità.' }}</div>
                         }
                         @if (currentUser.state() === 'error') {
                             <div role="status" class="user-association-status">Il contesto della comunità non è disponibile. Riprova più tardi.</div>

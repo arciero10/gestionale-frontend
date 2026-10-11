@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
 import { getCurrentCommunity } from '../data/community-selection.storage';
+import { ApprovazioniAppartenenza } from '../onboarding-comunita/approvazioni-appartenenza';
+import { getApiConfiguration } from '../../../auth/api-config';
 
 type ModuleTone = 'community' | 'convivenze' | 'posti' | 'viaggi' | 'catechista' | 'quiet';
 
@@ -20,7 +22,7 @@ interface DashboardModule {
 @Component({
     selector: 'app-responsabile-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterLink, ButtonModule],
+    imports: [CommonModule, RouterLink, ButtonModule, ApprovazioniAppartenenza],
     template: `
         <section class="responsabile-dashboard">
             <aside class="community-summary" aria-label="Comunità attiva">
@@ -81,6 +83,7 @@ interface DashboardModule {
                 }
             </section>
 
+            @if (!apiEnabled) {
             <section class="approval-panel">
                 <div>
                     <span class="summary-eyebrow">Operatività comunità</span>
@@ -89,6 +92,8 @@ interface DashboardModule {
                 </div>
                 <span class="approval-state">Nessuna richiesta in attesa</span>
             </section>
+            }
+            <app-approvazioni-appartenenza></app-approvazioni-appartenenza>
         </section>
     `,
     styles: [
@@ -303,6 +308,7 @@ interface DashboardModule {
     ]
 })
 export class ResponsabileDashboard {
+    readonly apiEnabled = Boolean(getApiConfiguration().apiScope);
     readonly community = getCurrentCommunity();
     readonly userContext = getUserAccessContext();
     readonly publicStructureInvitePath = '/area-strutture';

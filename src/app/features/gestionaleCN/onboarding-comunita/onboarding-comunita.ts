@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AutoCompleteModule } from 'primeng/autocomplete';
@@ -11,6 +11,10 @@ import { saveAppUserProfile } from '../data/app-user-profile.storage';
 import { ComunitaFigliaAssociata, saveSelectedCommunity } from '../data/community-selection.storage';
 import { Carisma, PermessoOperativo, getPermessiByCarismi, normalizeCarismaForPermissions } from '../data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
+import { getApiConfiguration } from '../../../auth/api-config';
+import { CurrentUserService } from '../../../auth/current-user.service';
+import { BackendParish, OnboardingApiService } from '../../../auth/onboarding-api.service';
+import { clearOnboardingInvitation, readOnboardingInvitation } from '../../../auth/onboarding-invitation';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
@@ -79,6 +83,66 @@ interface OnboardingPayload {
                     </div>
                 }
 
+                @if (useBackend) {
+                    @if (pendingApproval) {
+                        <section class="privacy-consent" role="status">
+                            <h2>In attesa di approvazione</h2>
+                            <p>La richiesta di appartenenza è stata salvata. Nessun ruolo operativo è ancora abilitato.</p>
+                            <button pButton type="button" label="Verifica approvazione" icon="pi pi-refresh" [disabled]="saving" (click)="verificaApprovazione()"></button>
+                        </section>
+                    }
+                    @if (loadingRequest) { <p role="status">Caricamento profilo...</p> } @else {
+                    <form class="community-form" novalidate (ngSubmit)="confermaBackend()">
+                        <div class="field" data-validation-field="nome" [class.field-error]="hasFieldError('nome')">
+                            <label for="backendFirstName">Nome</label>
+                            <input id="backendFirstName" name="backendFirstName" pInputText [(ngModel)]="firstName" autocomplete="given-name" maxlength="100" />
+                            <small class="field-error-message">{{ getFieldErrorMessage('nome') }}</small>
+                        </div>
+                        <div class="field" data-validation-field="cognome" [class.field-error]="hasFieldError('cognome')">
+                            <label for="backendLastName">Cognome</label>
+                            <input id="backendLastName" name="backendLastName" pInputText [(ngModel)]="lastName" autocomplete="family-name" maxlength="100" />
+                            <small class="field-error-message">{{ getFieldErrorMessage('cognome') }}</small>
+                        </div>
+                        <div class="field" data-validation-field="parrocchia" [class.field-error]="hasFieldError('parrocchia')">
+                            <label for="backendParish">Parrocchia</label>
+                            <p-select inputId="backendParish" name="backendParish" [options]="backendParishes" optionLabel="name" optionValue="id" [filter]="true" [loading]="loadingParishes" [(ngModel)]="backendParishId" placeholder="Seleziona la parrocchia" appendTo="body"></p-select>
+                            <small class="field-error-message">{{ getFieldErrorMessage('parrocchia') }}</small>
+                            @if (!loadingParishes && backendParishes.length === 0) {
+                                <p>Nessuna parrocchia disponibile. Contatta la segreteria.</p>
+                                <button pButton type="button" label="Riprova" icon="pi pi-refresh" (click)="caricaParrocchieBackend()"></button>
+                            }
+                        </div>
+                        <div class="field" data-validation-field="numeroComunita" [class.field-error]="hasFieldError('numeroComunita')">
+                            <label for="backendCommunity">Numero comunità</label>
+                            <p-select inputId="backendCommunity" name="backendCommunity" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
+                            <small class="field-error-message">{{ getFieldErrorMessage('numeroComunita') }}</small>
+                        </div>
+                        <div class="field">
+                            <label for="backendStage">Tappa del Cammino richiesta</label>
+                            <p-select inputId="backendStage" name="backendStage" [options]="tappeCammino" [(ngModel)]="tappaCammino"></p-select>
+                        </div>
+                        <div class="field">
+                            <label for="backendRole">Carisma / ruolo richiesto</label>
+                            <p-select inputId="backendRole" name="backendRole" [options]="carismiOnboarding" optionLabel="label" optionValue="value" [(ngModel)]="ruoloComunitario"></p-select>
+                        </div>
+                        <div class="field">
+                            <label for="backendPhone">Telefono opzionale</label>
+                            <input id="backendPhone" name="backendPhone" pInputText [(ngModel)]="telefono" autocomplete="tel" maxlength="32" />
+                        </div>
+                        <div class="field">
+                            <label for="backendInvite">Codice invito, se ricevuto</label>
+                            <input id="backendInvite" name="backendInvite" pInputText [(ngModel)]="invitationToken" maxlength="128" autocomplete="off" />
+                        </div>
+                        <section class="privacy-consent" data-validation-field="privacyConsenso" [class.field-error]="hasFieldError('privacyConsenso')">
+                            <label class="checkbox-line"><input type="checkbox" name="backendPrivacy" [(ngModel)]="privacyConsenso" />
+                                <span>Dichiaro di aver letto l'informativa privacy e autorizzo il trattamento dei dati necessari alla richiesta di accesso comunità.</span>
+                            </label>
+                            <small class="field-error-message">{{ getFieldErrorMessage('privacyConsenso') }}</small>
+                        </section>
+                        <button pButton type="submit" [label]="saving ? 'Salvataggio in corso...' : 'Conferma comunità'" icon="pi pi-check" [disabled]="saving || loadingParishes || backendParishes.length === 0"></button>
+                    </form>
+                    }
+                } @else {
                 <div class="mode-switch" role="tablist" aria-label="Modalità scelta comunità">
                     <button type="button" [class.active]="modalita === 'guidata'" (click)="modalita = 'guidata'">Scelta guidata</button>
                     <button type="button" [class.active]="modalita === 'ricerca'" (click)="modalita = 'ricerca'">Cerca parrocchia</button>
@@ -312,6 +376,7 @@ interface OnboardingPayload {
                         <button pButton type="button" label="Conferma comunità" icon="pi pi-check" (click)="confermaComunita()"></button>
                     }
                 </form>
+                }
             </section>
         </main>
     `,
@@ -741,11 +806,129 @@ interface OnboardingPayload {
         `
     ]
 })
-export class OnboardingComunita {
+export class OnboardingComunita implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly onboardingApi = inject(OnboardingApiService);
+    private readonly currentUser = inject(CurrentUserService);
 
     readonly isPreview = this.route.snapshot.data['preview'] === true;
+    readonly useBackend = !this.isPreview && Boolean(getApiConfiguration().apiScope);
+    firstName = '';
+    lastName = '';
+    backendParishes: BackendParish[] = [];
+    backendParishId: number | null = null;
+    loadingParishes = false;
+    loadingRequest = true;
+    saving = false;
+    pendingApproval = false;
+    invitationToken = this.route.snapshot.queryParamMap.get('invitationToken') ?? readOnboardingInvitation();
+
+    ngOnInit(): void {
+        if (this.useBackend) {
+            this.pendingApproval = this.currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE';
+            void this.caricaParrocchieBackend();
+            void this.caricaRichiestaCorrente();
+        }
+    }
+
+    private async caricaRichiestaCorrente(): Promise<void> {
+        try {
+            const request = await this.onboardingApi.getCurrentRequest();
+            if (!request) return;
+            this.firstName = request.firstName;
+            this.lastName = request.lastName;
+            this.telefono = request.phone;
+            this.backendParishId = request.parishId;
+            this.numeroComunita = request.communityNumber;
+            const roles: Record<string, RuoloComunitario> = {
+                MEMBER: '', RESPONSIBLE: 'responsabile', CO_RESPONSIBLE: 'corresponsabile', CATECHIST: 'catechista',
+                OSTIARIO: 'ostiario', CANTOR: 'cantore', PRESBYTER: 'presbitero', DEACON: 'diacono', LECTOR: 'lettore', DIDASCAL: 'didascalo'
+            };
+            this.ruoloComunitario = roles[request.requestedRole] ?? '';
+            if (this.tappeCammino.includes(request.requestedStage as TappaCammino)) this.tappaCammino = request.requestedStage as TappaCammino;
+            this.pendingApproval = request.status === 'IN_ATTESA_APPROVAZIONE';
+        } catch {
+            this.feedbackType = 'error';
+            this.feedbackMessage = 'Impossibile recuperare la richiesta precedente. Riprova più tardi.';
+        } finally { this.loadingRequest = false; }
+    }
+
+    async caricaParrocchieBackend(): Promise<void> {
+        if (this.loadingParishes) return;
+        this.loadingParishes = true;
+        try {
+            this.backendParishes = await this.onboardingApi.getParishes();
+        } catch {
+            this.feedbackType = 'error';
+            this.feedbackMessage = 'Impossibile caricare le parrocchie dal gestionale. Riprova.';
+        } finally { this.loadingParishes = false; }
+    }
+
+    async confermaBackend(): Promise<void> {
+        if (this.saving) return;
+        this.submitAttempted = true;
+        this.validationErrors = [];
+        const required = (field: string, label: string, valid: boolean) => {
+            if (!valid) this.validationErrors.push({ field, label, message: `Completa il campo: ${label}.` });
+        };
+        required('nome', 'Nome', Boolean(this.firstName.trim()));
+        required('cognome', 'Cognome', Boolean(this.lastName.trim()));
+        required('parrocchia', 'Parrocchia', this.backendParishes.some(p => p.id === this.backendParishId));
+        required('numeroComunita', 'Numero comunità', Number.isInteger(this.numeroComunita) && this.numeroComunita > 0);
+        required('privacyConsenso', 'Privacy e consenso', this.privacyConsenso);
+        if (this.validationErrors.length) {
+            this.feedbackType = 'error';
+            this.feedbackMessage = this.buildValidationFeedback(this.validationErrors);
+            this.scrollToFirstError();
+            return;
+        }
+        const roles: Record<RuoloComunitario, string> = {
+            '': 'MEMBER', responsabile: 'RESPONSIBLE', corresponsabile: 'CO_RESPONSIBLE', catechista: 'CATECHIST',
+            cantore: 'CANTOR', presbitero: 'PRESBYTER', diacono: 'DEACON', lettore: 'LECTOR', ostiario: 'OSTIARIO', didascalo: 'DIDASCAL'
+        };
+        this.saving = true;
+        try {
+            const result = await this.onboardingApi.complete({
+                firstName: this.firstName.trim(), lastName: this.lastName.trim(), parishId: this.backendParishId!,
+                communityNumber: this.numeroComunita, role: roles[this.ruoloComunitario], phone: this.telefono.trim(),
+                stage: this.tappaCammino, privacyConsent: this.privacyConsenso,
+                invitationToken: this.invitationToken.trim() || undefined
+            });
+            await this.currentUser.refresh();
+            if (this.currentUser.context()?.linkedToCommunity === true) {
+                clearOnboardingInvitation();
+                this.feedbackType = 'success';
+                this.feedbackMessage = 'Appartenenza confermata correttamente.';
+                await this.router.navigateByUrl('/gestionale-cn/dashboard');
+            } else if (result.status === 'IN_ATTESA_APPROVAZIONE') {
+                this.pendingApproval = true;
+                this.feedbackType = 'success';
+                this.feedbackMessage = 'Richiesta salvata. In attesa di approvazione del responsabile o della segreteria.';
+            } else { throw new Error('Collegamento non disponibile.'); }
+        } catch (error: unknown) {
+            this.feedbackType = 'error';
+            const message = (error as { error?: { message?: unknown } })?.error?.message;
+            this.feedbackMessage = typeof message === 'string' ? message : 'Non è stato possibile completare la richiesta. I dati inseriti sono conservati: riprova.';
+        } finally { this.saving = false; }
+    }
+
+    async verificaApprovazione(): Promise<void> {
+        if (this.saving) return;
+        this.saving = true;
+        try {
+            await this.currentUser.refresh();
+            if (this.currentUser.context()?.linkedToCommunity) await this.router.navigateByUrl('/gestionale-cn/dashboard');
+            else {
+                this.pendingApproval = this.currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE';
+                this.feedbackType = this.pendingApproval ? 'success' : 'error';
+                this.feedbackMessage = this.pendingApproval ? 'La richiesta è ancora in attesa di approvazione.' : 'Appartenenza non autorizzata. Contatta la segreteria.';
+            }
+        } catch {
+            this.feedbackType = 'error';
+            this.feedbackMessage = 'Impossibile verificare l’approvazione. Riprova.';
+        } finally { this.saving = false; }
+    }
     readonly diocesiOptions = DIOCESI_MOCK;
     readonly numeriComunita = NUMERI_COMUNITA;
     readonly tappeCammino = [...TAPPE_CAMMINO];
@@ -1003,6 +1186,7 @@ export class OnboardingComunita {
     }
 
     confermaComunita(): void {
+        if (this.useBackend) { void this.confermaBackend(); return; }
         this.submitAttempted = true;
 
         const payload = this.buildOnboardingPayload();

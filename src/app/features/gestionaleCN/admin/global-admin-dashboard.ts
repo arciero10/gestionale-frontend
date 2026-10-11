@@ -6,6 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { MEMBRI_COMUNITA_PILOTA } from '../data/comunita-pilota.mock';
 import { readStruttureSegnalate, SAN_GAETANO_CENSIMENTO_STORAGE_KEY, CensimentoStrutturaMock } from '../../strutture/strutture-censimento.mock';
 import { readProfileStatus, readStrutturaProfile } from '../../strutture/struttura-profile.storage';
+import { ApprovazioniAppartenenza } from '../onboarding-comunita/approvazioni-appartenenza';
 
 type GlobalAdminCard = {
     title: string;
@@ -18,7 +19,7 @@ type GlobalAdminCard = {
 @Component({
     selector: 'app-global-admin-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterLink, ButtonModule, TagModule],
+    imports: [CommonModule, RouterLink, ButtonModule, TagModule, ApprovazioniAppartenenza],
     template: `
         <section class="global-admin-page">
             <header class="admin-hero">
@@ -45,6 +46,7 @@ type GlobalAdminCard = {
                     </article>
                 }
             </section>
+            <app-approvazioni-appartenenza></app-approvazioni-appartenenza>
         </section>
     `,
     styles: [

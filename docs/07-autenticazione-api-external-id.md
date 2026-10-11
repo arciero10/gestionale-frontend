@@ -63,9 +63,10 @@ e PersonId, indice univoco `(MicrosoftTenantId, MicrosoftObjectId)`, e i campi
 `Role` e `Active` sulle appartenenze. Non migra o deduce ruoli da valori client.
 Le appartenenze esistenti partono attive come `MEMBER`.
 
-Un amministratore deve associare esplicitamente l'identita verificata a
-`User.PersonId`. La persona deve avere una `CommunityMember` attiva con ruolo
-assegnato dal server. Nessun auto-collegamento per email o `Person.UserId` legacy.
+Il workflow descritto in [08-onboarding-backend-appartenenza](08-onboarding-backend-appartenenza.md)
+collega l'identita verificata a `User.PersonId` dopo invito o approvazione.
+La persona deve avere una `CommunityMember` attiva con ruolo assegnato dal server.
+Nessun auto-collegamento per email o `Person.UserId` legacy.
 Nessuna registrazione account o password custom viene introdotta.
 
 Se ci sono piu appartenenze, `User.CommunityId` puo selezionare soltanto una

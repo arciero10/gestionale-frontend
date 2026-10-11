@@ -14,6 +14,8 @@ import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '.
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 import { activePromo, readProfileStatus, readProfileType, readStrutturaProfile } from '../strutture/struttura-profile.storage';
 import { getApiConfiguration } from '../../auth/api-config';
+import { backendUserContext } from '../../auth/current-user-context';
+import { ApprovazioniAppartenenza } from '../gestionaleCN/onboarding-comunita/approvazioni-appartenenza';
 
 interface DashboardModule {
     title: string;
@@ -28,7 +30,7 @@ interface DashboardModule {
 @Component({
     selector: 'app-dashboard',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, SelectModule, TagModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, SelectModule, TagModule, ApprovazioniAppartenenza],
     template: `
         <section class="dashboard-stage">
             <div class="dashboard-overlay"></div>
@@ -127,6 +129,7 @@ interface DashboardModule {
                         <span>{{ messaggio }}</span>
                     </div>
                 }
+                @if (!isDemo) { <app-approvazioni-appartenenza></app-approvazioni-appartenenza> }
             </div>
         </section>
     `,
@@ -633,6 +636,7 @@ export class Dashboard {
     }
 
     get membriCount() {
+        if (!this.isDemo && getApiConfiguration().apiScope) return backendUserContext()?.memberCount ?? 0;
         return this.isDemo ? DEMO_MEMBRI.length : this.currentCommunity.isPilot ? 42 : 0;
     }
 

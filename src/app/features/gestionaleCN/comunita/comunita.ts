@@ -1,5 +1,5 @@
 ﻿import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -26,6 +26,9 @@ import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '.
 import { PRIVACY_CONFIG } from '../data/privacy-config.mock';
 import { PRIVACY_CONSENTS_DRAFT, PRIVACY_POLICY_DRAFT_DATA_ITEMS, PRIVACY_POLICY_DRAFT_PARAGRAPHS, PRIVACY_POLICY_DRAFT_TITLE } from '../privacy/privacy-policy-draft';
 import { canPerformAction, getUserAccessContext } from '../data/access-policy.mock';
+import { getApiConfiguration } from '../../../auth/api-config';
+import { CommunityData, OnboardingApiService } from '../../../auth/onboarding-api.service';
+import { ApprovazioniAppartenenza } from '../onboarding-comunita/approvazioni-appartenenza';
 import {
     CommunityMemberMock,
     addManualCommunityMember,
@@ -75,9 +78,43 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
 @Component({
     selector: 'app-comunita',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule],
+    imports: [CommonModule, FormsModule, RouterLink, ButtonModule, InputTextModule, SelectModule, TableModule, TagModule, TextareaModule, ApprovazioniAppartenenza],
     template: `
         <div class="community-page">
+            @if (useBackend) {
+                <section class="identity-card">
+                    <div><h1>{{ backendCommunity?.context?.communityName || nomeComunita }}</h1>
+                        <p>{{ backendCommunity?.context?.parishName || parrocchiaComunita }}</p>
+                        <p>Ruolo: {{ backendCommunity?.context?.role || 'Non autorizzato' }}</p>
+                    </div>
+                    <button pButton type="button" label="Aggiorna" icon="pi pi-refresh" [disabled]="loadingBackend" (click)="caricaComunitaBackend()"></button>
+                </section>
+                @if (messaggio) { <p class="action-message" role="status">{{ messaggio }}</p> }
+                @if (backendInviteLink) {
+                    <section class="identity-card"><input pInputText [value]="backendInviteLink" readonly aria-label="Link invito personale" />
+                        <button pButton type="button" label="Copia link" icon="pi pi-copy" (click)="copiaInvitoBackend()"></button>
+                    </section>
+                }
+                <section class="member-card">
+                    <h2>Membri comunità</h2>
+                    @if (loadingBackend) { <p>Caricamento membri...</p> }
+                    @else if (backendCommunity) {
+                        <p-table [value]="backendCommunity.members" [scrollable]="true" scrollHeight="500px">
+                            <ng-template #header><tr><th>Nome</th><th>Cognome</th><th>Ruolo</th><th>Email</th><th>Telefono</th><th>Azioni</th></tr></ng-template>
+                            <ng-template #body let-member><tr>
+                                <td>{{ member.firstName }}</td><td>{{ member.lastName }}</td><td>{{ member.role === 'MEMBER' ? '—' : member.role }}</td>
+                                <td>{{ member.email || '—' }}</td><td>{{ member.phoneNumber || '—' }}</td><td>
+                                    @if (backendCommunity.context.role === 'RESPONSIBLE') {
+                                        <button pButton type="button" label="Invita" icon="pi pi-send" [disabled]="invitingBackend" (click)="invitaBackend(member.personId)"></button>
+                                    }
+                                </td>
+                            </tr></ng-template>
+                            <ng-template #emptymessage><tr><td colspan="6">Nessun fratello censito.</td></tr></ng-template>
+                        </p-table>
+                    } @else { <p>Il contesto della comunità non è disponibile o l'appartenenza non è ancora approvata.</p> }
+                </section>
+                <app-approvazioni-appartenenza></app-approvazioni-appartenenza>
+            } @else {
             @if (!isDemo) {
                 <section class="catechisti-card">
                     <div class="section-title">
@@ -698,6 +735,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                     </section>
                 </div>
             }
+            }
         </div>
     `,
     styles: [
@@ -1250,9 +1288,38 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
         `
     ]
 })
-export class Comunita {
+export class Comunita implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly onboardingApi = inject(OnboardingApiService);
+    get useBackend(): boolean { return !this.isDemo && Boolean(getApiConfiguration().apiScope); }
+    backendCommunity: CommunityData | null = null;
+    loadingBackend = false;
+    invitingBackend = false;
+    backendInviteLink = '';
+
+    ngOnInit(): void { if (this.useBackend) void this.caricaComunitaBackend(); }
+    async caricaComunitaBackend(): Promise<void> {
+        if (this.loadingBackend) return;
+        this.loadingBackend = true;
+        try { this.backendCommunity = await this.onboardingApi.getMyCommunity(); }
+        catch { this.backendCommunity = null; this.messaggio = 'Impossibile caricare la comunità autenticata. Riprova dopo l’approvazione.'; }
+        finally { this.loadingBackend = false; }
+    }
+    async invitaBackend(personId: number): Promise<void> {
+        if (!this.backendCommunity?.context.communityId || this.invitingBackend) return;
+        this.invitingBackend = true;
+        try {
+            const invitation = await this.onboardingApi.invite(this.backendCommunity.context.communityId, personId);
+            this.backendInviteLink = `${window.location.origin}/gestionale-cn/onboarding-comunita?invitationToken=${encodeURIComponent(invitation.invitationToken)}`;
+            this.messaggio = 'Invito personale creato. Condividi il link con il destinatario.';
+        } catch { this.messaggio = 'Invito non creato. Verifica email, appartenenza e autorizzazioni.'; }
+        finally { this.invitingBackend = false; }
+    }
+    async copiaInvitoBackend(): Promise<void> {
+        try { await navigator.clipboard.writeText(this.backendInviteLink); this.messaggio = 'Link copiato.'; }
+        catch { this.messaggio = 'Copia il link dal campo visibile.'; }
+    }
     private readonly currentCommunity = getCurrentCommunity();
     readonly userAccessContext = getUserAccessContext();
     readonly canAddMember = canPerformAction('aggiungi-membro', this.userAccessContext);
@@ -1318,8 +1385,8 @@ export class Comunita {
     policyConsents = PRIVACY_CONSENTS_DRAFT;
     privacyConfig = PRIVACY_CONFIG;
 
-    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo ? [] : this.leggiEquipeCatechisti();
-    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : this.creaMembriGestionali();
+    equipeCatechisti: EquipeCatechistiUnita[] = this.isDemo || this.useBackend ? [] : this.leggiEquipeCatechisti();
+    membri: MembroComunitaPilota[] = this.isDemo ? this.creaMembriDemo() : this.useBackend ? [] : this.creaMembriGestionali();
     private prossimoId = this.membri.length + 1;
     form: MembroForm = this.creaFormVuoto();
 

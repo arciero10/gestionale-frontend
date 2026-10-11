@@ -15,6 +15,7 @@ export interface CurrentUserContext {
     permissions: string[];
     email: string | null;
     displayName: string | null;
+    memberCount?: number;
 }
 
 export const backendUserContext = signal<CurrentUserContext | null>(null);
