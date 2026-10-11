@@ -59,7 +59,7 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const api = getApiConfiguration();
   const protectedResourceMap = new Map<string, string[]>();
   if (api.apiScope) {
-    protectedResourceMap.set(`${api.apiBaseUrl.replace(/\/$/, '')}/*`, [api.apiScope]);
+    protectedResourceMap.set(`${new URL(api.apiBaseUrl).origin}/*`, [api.apiScope]);
   } else {
     console.warn('[API] API_SCOPE non configurato: login disponibile, contesto API non attivo.');
   }

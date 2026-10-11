@@ -12,7 +12,11 @@ Nessun client secret va nella SPA. Nessuno scope viene inventato nel codice.
 Nel frontend, `public/api-config.json` viene letto prima del bootstrap Angular:
 
 - `API_BASE_URL`: URL che include `/api`, attualmente quello della Container App.
-- `API_SCOPE`: valore completo dello scope realmente registrato; inizialmente vuoto.
+- `API_SCOPE`: `api://71a9f6da-a231-4285-b475-37d2e65b8fe1/access_as_user`.
+
+Lo scope reale e configurato nel JSON runtime e negli environment di fallback.
+La protectedResourceMap copre tutte le chiamate all'origine API Azure;
+login base e Client ID SPA restano invariati.
 
 Il JSON pubblicato e configurazione pubblica, non contiene segreti. Le variabili
 del sistema operativo non vengono lette automaticamente dal browser: la procedura
@@ -32,6 +36,13 @@ Nel backend configurare tramite environment Azure o user-secrets:
 - `ExternalId__RequiredScope`: nome del permesso delegato contenuto in `scp`.
   Se omesso e comunque obbligatoria la presenza di uno scope delegato; in deploy
   configurarlo per limitare l'accesso al permesso previsto.
+
+Il backend include in appsettings.json i valori pubblici reali: tenant e authority
+indicati sopra, Audience/ClientId `71a9f6da-a231-4285-b475-37d2e65b8fe1`
+e RequiredScope `access_as_user`. Accetta come audience il Client ID API
+oppure `api://71a9f6da-a231-4285-b475-37d2e65b8fe1`, mai il Client ID SPA.
+Environment e user-secrets possono sovrascrivere questi valori. Nessun segreto
+o connection string e incluso in questo file.
 
 L'authority usa discovery v2.0 HTTPS e relative chiavi pubbliche Microsoft.
 Issuer, audience, firma, scadenza e tenant vengono verificati. `oid` e `tid`
