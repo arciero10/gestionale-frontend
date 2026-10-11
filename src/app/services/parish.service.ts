@@ -1,13 +1,13 @@
 import { Parish } from "@/models/parish";
 import { httpResource } from "@angular/common/http";
 import { Injectable, computed } from "@angular/core";
-import { environment } from "src/environments/environment";
+import { getApiConfiguration } from '@/auth/api-config';
 
 @Injectable({
     providedIn: 'root'
 })
 export class ParishService {
-    private apiUrl = `${environment.apiBaseUrl}/Parish`;
+    private apiUrl = `${getApiConfiguration().apiBaseUrl}/Parish`;
 
     // Signal-based HTTP resource that handles loading, data, and errors automatically
     public parishesResource = httpResource<Parish[]>(() => ({

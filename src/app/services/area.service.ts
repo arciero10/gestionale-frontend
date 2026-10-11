@@ -2,13 +2,13 @@ import { AreaKanban, AreaUI } from "@/models/macro-area";
 import { mapAreaGetAll } from "@/models/mappers";
 import { HttpClient, httpResource, HttpResourceRef } from "@angular/common/http";
 import { inject, Injectable, Signal } from "@angular/core";
-import { environment } from "src/environments/environment";
+import { getApiConfiguration } from '@/auth/api-config';
 
 @Injectable(
   { providedIn: 'root' }
 )
 export class AreaService {
-  private apiUrl = `${environment.apiBaseUrl}/Areas`;
+  private apiUrl = `${getApiConfiguration().apiBaseUrl}/Areas`;
 
   getAreaByType(type: Signal<number>) {
     return httpResource<AreaUI[]>(() => ({

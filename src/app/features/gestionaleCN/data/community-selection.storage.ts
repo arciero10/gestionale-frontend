@@ -1,5 +1,7 @@
 import { COMUNITA_ATTIVA_MOCK, DIOCESI_MOCK, PARROCCHIE_MOCK, SETTORI_MOCK, StatoVerificaParrocchia, generaNomeComunita } from './anagrafica-ecclesiale.mock';
 import { TappaCammino, normalizeTappaCammino } from './tappe-cammino.mock';
+import { backendUserContext } from '../../../auth/current-user-context';
+import { getApiConfiguration } from '../../../auth/api-config';
 
 export const COMMUNITY_SELECTED_KEY = 'eventiComunit\u00e0.communitySelected';
 export const SELECTED_COMMUNITY_KEY = 'eventiComunit\u00e0.selectedCommunity';
@@ -39,6 +41,7 @@ export interface SelectedCommunity {
 }
 
 export interface CurrentCommunity extends SelectedCommunity {
+    communityDbId?: number;
     isPilot: boolean;
 }
 
@@ -85,6 +88,24 @@ export function getSelectedCommunity(): SelectedCommunity | null {
 }
 
 export function getCurrentCommunity(): CurrentCommunity {
+    const backend = backendUserContext();
+    if (getApiConfiguration().apiScope) {
+        return {
+            communityDbId: backend?.linkedToCommunity ? backend.communityId ?? undefined : undefined,
+            communitySelected: true,
+            numeroComunita: backend?.communityNumber ?? 0,
+            nomeComunita: backend?.communityName ?? 'Da associare',
+            parrocchiaNome: backend?.parishName ?? '',
+            diocesiNome: '',
+            settoreNome: '',
+            parrocchiaManuale: false,
+            statoVerifica: 'Verificata',
+            dataSelezione: '',
+            isCatechista: backend?.role === 'CATECHIST',
+            comunitaFiglieAssociate: [],
+            isPilot: false
+        };
+    }
     const selected = getSelectedCommunity();
 
     if (selected?.communitySelected) {

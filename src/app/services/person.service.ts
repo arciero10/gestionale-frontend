@@ -3,13 +3,13 @@ import { PersonCreate } from '@/models/person';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { computed, inject, Injectable, signal, Signal } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from 'src/environments/environment';
+import { getApiConfiguration } from '@/auth/api-config';
 
 @Injectable({
     providedIn: 'root'
 })
 export class PersonService {
-    private apiUrl = `${environment.apiBaseUrl}/Person`;
+    private apiUrl = `${getApiConfiguration().apiBaseUrl}/Person`;
 
     private refreshTrigger = signal(0);
 

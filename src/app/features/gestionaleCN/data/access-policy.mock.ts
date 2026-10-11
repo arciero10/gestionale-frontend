@@ -1,4 +1,6 @@
 import { getCurrentCommunity } from './community-selection.storage';
+import { backendUserContext } from '../../../auth/current-user-context';
+import { getApiConfiguration } from '../../../auth/api-config';
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions, PermessoOperativo } from './permessi-carisma.mock';
 
 export type MenuItemKey =
@@ -45,6 +47,25 @@ const PUBLIC_CONVIVENZA_STATES = new Set(['confermata', 'pubblicata', 'in_corso'
 const INTERNAL_CONVIVENZA_STATES = new Set(['bozza', 'richiesta', 'in_richiesta', 'in richiesta', 'in_approvazione', 'in approvazione', 'in attesa approvazione', 'da_approvare', 'approvazione', 'respinta']);
 
 export function getUserAccessContext(): UserAccessContext {
+    const backend = backendUserContext();
+    if (getApiConfiguration().apiScope) {
+        const role = backend?.linkedToCommunity ? backend.role : null;
+        const roleCarisma: Record<string, Carisma> = { RESPONSIBLE: 'responsabile', CO_RESPONSIBLE: 'corresponsabile', CATECHIST: 'catechista', OSTIARIO: 'ostiario' };
+        return {
+            carismi: [roleCarisma[role ?? ''] ?? 'membro'],
+            permessi: (backend?.permissions ?? []).filter((permission): permission is PermessoOperativo =>
+                ['VIEW_COMUNITA', 'EDIT_COMUNITA', 'VIEW_MEMBRI', 'EDIT_MEMBRI', 'VIEW_CONVIVENZE', 'CREATE_CONVIVENZA', 'EDIT_CONVIVENZA', 'VIEW_NOTE', 'EDIT_NOTE', 'MANAGE_RUOLI', 'APPROVE_REQUESTS', 'VIEW_COMUNITA_FIGLIE', 'CREATE_CONVIVENZA_FIGLIA'].includes(permission)),
+            isFratelloSemplice: !role || role === 'MEMBER' || role === 'CO_RESPONSIBLE',
+            isResponsabile: role === 'RESPONSIBLE',
+            isOstiario: role === 'OSTIARIO',
+            isCatechista: role === 'CATECHIST',
+            isCollaboratoreConvivenze: false,
+            communityId: backend?.communityId ? String(backend.communityId) : '',
+            communityName: backend?.communityName ?? '',
+            childCommunityIds: [],
+            childCommunityNames: []
+        };
+    }
     const community = getCurrentCommunity();
     const profile = readUserProfile();
     const carismi = normalizeCarismi(profile);

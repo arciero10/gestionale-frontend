@@ -1,5 +1,7 @@
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from './permessi-carisma.mock';
 import { getCurrentCommunity } from './community-selection.storage';
+import { getApiConfiguration } from '../../../auth/api-config';
+import { getUserAccessContext } from './access-policy.mock';
 
 export type AccessContextId = 'comunita' | 'responsabile' | 'catechista' | 'collaboratore_convivenze';
 
@@ -86,6 +88,7 @@ export function saveSelectedAccessContext(context: AccessContextId): void {
 }
 
 function readUserCarismi(): Carisma[] {
+    if (getApiConfiguration().apiScope) return getUserAccessContext().carismi;
     const raw = localStorage.getItem('onboardingUserProfile');
 
     if (!raw) {
@@ -113,6 +116,7 @@ function readUserCarismi(): Carisma[] {
 }
 
 function hasCollaboratoreConvivenze(): boolean {
+    if (getApiConfiguration().apiScope) return getUserAccessContext().isCollaboratoreConvivenze;
     const raw = localStorage.getItem('onboardingUserProfile');
 
     if (!raw) {

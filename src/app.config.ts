@@ -23,6 +23,7 @@ import {
 
 import { routes } from './app.routes';
 import MyPreset from './mypreset';
+import { getApiConfiguration } from './app/auth/api-config';
 
 export const MSAL_CLIENT_ID = '21ee1eae-67e3-4c7c-86ab-db78994d8666';
 export const MSAL_TENANT_ID = '069bb457-b363-4340-8086-d7dd3b60a2b5';
@@ -55,9 +56,16 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
 }
 
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
+  const api = getApiConfiguration();
+  const protectedResourceMap = new Map<string, string[]>();
+  if (api.apiScope) {
+    protectedResourceMap.set(`${api.apiBaseUrl.replace(/\/$/, '')}/*`, [api.apiScope]);
+  } else {
+    console.warn('[API] API_SCOPE non configurato: login disponibile, contesto API non attivo.');
+  }
   return {
     interactionType: InteractionType.Redirect,
-    protectedResourceMap: new Map()
+    protectedResourceMap
   };
 }
 

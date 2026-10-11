@@ -13,6 +13,7 @@ import { canSeeMenuItem, getUserAccessContext } from '../gestionaleCN/data/acces
 import { Carisma, getPermessiByCarismi, normalizeCarismaForPermissions } from '../gestionaleCN/data/permessi-carisma.mock';
 import { TAPPE_CAMMINO, TappaCammino, normalizeTappaCammino } from '../gestionaleCN/data/tappe-cammino.mock';
 import { activePromo, readProfileStatus, readProfileType, readStrutturaProfile } from '../strutture/struttura-profile.storage';
+import { getApiConfiguration } from '../../auth/api-config';
 
 interface DashboardModule {
     title: string;
@@ -543,7 +544,7 @@ export class Dashboard {
     private readonly tappaStorageKey = 'eventiComunita.tappaCammino';
 
     readonly currentUserCarismi = this.leggiCarismiUtente();
-    readonly currentUserPermessi = getPermessiByCarismi(this.currentUserCarismi);
+    readonly currentUserPermessi = getApiConfiguration().apiScope ? getUserAccessContext().permessi : getPermessiByCarismi(this.currentUserCarismi);
     readonly userAccessContext = getUserAccessContext();
     readonly currentUserCanEditCommunity = this.currentUserPermessi.includes('EDIT_COMUNITA');
     readonly profileType = readProfileType();
@@ -830,6 +831,7 @@ export class Dashboard {
     }
 
     private leggiCarismiUtente(): Carisma[] {
+        if (getApiConfiguration().apiScope) return getUserAccessContext().carismi;
         const raw = localStorage.getItem('onboardingUserProfile');
 
         if (!raw) {

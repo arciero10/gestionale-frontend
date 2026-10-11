@@ -4,6 +4,8 @@ import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AppSidebar } from './app.sidebar';
 import { LayoutService } from '@/layout/service/layout.service';
+import { CurrentUserService } from '@/auth/current-user.service';
+import { inject } from '@angular/core';
 
 @Component({
     selector: 'app-layout',
@@ -13,6 +15,12 @@ import { LayoutService } from '@/layout/service/layout.service';
         @if (isOnboardingRoute()) {
             <div class="onboarding-layout" [style.--page-background-image]="pageBackgroundStyle()">
                 <div class="onboarding-layout-content">
+                    @if (currentUser.state() === 'ready' && !currentUser.context()?.linkedToCommunity) {
+                        <div role="status" class="user-association-status">Il tuo account deve ancora essere associato a una comunità.</div>
+                    }
+                    @if (currentUser.state() === 'error') {
+                        <div role="status" class="user-association-status">Il contesto della comunità non è disponibile. Riprova più tardi.</div>
+                    }
                     <router-outlet></router-outlet>
                 </div>
             </div>
@@ -26,6 +34,12 @@ import { LayoutService } from '@/layout/service/layout.service';
                     [class.layout-page-background]="!isDashboardRoute()"
                 >
                     <div class="layout-content">
+                        @if (currentUser.state() === 'ready' && !currentUser.context()?.linkedToCommunity) {
+                            <div role="status" class="user-association-status">Il tuo account deve ancora essere associato a una comunità.</div>
+                        }
+                        @if (currentUser.state() === 'error') {
+                            <div role="status" class="user-association-status">Il contesto della comunità non è disponibile. Riprova più tardi.</div>
+                        }
                         <router-outlet></router-outlet>
                     </div>
                     <footer class="internal-footer">
@@ -38,6 +52,7 @@ import { LayoutService } from '@/layout/service/layout.service';
     `,
     styles: [
         `
+            .user-association-status { margin-bottom: 1rem; padding: 1rem; background: #fff; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; }
             .onboarding-layout {
                 position: relative;
                 min-height: 100vh;
@@ -92,6 +107,7 @@ import { LayoutService } from '@/layout/service/layout.service';
     ]
 })
 export class AppLayout implements OnDestroy {
+    readonly currentUser = inject(CurrentUserService);
     isDashboardRoute = signal(false);
     isOnboardingRoute = signal(false);
     currentContentBackground = signal('/images/backgrounds/camino-neocatecumenal-jubileo-jovenes-roma-agosto-2025-02-1024x478-1.jpg');

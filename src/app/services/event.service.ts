@@ -2,13 +2,13 @@ import { EventCard, EventCardUI } from "@/models/event";
 import { mapEventGetAll } from "@/models/mappers";
 import { httpResource } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { environment } from "src/environments/environment";
+import { getApiConfiguration } from '@/auth/api-config';
 
 @Injectable(
     { providedIn: 'root' }
 )
 export class EventService {
-    private apiUrl = `${environment.apiBaseUrl}/Events`;
+    private apiUrl = `${getApiConfiguration().apiBaseUrl}/Events`;
 
     /*     
         copyCard(card: KanbanCardType, listId: number) {

@@ -3,6 +3,8 @@ import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router
 import { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
+import { CurrentUserService } from './app/auth/current-user.service';
+import { getApiConfiguration } from './app/auth/api-config';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
 import { getAppUserStatus, hasAppUserProfile } from './app/features/gestionaleCN/data/app-user-profile.storage';
@@ -372,6 +374,7 @@ export class App {
   protected readonly title = signal('Gestionale Comunità');
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly currentUser = inject(CurrentUserService);
   private readonly msalService = inject(MsalService);
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
@@ -568,6 +571,7 @@ export class App {
   }
 
   private clearAuthState(): void {
+    this.currentUser.reset();
     localStorage.removeItem('id_token');
     sessionStorage.clear();
     this.authService.refreshState();
@@ -575,6 +579,8 @@ export class App {
   }
 
   private async resolvePostLoginRoute(): Promise<void> {
+    const account = this.msalService.instance.getActiveAccount();
+    if (account) await this.currentUser.load(account.homeAccountId);
     const browserPath = this.getBrowserPath();
 
     if (
@@ -590,10 +596,12 @@ export class App {
       return;
     }
 
-    const selected = hasSelectedCommunity();
+    const backendContext = this.currentUser.context();
+    const apiConfigured = Boolean(getApiConfiguration().apiScope);
+    const selected = apiConfigured ? backendContext?.linkedToCommunity === true : hasSelectedCommunity();
     const hasProfile = hasAppUserProfile();
     const userStatus = getAppUserStatus();
-    const hasApplicationProfile = hasProfile && Boolean(userStatus);
+    const hasApplicationProfile = !apiConfigured && hasProfile && Boolean(userStatus);
     const isGlobalAdmin = this.isCurrentGlobalAdmin();
     const current = this.router.url.split('?')[0].split('#')[0];
     const isPublicOrTestRoute =

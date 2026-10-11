@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { getApiConfiguration } from '../../auth/api-config';
 import { StrutturaProfileMock } from './struttura-profile.storage';
 
 export type StructureStatus = 'IN_ATTESA' | 'APPROVATA' | 'RESPINTA' | 'SOSPESA';
@@ -116,7 +116,7 @@ export interface StructureRequestStatusUpdateRequest {
 @Injectable({ providedIn: 'root' })
 export class StruttureApiService {
     private readonly http = inject(HttpClient);
-    private readonly baseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+    private readonly baseUrl = getApiConfiguration().apiBaseUrl.replace(/\/$/, '');
 
     createAccreditation(profile: StrutturaProfileMock): Observable<StructureAccreditationResponse> {
         return this.http.post<StructureAccreditationResponse>(
