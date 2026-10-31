@@ -40,3 +40,15 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Native signing credentials must never be committed.
+*.p12
+*.p8
+*.mobileprovision
+*.keystore
+*.jks
+/ios/App/build/
+/ios/DerivedData/
+/ios/**/*.xcuserstate
+/ios/**/xcuserdata/
+/android/local.properties

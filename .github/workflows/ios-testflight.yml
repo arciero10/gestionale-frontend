@@ -1,0 +1,123 @@
+name: iOS - build e TestFlight manuale
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_testflight:
+        description: Firma e carica su TestFlight (richiede tutti i Secrets Apple)
+        type: boolean
+        default: false
+      build_number:
+        description: Numero build crescente e mai caricato prima
+        type: string
+        required: true
+        default: '1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      BUILD_NUMBER: ${{ inputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Seleziona Xcode stabile compatibile
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo 'Numero build non valido'; exit 1; }
+          XCODE_PATH=$(python3 - <<'PY'
+          import glob, plistlib
+          candidates = []
+          for path in glob.glob('/Applications/Xcode*.app'):
+              with open(path + '/Contents/Info.plist', 'rb') as file:
+                  version = plistlib.load(file)['CFBundleShortVersionString']
+              if 'beta' not in path.lower() and all(part.isdigit() for part in version.split('.')):
+                  parts = tuple(map(int, version.split('.')))
+                  if parts[0] >= 26:
+                      candidates.append((parts, path))
+          if not candidates:
+              raise SystemExit('Xcode 26+ stabile non presente nel runner')
+          print(max(candidates)[1])
+          PY
+          )
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Risolvi Swift Package Manager
+        run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+      - name: Verifica build simulatore senza firma
+        if: ${{ !inputs.publish_testflight }}
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release
+          -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/ios-build"
+          CURRENT_PROJECT_VERSION="$BUILD_NUMBER" CODE_SIGNING_ALLOWED=NO build
+      - name: Configura firma e archivio App Store
+        if: ${{ inputs.publish_testflight }}
+        shell: bash
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          for key in APPLE_TEAM_ID APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_PRIVATE_KEY IOS_CERTIFICATE_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
+            [[ -n "${!key}" ]] || { echo "Secret mancante: $key"; exit 1; }
+          done
+          umask 077
+          SIGNING_DIR="$RUNNER_TEMP/ios-signing"
+          mkdir -p "$SIGNING_DIR" "$HOME/private_keys" "$HOME/Library/MobileDevice/Provisioning Profiles"
+          printf '%s' "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$SIGNING_DIR/distribution.p12"
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$SIGNING_DIR/profile.mobileprovision"
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          security cms -D -i "$SIGNING_DIR/profile.mobileprovision" > "$SIGNING_DIR/profile.plist"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$SIGNING_DIR/profile.plist")
+          PROFILE_APP=$(/usr/libexec/PlistBuddy -c 'Print Entitlements:application-identifier' "$SIGNING_DIR/profile.plist")
+          [[ "$PROFILE_APP" == "$APPLE_TEAM_ID.it.panteleia.eventidicomunita" ]] || { echo 'Profilo non compatibile con Team/Bundle ID'; exit 1; }
+          cp "$SIGNING_DIR/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 32)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/ios-signing.keychain-db"
+          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/ios-signing.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/ios-signing.keychain-db"
+          security import "$SIGNING_DIR/distribution.p12" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/ios-signing.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/ios-signing.keychain-db"
+          security list-keychains -d user -s "$RUNNER_TEMP/ios-signing.keychain-db" "$HOME/Library/Keychains/login.keychain-db"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" archive
+          export PROFILE_UUID
+          python3 - <<'PY'
+          import os, plistlib
+          options = {'method': 'app-store-connect', 'teamID': os.environ['APPLE_TEAM_ID'],
+                     'signingStyle': 'manual', 'signingCertificate': 'Apple Distribution',
+                     'manageAppVersionAndBuildNumber': False,
+                     'provisioningProfiles': {'it.panteleia.eventidicomunita': os.environ['PROFILE_UUID']}}
+          with open(os.environ['RUNNER_TEMP'] + '/ExportOptions.plist', 'wb') as file:
+              plistlib.dump(options, file)
+          PY
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/ipa"
+          IPA_PATH=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' -print -quit)
+          [[ -n "$IPA_PATH" ]] || { echo 'IPA non generata'; exit 1; }
+          xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+      - name: Rimuovi credenziali temporanee
+        if: ${{ always() && inputs.publish_testflight }}
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/ios-signing.keychain-db" || true
+          rm -rf "$RUNNER_TEMP/ios-signing" "$HOME/private_keys"
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/"*.mobileprovision
