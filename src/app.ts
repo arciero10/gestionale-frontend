@@ -5,6 +5,7 @@ import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { CurrentUserService } from './app/auth/current-user.service';
 import { MobileAuthService } from './app/auth/mobile-auth.service';
+import { MobileWelcome } from './app/auth/mobile-welcome';
 import { getApiConfiguration } from './app/auth/api-config';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
@@ -18,7 +19,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, MobileWelcome],
   template: `
     @if (showLoading()) {
       <main class="auth-loading-page">
@@ -40,6 +41,9 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
     }
 
     @if (!showLoading() && showLogin()) {
+      @if (isNativeWelcome()) {
+        <app-mobile-welcome (access)="login()" (registration)="register()"></app-mobile-welcome>
+      } @else {
       <main class="login-page">
         <section class="login-shell">
           <div class="login-copy">
@@ -60,6 +64,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
           <span>Iscrizione RUNTS: Rep. n. 165890 – Det. n. G03684 del 19/03/2026</span>
         </footer>
       </main>
+      }
     }
 
     @if (!showLoading() && (isPublicRoute() || !showLogin())) {
@@ -468,6 +473,8 @@ export class App {
 
     return false;
   }
+
+  isNativeWelcome(): boolean { return this.mobileAuth.native; }
 
   private hasValidLocalToken(): boolean {
     const token = localStorage.getItem('id_token');
