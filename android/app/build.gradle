@@ -1,10 +1,18 @@
 apply plugin: 'com.android.application'
 
+// One public configuration source for Angular and the native callback filter.
+def nativeAuth = new groovy.json.JsonSlurper().parse(file('../../public/native-auth.json'))
+def entraRedirect = nativeAuth.androidRedirectUri ? new URI(nativeAuth.androidRedirectUri) : null
+if (entraRedirect != null && (entraRedirect.scheme != 'msauth' || entraRedirect.host != 'it.panteleia.eventidicomunita' || entraRedirect.query != null || entraRedirect.fragment != null || !(entraRedirect.path ==~ /\/[A-Za-z0-9+\/]{27}=/))) {
+    throw new GradleException('androidRedirectUri non valido: usare il valore reale generato dal portale Entra')
+}
+
 android {
     namespace = "it.panteleia.eventidicomunita"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "it.panteleia.eventidicomunita"
+        manifestPlaceholders.entraRedirectPath = entraRedirect?.path ?: '/__NOT_CONFIGURED__'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

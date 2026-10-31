@@ -24,11 +24,10 @@ import {
 import { routes } from './app.routes';
 import MyPreset from './mypreset';
 import { getApiConfiguration } from './app/auth/api-config';
+import { PlatformAuthInterceptor } from './app/auth/platform-auth.interceptor';
+import { MSAL_AUTHORITY, MSAL_CLIENT_ID } from './app/auth/entra-settings';
+export { MSAL_AUTHORITY, MSAL_CLIENT_ID, MSAL_TENANT_ID, MSAL_EXTERNAL_TENANT_NAME } from './app/auth/entra-settings';
 
-export const MSAL_CLIENT_ID = '21ee1eae-67e3-4c7c-86ab-db78994d8666';
-export const MSAL_TENANT_ID = '069bb457-b363-4340-8086-d7dd3b60a2b5';
-export const MSAL_EXTERNAL_TENANT_NAME = 'eventidicomunita';
-export const MSAL_AUTHORITY = `https://${MSAL_EXTERNAL_TENANT_NAME}.ciamlogin.com/${MSAL_TENANT_ID}`;
 
 export function MSALInstanceFactory() {
   const origin = window.location.origin;
@@ -88,9 +87,10 @@ export const appConfig: ApplicationConfig = {
     },
     {
       provide: HTTP_INTERCEPTORS,
-      useClass: MsalInterceptor,
+      useClass: PlatformAuthInterceptor,
       multi: true
     },
+    MsalInterceptor,
     MsalService,
     MsalBroadcastService,
 

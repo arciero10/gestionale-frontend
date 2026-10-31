@@ -1,6 +1,7 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { CanMatchFn, Router } from '@angular/router';
 import { AuthService } from '@/auth/auth.service';
+import { Capacitor } from '@capacitor/core';
 
 export const GLOBAL_ADMIN_EMAILS = [
     'admin@panteleiaets.onmicrosoft.com',
@@ -25,6 +26,7 @@ export function isPlatformAdminEmail(email: string | null | undefined): boolean 
 }
 
 export function isLocalAdminMockEnabled(): boolean {
+    if (Capacitor.isNativePlatform()) return false;
     if (typeof window === 'undefined') {
         return false;
     }

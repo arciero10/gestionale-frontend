@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, Injector, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { CurrentUserService } from './app/auth/current-user.service';
+import { MobileAuthService } from './app/auth/mobile-auth.service';
 import { getApiConfiguration } from './app/auth/api-config';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
@@ -375,7 +376,9 @@ export class App {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly currentUser = inject(CurrentUserService);
-  private readonly msalService = inject(MsalService);
+  private readonly injector = inject(Injector);
+  private readonly mobileAuth = inject(MobileAuthService);
+  private get msalService(): MsalService { return this.injector.get(MsalService); }
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
   private readonly msalReady = signal(false);
@@ -386,9 +389,23 @@ export class App {
   private postLoginRouteResolved = false;
 
   constructor() {
-    this.clearInvalidLegacyToken();
-    void this.initMsalSafe();
-    window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 6000);
+    if (this.mobileAuth.native) {
+      this.msalReady.set(true);
+      if (this.isInternalRoute()) void this.router.navigateByUrl('/', { replaceUrl: true });
+      effect(() => {
+        if (!this.mobileAuth.signedIn() && this.authenticated()) {
+          this.authenticated.set(false);
+          this.forceShowOutlet.set(false);
+          this.currentUser.reset();
+          this.authErrorMessage.set(this.mobileAuth.error());
+          void this.router.navigateByUrl('/', { replaceUrl: true });
+        }
+      });
+    } else {
+      this.clearInvalidLegacyToken();
+      void this.initMsalSafe();
+      window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 6000);
+    }
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentPath.set(event.urlAfterRedirects.split('?')[0].split('#')[0]);
@@ -437,6 +454,7 @@ export class App {
   }
 
   isLoggedIn(): boolean {
+    if (this.mobileAuth.native) return this.mobileAuth.signedIn();
     if (!this.msalReady()) {
       return false;
     }
@@ -527,6 +545,10 @@ export class App {
   }
 
   private startMicrosoftAuth(intent: 'login' | 'register'): void {
+    if (this.mobileAuth.native) {
+      void this.loginNative();
+      return;
+    }
     console.log(`[LOGIN] click ${intent === 'register' ? 'Registrati' : 'Accedi'}`);
     console.log('[LOGIN] redirectUri', window.location.origin);
     console.log('[LOGIN] authority', MSAL_AUTHORITY);
@@ -554,6 +576,7 @@ export class App {
   }
 
   logout(): void {
+    if (this.mobileAuth.native) { this.authService.logout(); return; }
     this.clearAuthState();
 
     this.msalService.initialize().subscribe({
@@ -568,6 +591,20 @@ export class App {
     if (token && !this.isValidToken(token)) {
       this.clearAuthState();
     }
+  }
+
+  private async loginNative(): Promise<void> {
+    this.authErrorMessage.set(null);
+    this.forceShowOutlet.set(false);
+    this.msalReady.set(false);
+    try {
+      await this.authService.loginNative();
+      this.authenticated.set(true);
+      this.forceShowOutlet.set(true);
+    } catch (error) {
+      this.authenticated.set(false);
+      this.authErrorMessage.set(this.mobileAuth.error() ?? (error instanceof Error ? error.message : 'Accesso non completato. Riprova.'));
+    } finally { this.msalReady.set(true); }
   }
 
   private clearAuthState(): void {

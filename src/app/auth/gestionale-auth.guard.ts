@@ -2,12 +2,15 @@ import { inject } from '@angular/core';
 import { CanMatchFn, Router } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
 import { hasSelectedCommunity } from '../features/gestionaleCN/data/community-selection.storage';
+import { MobileAuthService } from './mobile-auth.service';
 
 const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
 
 export const gestionaleAuthGuard: CanMatchFn = (_route, segments) => {
-  const msalService = inject(MsalService);
   const router = inject(Router);
+  const mobile = inject(MobileAuthService);
+  if (mobile.native) return mobile.signedIn() ? true : router.createUrlTree(['/']);
+  const msalService = inject(MsalService);
   const targetPath = `/${segments.map((segment) => segment.path).join('/')}`;
   const navigationPath = router.getCurrentNavigation()?.finalUrl?.toString().split('?')[0].split('#')[0];
   const requestedPath = navigationPath ?? targetPath;

@@ -1,5 +1,10 @@
 # Eventi di Comunita: iOS, Android e TestFlight
 
+Aggiornamento autenticazione: vedere [10-auth-mobile-entra](10-auth-mobile-entra.md).
+Il layer mobile e ora implementato; le note sul login non implementato in questa
+pagina descrivono la fase iniziale. Restano necessari configurazione Entra e test
+su dispositivi prima di dichiarare il login nativo funzionante.
+
 ## Stato e architettura
 
 Repository operativo: `C:\Dev\Gestionale`. Non usare copie Desktop/OneDrive.
