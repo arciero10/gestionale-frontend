@@ -1,5 +1,19 @@
 # Autenticazione web, iOS e Android con Entra External ID
 
+## Architettura attuale: Native Authentication
+
+Il login mobile principale usa ora gli SDK ufficiali Microsoft, tramite il plugin
+locale `native/entra-native-auth`. Vedere [11-native-auth-mobile](11-native-auth-mobile.md)
+per implementazione, cache protetta, biometria e verifiche attuali. Il web conserva
+MSAL Browser invariato. AppAuth e browser delegato restano solo fallback esplicito
+per un esito SDK `browser_required` o uno scenario MFA non supportato dal bridge.
+
+Le sezioni sottostanti sono lo **storico della precedente implementazione**:
+le descrizioni "token solo in memoria", "storage sicuro non implementato" e
+"Browser.open come login principale" valgono solo per il fallback AppAuth,
+non per il nuovo percorso SDK. I redirect restano necessari al solo fallback.
+Il target iOS del nuovo SDK e 17.0; la precedente nota iOS 15 in docs/09 e storica.
+
 ## Stato verificato
 
 Implementazione preparata in C:\Dev\Gestionale, backend C:\Dev\GestionaleApiClean.

@@ -34,7 +34,7 @@ export class AuthService {
   permissions = computed(() => this.state().permissions);
 
   login(): void {
-    if (this.mobile.native) { void this.loginNative().catch(() => undefined); return; }
+    if (this.mobile.native) { this.mobile.requestLogin(); void this.injector.get(Router).navigateByUrl('/'); return; }
     sessionStorage.setItem('eventiComunità.authIntent', 'login');
     this.msalService.loginRedirect({
       scopes: ['openid', 'profile', 'email']
@@ -66,7 +66,7 @@ export class AuthService {
   }
 
   async loginNative(): Promise<void> {
-    await this.mobile.login();
+    if (!this.mobile.signedIn()) throw new Error('Completa l\'accesso o sblocca la sessione.');
     const currentUser = this.injector.get(CurrentUserService);
     await currentUser.load(this.mobile.sessionKey);
     if (currentUser.state() !== 'ready' || !currentUser.context()?.authenticated) {

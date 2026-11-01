@@ -6,6 +6,7 @@ import { AuthService } from './app/auth/auth.service';
 import { CurrentUserService } from './app/auth/current-user.service';
 import { MobileAuthService } from './app/auth/mobile-auth.service';
 import { MobileWelcome } from './app/auth/mobile-welcome';
+import { NativeAuthPanel } from './app/auth/native-auth-panel';
 import { getApiConfiguration } from './app/auth/api-config';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
@@ -19,7 +20,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, MobileWelcome],
+  imports: [RouterOutlet, RouterLink, MobileWelcome, NativeAuthPanel],
   template: `
     @if (showLoading()) {
       <main class="auth-loading-page">
@@ -42,7 +43,11 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
 
     @if (!showLoading() && showLogin()) {
       @if (isNativeWelcome()) {
-        <app-mobile-welcome (access)="login()" (registration)="register()"></app-mobile-welcome>
+        @if (mobileAuth.requestedFlow() || mobileAuth.nativeOutcome().step === 'unlock') {
+          <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
+        } @else {
+          <app-mobile-welcome (access)="login()" (registration)="register()"></app-mobile-welcome>
+        }
       } @else {
       <main class="login-page">
         <section class="login-shell">
@@ -382,7 +387,7 @@ export class App {
   private readonly authService = inject(AuthService);
   private readonly currentUser = inject(CurrentUserService);
   private readonly injector = inject(Injector);
-  private readonly mobileAuth = inject(MobileAuthService);
+  protected readonly mobileAuth = inject(MobileAuthService);
   private get msalService(): MsalService { return this.injector.get(MsalService); }
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
@@ -396,6 +401,7 @@ export class App {
   constructor() {
     if (this.mobileAuth.native) {
       this.msalReady.set(true);
+      void this.mobileAuth.initialize().catch(() => { /* Welcome remains available for retry. */ });
       if (this.isInternalRoute()) void this.router.navigateByUrl('/', { replaceUrl: true });
       effect(() => {
         if (!this.mobileAuth.signedIn() && this.authenticated()) {
@@ -553,7 +559,7 @@ export class App {
 
   private startMicrosoftAuth(intent: 'login' | 'register'): void {
     if (this.mobileAuth.native) {
-      void this.loginNative();
+      this.mobileAuth.requestLogin(intent === 'register' ? 'signup' : 'signin');
       return;
     }
     console.log(`[LOGIN] click ${intent === 'register' ? 'Registrati' : 'Accedi'}`);
@@ -600,7 +606,9 @@ export class App {
     }
   }
 
-  private async loginNative(): Promise<void> {
+  protected closeNativeLogin(): void { this.mobileAuth.requestedFlow.set(null); }
+
+  protected async completeNativeLogin(): Promise<void> {
     this.authErrorMessage.set(null);
     this.forceShowOutlet.set(false);
     this.msalReady.set(false);

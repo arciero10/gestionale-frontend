@@ -41,6 +41,7 @@
     "@capacitor/browser": "8.0.5",
     "@capacitor/core": "8.6.0",
     "@capacitor/ios": "8.6.0",
+    "entra-native-auth-plugin": "file:native/entra-native-auth",
     "@noble/hashes": "2.4.0",
     "@openid/appauth": "1.4.0",
     "@primeuix/themes": "^1.2.1",

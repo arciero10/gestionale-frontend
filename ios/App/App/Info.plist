@@ -11,6 +11,8 @@
             <array><string>msauth.it.panteleia.eventidicomunita</string></array>
         </dict>
     </array>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Unlock your account securely with Face ID.</string>
   <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>

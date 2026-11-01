@@ -4,6 +4,101 @@ import { createHash } from 'node:crypto';
 import { authPlatform, IOS_REDIRECT_URI, MSAL_AUTHORITY, validateMobileRedirect } from '../src/app/auth/entra-settings';
 import { MobileAuthSession, parseMobileCallback } from '../src/app/auth/mobile-auth-core';
 import { loadNativeAuthRedirect, NativeAuthConfigError } from '../src/app/auth/native-auth-config';
+import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, NativeSubmission } from '../src/app/auth/entra-native-core';
+
+class SdkMock implements NativeAuthBridge {
+  calls: string[] = [];
+  cached = false;
+  unlocked = false;
+  next: NativeOutcome = { step: 'authenticated' };
+  input?: NativeStart;
+  submission?: NativeSubmission;
+  configure = async () => undefined;
+  start = async (input: NativeStart) => { this.calls.push('start'); this.input = input; this.cached = true; this.unlocked = this.next.step === 'authenticated'; return this.next; };
+  submit = async (submission: NativeSubmission) => { this.submission = submission; this.unlocked = this.next.step === 'authenticated'; return this.next; };
+  resend = async () => ({ step: 'code' } as NativeOutcome);
+  restore = async () => { this.unlocked = false; return { step: this.cached ? 'unlock' : 'login' } as NativeOutcome; };
+  unlock = async () => { this.calls.push('OS-unlock'); assert.ok(this.cached); this.unlocked = true; return { step: 'authenticated' } as NativeOutcome; };
+  lock = async () => { this.unlocked = false; };
+  cancel = async () => { this.unlocked = false; };
+  logout = async () => { this.calls.push('cache-signout'); this.cached = false; this.unlocked = false; };
+  getAccessToken = async () => { assert.ok(this.unlocked); return { accessToken: 'api-access-token' }; };
+}
+
+test('native password flow uses SDK, exposes only access token and no retained credentials', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  await session.start({ flow: 'signin', method: 'password', email: 'user@example.test', password: 'test-only' });
+  assert.equal(sdk.input?.flow, 'signin');
+  assert.equal(await session.accessToken(), 'api-access-token');
+  assert.equal(JSON.stringify(session.outcome).includes('test-only'), false);
+  assert.deepEqual(sdk.calls, ['start']);
+});
+test('native OTP challenge and resend never open a browser', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  sdk.next = { step: 'code' };
+  await session.start({ flow: 'signin', method: 'otp', email: 'user@example.test' });
+  assert.equal(sdk.input?.password, undefined);
+  assert.equal(session.signedIn, false);
+  await assert.rejects(session.accessToken());
+  await session.resend();
+  sdk.next = { step: 'authenticated' };
+  await session.submit({ code: '000000' });
+  assert.ok(session.signedIn);
+});
+test('native signup follows OTP, password and required attributes', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  sdk.next = { step: 'code' };
+  await session.start({ flow: 'signup', method: 'password', email: 'user@example.test' });
+  sdk.next = { step: 'password' }; await session.submit({ code: '000000' });
+  sdk.next = { step: 'attributes', attributes: [{ name: 'givenName', required: true }] };
+  await session.submit({ password: 'test-only' });
+  assert.equal(session.outcome.attributes?.[0].name, 'givenName');
+  sdk.next = { step: 'authenticated' }; await session.submit({ attributes: { givenName: 'Test' } });
+  assert.equal(await session.accessToken(), 'api-access-token');
+});
+test('native password reset completion is not authentication', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  sdk.next = { step: 'code' }; await session.start({ flow: 'reset', method: 'otp', email: 'user@example.test' });
+  sdk.next = { step: 'password' }; await session.submit({ code: '000000' });
+  sdk.next = { step: 'complete' }; await session.submit({ password: 'test-only' });
+  assert.equal(session.signedIn, false);
+  await assert.rejects(session.accessToken());
+});
+test('SDK cache restore requires OS unlock before any token access', async () => {
+  const sdk = new SdkMock(); sdk.cached = true;
+  const session = new EntraNativeSession(sdk);
+  assert.equal((await session.restore()).step, 'unlock');
+  await assert.rejects(session.accessToken());
+  await session.unlock(); assert.equal(await session.accessToken(), 'api-access-token');
+  await session.lock(); await assert.rejects(session.accessToken());
+  await session.unlock(); await session.logout();
+  assert.equal(sdk.cached, false);
+  assert.equal((await session.restore()).step, 'login');
+});
+test('SDK unlock cancellation retains locked state and permits new login', async () => {
+  const sdk = new SdkMock(); sdk.cached = true;
+  const session = new EntraNativeSession(sdk);
+  await session.restore();
+  sdk.unlock = async () => { throw new Error('CANCELLED'); };
+  await assert.rejects(session.unlock()); assert.equal(session.signedIn, false);
+  await session.cancel(); assert.equal(session.outcome.step, 'login');
+});
+test('only SDK browser-required outcome offers explicit fallback', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  sdk.next = { step: 'fallback' };
+  await session.start({ flow: 'signin', method: 'password', email: 'user@example.test' });
+  assert.equal(session.outcome.step, 'fallback');
+  assert.equal(session.signedIn, false);
+  assert.deepEqual(sdk.calls, ['start']);
+});
+test('logout during delayed native sign-in rejects late result', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  let complete!: (value: NativeOutcome) => void;
+  sdk.start = () => new Promise(resolve => complete = resolve);
+  const pending = session.start({ flow: 'signin', method: 'otp', email: 'user@example.test' });
+  await session.logout(); complete({ step: 'authenticated' });
+  await assert.rejects(pending); assert.equal(session.signedIn, false);
+});
 
 const scope = 'api://71a9f6da-a231-4285-b475-37d2e65b8fe1/access_as_user';
 const redirect = IOS_REDIRECT_URI;

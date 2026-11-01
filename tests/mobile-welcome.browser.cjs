@@ -25,13 +25,30 @@ async function installNative(context, platform) {
     const methods = {
       App: ['getLaunchUrl', 'addListener', 'removeListener'],
       Browser: ['open', 'close', 'addListener', 'removeListener'],
-      CapacitorHttp: ['request']
+      CapacitorHttp: ['request'],
+      EntraNativeAuth: ['configure', 'start', 'submit', 'resend', 'restore', 'unlock', 'lock', 'cancel', 'logout', 'getAccessToken']
     };
     window.Capacitor = {
       PluginHeaders: Object.entries(methods).map(([name, names]) => ({ name, methods: names.map(name => ({ name, rtype: name === 'addListener' ? 'callback' : 'promise' })) })),
       nativeCallback: () => 'listener',
-      nativePromise: async (plugin, method) => {
+      nativePromise: async (plugin, method, options) => {
         window.__nativeCalls.push(`${plugin}.${method}`);
+        if (plugin === 'EntraNativeAuth') {
+          if (method === 'getAccessToken') return { accessToken: 'sdk-api-test-token' };
+          if (method === 'start') {
+            window.__nativeFlow = options.flow;
+            window.__nativeSubmits = 0;
+            return { step: options.flow === 'signin' && options.method === 'password' ? 'authenticated' : 'code' };
+          }
+          if (method === 'submit') {
+            window.__nativeSubmits++;
+            if (window.__nativeFlow === 'reset') return { step: window.__nativeSubmits === 1 ? 'password' : 'complete' };
+            if (window.__nativeFlow === 'signup') return window.__nativeSubmits === 1 ? { step: 'password' }
+              : window.__nativeSubmits === 2 ? { step: 'attributes', attributes: [{ name: 'givenName', required: true }] } : { step: 'authenticated' };
+            return { step: 'authenticated' };
+          }
+          return { step: method === 'resend' ? 'code' : 'login' };
+        }
         if (plugin === 'App' && method === 'getLaunchUrl') return undefined;
         if (plugin === 'CapacitorHttp') return { status: 200, data: {
           authorization_endpoint: 'https://eventidicomunita.ciamlogin.com/069bb457-b363-4340-8086-d7dd3b60a2b5/oauth2/v2.0/authorize',
@@ -121,10 +138,56 @@ async function installNative(context, platform) {
       await installNative(context, 'ios');
       const page = await context.newPage(); page.setDefaultTimeout(12000); await page.goto(base);
       await page.getByRole('button', { name: label, exact: true }).click();
-      try { await page.waitForFunction(() => window.__nativeCalls.includes('Browser.open')); }
-      catch (error) { console.error('Native mock diagnostics:', await page.evaluate(() => ({ calls: window.__nativeCalls, text: document.body.innerText }))); throw error; }
-      assert.match(await page.locator('main h2').textContent(), /Accesso in corso/);
-      console.log(`PASS ${label}: stesso flusso auth nativo (browser simulato, nessun OTP reale)`);
+      await page.locator('app-native-auth-panel h1').waitFor();
+      assert.equal(await page.locator('app-native-auth-panel h1').textContent(), label);
+      assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
+      await page.screenshot({ path: path.join(output, `native-${label}.png`), fullPage: true });
+      console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
+      await context.close();
+    }
+    for (const flow of ['password', 'otp', 'signup', 'reset']) {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await installNative(context, 'android');
+      let meCalls = 0;
+      await context.route('**/api/**', async route => {
+        if (new URL(route.request().url()).pathname.endsWith('/me')) {
+          assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
+          meCalls++;
+          await route.fulfill({ json: { authenticated: true, linkedToCommunity: false, status: 'UNLINKED', permissions: [] } });
+        } else await route.fulfill({ json: [] });
+      });
+      const page = await context.newPage(), errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.goto(base);
+      await page.getByRole('button', { name: flow === 'signup' ? 'Registrati' : 'Accedi', exact: true }).click();
+      if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
+      if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
+      await page.getByLabel('Email', { exact: true }).fill('user@example.test');
+      if (flow === 'password') await page.getByLabel('Password', { exact: true }).fill('test-only');
+      await page.locator('app-native-auth-panel button[type="submit"]').click();
+      if (flow !== 'password') {
+        await page.getByLabel('Codice di verifica').fill('000000');
+        await page.locator('app-native-auth-panel button[type="submit"]').click();
+      }
+      if (flow === 'signup' || flow === 'reset') {
+        await page.getByLabel('Nuova password', { exact: true }).fill('test-only');
+        await page.locator('app-native-auth-panel button[type="submit"]').click();
+      }
+      if (flow === 'signup') {
+        await page.getByLabel('Nome', { exact: true }).fill('Test');
+        await page.locator('app-native-auth-panel button[type="submit"]').click();
+      }
+      if (flow === 'reset') {
+        await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
+        assert.equal(meCalls, 0);
+      } else {
+        await page.waitForURL(url => url.pathname === '/gestionale-cn/onboarding-comunita');
+        assert.equal(meCalls, 1);
+      }
+      assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
+      assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('sdk-api-test-token'))), false);
+      assert.deepEqual(errors, []);
+      console.log(`PASS native ${flow}: SDK mock, bearer /api/me e routing`);
       await context.close();
     }
   } finally {
