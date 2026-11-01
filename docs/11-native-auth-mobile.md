@@ -43,11 +43,40 @@ Android puo completare il sign-in tramite continuation SDK autorizzata.
 Errori sanitizzati in italiano, nessun payload OAuth o dato sensibile nei log.
 Password/codice vengono svuotati dal form dopo l'operazione e non persistiti.
 
-Dopo autenticazione o sblocco: access token per API -> GET `/api/me` -> dashboard
-se linkedToCommunity, altrimenti onboarding. Nessuna autenticazione derivata da
+Dopo autenticazione o sblocco: access token per API -> GET `/api/me` -> `/mobile/home`
+se linkedToCommunity, altrimenti `/mobile/onboarding`. Il web conserva dashboard e
+onboarding gestionali originali. Nessuna autenticazione derivata da
 selectedCommunity o dati locali. Se /api/me fallisce, non si apre la dashboard.
 L'interceptor trasmette Bearer solo all'origine API configurata, non a terze parti;
 nessun ID token/header fiduciario. Nessun replay automatico delle scritture su 401.
+
+## Post-login e home mobile
+
+La home Capacitor ha shell propria, senza sidebar desktop, header da `/api/me`,
+card comunita/calendario/compleanni/gruppi/avvisi/convivenze e quattro tab inferiori:
+Home, Calendario, Comunita, Altro. Profilo mostra solo dati del contesto backend;
+Posti di convivenza compare solo con il permesso backend CREATE_CONVIVENZA.
+Comunita, onboarding, convivenze e posti riusano i componenti e servizi esistenti.
+Compleanni, gruppi, avvisi e calendario incontri mostrano stati di integrazione
+non ancora disponibile: nessun dato o notifica fittizia. Calendario collega le convivenze.
+
+Diagnosi locale senza credenziali: fetch WebView verso `/api/me` non otteneva una
+risposta HTTP, mentre CapacitorHttp riceveva il previsto 401 anonimo. Il server
+rispondeva al preflight OPTIONS con 204 e consentiva https://localhost, anche sul
+GET 401: non e dimostrato un errore della policy CORS server. Il guasto osservato
+e nel trasporto WebView. Le richieste JSON native all'origine/percorso API ora
+usano CapacitorHttp nello stesso interceptor Bearer, senza seguire redirect HTTP.
+Web, richieste terze, upload FormData e risposte binarie mantengono il trasporto esistente.
+TLS e validazione JWT lato server non sono modificati.
+
+Un errore transitorio `/api/me` non cancella piu la cache Entra: Riprova ripete la
+verifica del profilo. Solo HTTP 401 continua a disconnettere. I log temporanei
+tracciano esito OTP/account/token, scope pubblico, status HTTP e linked/status/route,
+senza email, token o codici. Il login OTP reale richiede una nuova prova dell'utente:
+il 200 /api/me e verificato nei test con bridge/API simulati, non con credenziali reali.
+
+Verifiche di questa fase: 23 test auth, 19 scenari UI sulla build production,
+incluse home Pixel/iPhone/Dynamic Island, Bearer e routing linked/unlinked.
 
 ## Cache, biometria e lifecycle
 

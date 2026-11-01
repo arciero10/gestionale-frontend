@@ -4,8 +4,10 @@ import { DemoLayout } from '@/features/demo/demo-layout';
 import { Forbidden } from '@/features/forbidden/forbidden';
 import { NotFound } from '@/features/not-found/not.found';
 import { gestionaleAuthGuard } from '@/auth/gestionale-auth.guard';
+import { mobileAccessGuard } from '@/features/mobile/mobile.routes';
 
 export const routes: Routes = [
+  { path: 'mobile', canMatch: [mobileAccessGuard], loadChildren: () => import('@/features/mobile/mobile.routes') },
   {
     path: 'demo',
     component: DemoLayout,

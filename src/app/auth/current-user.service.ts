@@ -1,4 +1,5 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Capacitor } from '@capacitor/core';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
 import { getApiConfiguration } from './api-config';
@@ -21,15 +22,19 @@ export class CurrentUserService {
         const generation = this.generation;
         this.accountKey = accountKey;
         this.state.set('loading');
-        this.pending = firstValueFrom(this.http.get<CurrentUserContext>(`${api.apiBaseUrl}/me`).pipe(timeout(15000)))
-            .then(context => {
+        this.pending = firstValueFrom(this.http.get<CurrentUserContext>(`${api.apiBaseUrl}/me`, { observe: 'response' }).pipe(timeout(20000)))
+            .then(response => {
+                const context = response.body;
+                if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me', { httpStatus: response.status, linkedToCommunity: context?.linkedToCommunity === true,
+                    status: ['LINKED', 'UNLINKED', 'IN_ATTESA_APPROVAZIONE', 'ASSOCIATION_REQUIRED', 'SUSPENDED', 'REJECTED'].includes(context?.status ?? '') ? context?.status : 'OTHER' });
                 if (this.accountKey !== accountKey || this.generation !== generation) return;
-                if (context.authenticated !== true || !Array.isArray(context.permissions) ||
+                if (!context || context.authenticated !== true || !Array.isArray(context.permissions) ||
                     (context.linkedToCommunity && (!Number.isInteger(context.communityId) || context.communityId! <= 0)))
                     throw new Error('Contesto backend non valido.');
                 backendUserContext.set(context);
                 this.state.set('ready');
-            }).catch(() => {
+            }).catch((error: unknown) => {
+                if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me failed', { httpStatus: error instanceof HttpErrorResponse ? error.status : null });
                 if (this.accountKey !== accountKey || this.generation !== generation) return;
                 backendUserContext.set(null);
                 this.state.set('error');

@@ -51,6 +51,7 @@ export class MobileAuthService {
   }
 
   private applyOutcome(outcome: NativeOutcome): void {
+    console.info('[AUTH native] account obtained', outcome.step === 'authenticated');
     this.nativeOutcome.set(outcome);
     this.signedIn.set(outcome.step === 'authenticated');
     if (outcome.step === 'authenticated') this.sequence++;
@@ -62,7 +63,11 @@ export class MobileAuthService {
     this.error.set(null);
     this.applyOutcome(await this.sdkSession.start(options));
   }
-  async submitNative(options: NativeSubmission): Promise<void> { this.applyOutcome(await this.sdkSession.submit(options)); }
+  async submitNative(options: NativeSubmission): Promise<void> {
+    const outcome = await this.sdkSession.submit(options);
+    if (options.code) console.info('[AUTH native] OTP completed', ['authenticated', 'password', 'attributes', 'complete', 'unlock'].includes(outcome.step));
+    this.applyOutcome(outcome);
+  }
   async resendNative(): Promise<void> { this.applyOutcome(await this.sdkSession.resend()); }
   async unlockNative(): Promise<void> { this.applyOutcome(await this.sdkSession.unlock()); }
   async cancelNative(): Promise<void> {
@@ -125,7 +130,10 @@ export class MobileAuthService {
   }
 
   accessToken(): Promise<string> {
-    if (!this.browserMode) return this.tokenPromise ??= this.sdkSession.accessToken().finally(() => { this.tokenPromise = null; });
+    if (!this.browserMode) return this.tokenPromise ??= this.sdkSession.accessToken().then(token => {
+      console.info('[AUTH native] API access token obtained', { obtained: Boolean(token), scope: getApiConfiguration().apiScope });
+      return token;
+    }).catch(error => { console.info('[AUTH native] API access token obtained', false); throw error; }).finally(() => { this.tokenPromise = null; });
     if (!this.session) return Promise.reject(new MobileAuthError('expired'));
     return this.session.accessToken().catch(() => { this.error.set(MOBILE_AUTH_MESSAGES['expired']); throw new MobileAuthError('expired'); });
   }

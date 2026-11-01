@@ -5,6 +5,14 @@ import { authPlatform, IOS_REDIRECT_URI, MSAL_AUTHORITY, validateMobileRedirect 
 import { MobileAuthSession, parseMobileCallback } from '../src/app/auth/mobile-auth-core';
 import { loadNativeAuthRedirect, NativeAuthConfigError } from '../src/app/auth/native-auth-config';
 import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, NativeSubmission } from '../src/app/auth/entra-native-core';
+import { postLoginDestination } from '../src/app/auth/post-login-route';
+
+test('post-login keeps browser dashboard and selects native home/onboarding by backend linkage', () => {
+  assert.equal(postLoginDestination(true, true), '/mobile/home');
+  assert.equal(postLoginDestination(true, false), '/mobile/onboarding');
+  assert.equal(postLoginDestination(false, true), '/gestionale-cn/dashboard');
+  assert.equal(postLoginDestination(false, false), '/gestionale-cn/onboarding-comunita');
+});
 
 class SdkMock implements NativeAuthBridge {
   calls: string[] = [];

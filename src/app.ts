@@ -554,6 +554,7 @@ export class App {
 
   retryLogin(): void {
     this.authErrorMessage.set(null);
+    if (this.mobileAuth.native && this.mobileAuth.signedIn()) { void this.completeNativeLogin(); return; }
     this.login();
   }
 

@@ -50,6 +50,11 @@ async function installNative(context, platform) {
           return { step: method === 'resend' ? 'code' : 'login' };
         }
         if (plugin === 'App' && method === 'getLaunchUrl') return undefined;
+        if (plugin === 'CapacitorHttp' && options.url.includes('/api/')) {
+          const response = await fetch(options.url, { method: options.method, headers: options.headers,
+            ...(options.data === undefined ? {} : { body: JSON.stringify(options.data) }) });
+          return { status: response.status, data: await response.json(), headers: {} };
+        }
         if (plugin === 'CapacitorHttp') return { status: 200, data: {
           authorization_endpoint: 'https://eventidicomunita.ciamlogin.com/069bb457-b363-4340-8086-d7dd3b60a2b5/oauth2/v2.0/authorize',
           token_endpoint: 'https://eventidicomunita.ciamlogin.com/069bb457-b363-4340-8086-d7dd3b60a2b5/oauth2/v2.0/token'
@@ -145,16 +150,20 @@ async function installNative(context, platform) {
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'signup', 'reset']) {
+    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await installNative(context, 'android');
       let meCalls = 0;
       await context.route('**/api/**', async route => {
+        const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
+        if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
         if (new URL(route.request().url()).pathname.endsWith('/me')) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
-          await route.fulfill({ json: { authenticated: true, linkedToCommunity: false, status: 'UNLINKED', permissions: [] } });
-        } else await route.fulfill({ json: [] });
+          if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
+          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: flow === 'linked', status: flow === 'linked' ? 'LINKED' : 'UNLINKED', permissions: ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE'],
+            ...(flow === 'linked' ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: 'MEMBER', memberCount: 2 } : {}) } });
+        } else await route.fulfill({ headers, json: [] });
       });
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
@@ -163,9 +172,9 @@ async function installNative(context, platform) {
       if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (flow === 'password') await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (['password', 'linked', 'retry'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (flow !== 'password') {
+      if (!['password', 'linked', 'retry'].includes(flow)) {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -177,14 +186,32 @@ async function installNative(context, platform) {
         await page.getByLabel('Nome', { exact: true }).fill('Test');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
+      if (flow === 'retry') await page.getByRole('button', { name: 'Riprova accesso', exact: true }).click();
       if (flow === 'reset') {
         await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
         assert.equal(meCalls, 0);
       } else {
-        await page.waitForURL(url => url.pathname === '/gestionale-cn/onboarding-comunita');
-        assert.equal(meCalls, 1);
+        await page.waitForURL(url => url.pathname === (flow === 'linked' ? '/mobile/home' : '/mobile/onboarding'));
+        assert.equal(meCalls, flow === 'retry' ? 2 : 1);
+      }
+      if (flow === 'linked') {
+        await page.locator('app-mobile-home h1').waitFor();
+        assert.match(await page.locator('app-mobile-shell .brand').textContent(), /3ª Comunità/);
+        assert.equal(await page.locator('.mobile-bottom a').count(), 4);
+        assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);
+        assert.equal(await page.getByRole('link', { name: 'Posti di convivenza', exact: true }).count(), 0);
+        for (const [width, height, name] of [[412,915,'pixel'],[390,844,'iphone'],[393,852,'island']]) {
+          await page.setViewportSize({width,height});
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          assert.ok(await page.locator('.mobile-bottom a').evaluateAll(nodes => nodes.every(n => n.getBoundingClientRect().height >= 48)));
+          await page.screenshot({path:path.join(output,`home-${name}.png`),fullPage:true});
+        }
       }
       assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
+      if (flow === 'retry') {
+        assert.equal(await page.evaluate(() => window.__nativeCalls.filter(c => c === 'EntraNativeAuth.start').length), 1);
+        assert.equal(await page.evaluate(() => window.__nativeCalls.includes('EntraNativeAuth.logout')), false);
+      }
       assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('sdk-api-test-token'))), false);
       assert.deepEqual(errors, []);
       console.log(`PASS native ${flow}: SDK mock, bearer /api/me e routing`);

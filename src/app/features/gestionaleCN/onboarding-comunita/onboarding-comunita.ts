@@ -15,6 +15,8 @@ import { getApiConfiguration } from '../../../auth/api-config';
 import { CurrentUserService } from '../../../auth/current-user.service';
 import { BackendParish, OnboardingApiService } from '../../../auth/onboarding-api.service';
 import { clearOnboardingInvitation, readOnboardingInvitation } from '../../../auth/onboarding-invitation';
+import { Capacitor } from '@capacitor/core';
+import { postLoginDestination } from '../../../auth/post-login-route';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
@@ -900,7 +902,7 @@ export class OnboardingComunita implements OnInit {
                 clearOnboardingInvitation();
                 this.feedbackType = 'success';
                 this.feedbackMessage = 'Appartenenza confermata correttamente.';
-                await this.router.navigateByUrl('/gestionale-cn/dashboard');
+                await this.router.navigateByUrl(postLoginDestination(Capacitor.isNativePlatform(), true));
             } else if (result.status === 'IN_ATTESA_APPROVAZIONE') {
                 this.pendingApproval = true;
                 this.feedbackType = 'success';
@@ -918,7 +920,7 @@ export class OnboardingComunita implements OnInit {
         this.saving = true;
         try {
             await this.currentUser.refresh();
-            if (this.currentUser.context()?.linkedToCommunity) await this.router.navigateByUrl('/gestionale-cn/dashboard');
+            if (this.currentUser.context()?.linkedToCommunity) await this.router.navigateByUrl(postLoginDestination(Capacitor.isNativePlatform(), true));
             else {
                 this.pendingApproval = this.currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE';
                 this.feedbackType = this.pendingApproval ? 'success' : 'error';
