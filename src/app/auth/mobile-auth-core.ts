@@ -6,7 +6,7 @@ import { Requestor } from '@openid/appauth/built/src/xhr';
 import { Flags } from '@openid/appauth/built/src/flags';
 import { DefaultCrypto, urlSafe } from '@openid/appauth/built/src/crypto_utils';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { MSAL_AUTHORITY, MSAL_CLIENT_ID } from './entra-settings';
+import { MSAL_AUTHORITY, MSAL_CLIENT_ID, parseMobileUri } from './entra-settings';
 
 Flags.IS_LOG = false;
 Flags.IS_PROFILE = false;
@@ -24,14 +24,13 @@ export interface NativeAuthTransport {
 }
 
 export function parseMobileCallback(raw: string, redirect: string, state: string): string {
-  const url = new URL(raw), expected = new URL(redirect);
-  if (url.protocol !== expected.protocol || url.host !== expected.host || url.pathname !== expected.pathname ||
-      url.username || url.password || url.hash || !state ||
-      url.searchParams.getAll('state').length !== 1 || url.searchParams.get('state') !== state ||
-      url.searchParams.getAll('code').length > 1 || url.searchParams.getAll('error').length > 1)
+  const url = parseMobileUri(raw), expected = parseMobileUri(redirect);
+  if (url.scheme !== expected.scheme || url.host !== expected.host || url.path !== expected.path || url.fragment || !state ||
+      url.params.getAll('state').length !== 1 || url.params.get('state') !== state ||
+      url.params.getAll('code').length > 1 || url.params.getAll('error').length > 1)
     throw new MobileAuthError('callback');
-  if (url.searchParams.has('error')) throw new MobileAuthError(url.searchParams.get('error') === 'access_denied' ? 'cancelled' : 'token');
-  const code = url.searchParams.get('code');
+  if (url.params.has('error')) throw new MobileAuthError(url.params.get('error') === 'access_denied' ? 'cancelled' : 'token');
+  const code = url.params.get('code');
   if (!code) throw new MobileAuthError('callback');
   return code;
 }

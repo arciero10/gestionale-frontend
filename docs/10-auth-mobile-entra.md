@@ -26,7 +26,7 @@ app.config.ts li ri-esporta per compatibilita: la factory MSAL web e invariata.
 | API scope | api://71a9f6da-a231-4285-b475-37d2e65b8fe1/access_as_user |
 | Bundle/package | it.panteleia.eventidicomunita |
 | iOS redirect | msauth.it.panteleia.eventidicomunita://auth |
-| Android redirect | Non configurato: stringa vuota in public/native-auth.json |
+| Android redirect debug | Configurato in public/native-auth.json con il valore reale fornito |
 
 Lo scope API resta nella configurazione runtime gia esistente api-config.json
 con fallback environment; non viene sostituito da uno scope mobile inventato.
@@ -131,8 +131,8 @@ deve essere completata nel portale PRIMA del test su dispositivo.
 ## Android: un solo punto di configurazione
 
 Inserire il redirect Android reale in `public/native-auth.json`, campo
-androidRedirectUri. La stringa vuota attuale e una configurazione mancante,
-non un hash dimostrativo. Il client mostra Accesso mobile non ancora configurato.
+androidRedirectUri. Il valore debug reale e gia configurato. Una stringa vuota
+indica configurazione mancante, non un hash dimostrativo.
 
 android/app/build.gradle legge lo stesso JSON e valida scheme/package/hash;
 decodifica il path via URI e imposta entraRedirectPath nel manifest. Il filtro
@@ -226,7 +226,7 @@ compila solo il motore puro in una cartella temporanea, poi Node test la elimina
 dotnet test sul progetto API non scopre suite xUnit: i 35 controlli effettivi
 sono nel programma eseguibile Tests/Identity, che va lanciato separatamente.
 
-Esiti locali: 10 test frontend passati, controllo TypeScript riuscito, factory
+Esiti locali: 14 test frontend passati, controllo TypeScript riuscito, factory
 MSAL web confrontate identiche normalizzando soltanto CRLF, build production
 Angular riuscita e sync iOS/Android riusciti. Prima build standard riuscita;
 alcune ripetizioni locali uscivano senza diagnostica. L'ultima build completa
@@ -243,7 +243,7 @@ accesso, annullamento e rete assente. Android: prima configurare firma/redirect,
 poi gli stessi test su debug e build Play reale; provare back, doppio callback,
 ritorno dopo timeout e process death. Nessun bypass della validazione per test.
 
-Non testati su dispositivo: callback/Safari/Custom Tabs, login OTP reale,
+Non ancora completati su dispositivo: callback/Safari/Custom Tabs, login OTP reale,
 token refresh reale, process death e integrazione del filtro manifest nel build
 Gradle/Xcode. CORS va verificato dopo deploy. Gli errori sono presentati in
 italiano senza dettagli OAuth grezzi. Storage sicuro persistente resta una fase
@@ -257,6 +257,43 @@ app.config.ts (sola selezione interceptor/costanti), platform-admin.mock.ts,
 capacitor.config.ts, public/native-auth.json, Info.plist, manifest/build.gradle,
 file SPM/Gradle generati dal sync, package/lock, tests e script runner.
 Backend: solo Program.cs. Nessuna migration o modifica DB.
+
+## Diagnosi runtime Android: WebView Chromium 124
+
+Sul Pixel 9 API 35 emulato e stata osservata direttamente la WebView reale
+(Chrome/124.0.6367.219) tramite DevTools, senza leggere token, codici o email.
+fetch /native-auth.json restituisce 200, la chiave androidRedirectUri esiste
+e il valore letto e quello esatto configurato. document.baseURI e
+https://localhost/: sia il vecchio path assoluto sia il nuovo path relativo
+risolvono a https://localhost/native-auth.json. Il file NON mancava.
+
+Il difetto era nel parser per schemi non standard della WebView: new URL del
+redirect msauth restituisce hostname vuoto e pathname che contiene anche
+//it.panteleia.eventidicomunita. Il controllo host/hash quindi rifiutava un URI
+valido e il catch globale lo etichettava come configurazione assente.
+
+parseMobileUri separa lo schema e usa il parser HTTPS soltanto per ispezionare
+authority/query, conservando il path codificato originale. Host, scheme,
+credenziali/porte, state e firma restano controllati; nessuna URI registrata o
+token request viene ricostruita. Anche la validazione callback usa lo stesso
+parser, per evitare il medesimo problema dopo il ritorno dal browser.
+
+native-auth-config.ts carica new URL('native-auth.json', document.baseURI),
+verifica HTTP/JSON/shape e distingue redirect mancante da redirect invalido.
+Il servizio mantiene soltanto warning essenziali con codici di errore fissi,
+senza payload, URL OAuth, token, verifier o dati personali. Gli errori dei plugin
+non vengono piu descritti come configurazione mancante. getLaunchUrl vuoto e
+gestito difensivamente. Nessuna configurazione Entra o backend modificata.
+
+La lettura del loader corretto e stata verificata nella WebView Chrome 124 con
+il redirect debug invariato. Aggiunti test di caricamento relativo, hash con
+%2F/%3D, parser opaco legacy, errori config distinti e invarianza iOS.
+Anche l'APK aggiornato e stato installato sul Pixel emulato mantenendo i dati:
+il click reale Accedi ora attraversa config HTTP 200, getLaunchUrl, discovery
+HTTP nativa e Browser.open, senza errore di configurazione. Non sono state
+inserite credenziali o completato OTP; callback/token exchange reale restano
+da verificare con l'utente. Le sonde runtime erano solo in memoria/DevTools,
+non nel bundle finale; nessun log di token, codici, verifier o dati personali.
 
 ## Riferimenti
 

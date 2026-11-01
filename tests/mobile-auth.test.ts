@@ -3,9 +3,69 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { authPlatform, IOS_REDIRECT_URI, MSAL_AUTHORITY, validateMobileRedirect } from '../src/app/auth/entra-settings';
 import { MobileAuthSession, parseMobileCallback } from '../src/app/auth/mobile-auth-core';
+import { loadNativeAuthRedirect, NativeAuthConfigError } from '../src/app/auth/native-auth-config';
 
 const scope = 'api://71a9f6da-a231-4285-b475-37d2e65b8fe1/access_as_user';
 const redirect = IOS_REDIRECT_URI;
+const androidRedirect = 'msauth://it.panteleia.eventidicomunita/JZgztu6QTut3eSpu8X%2F%2FiyoHt%2Fg%3D';
+
+function configFetch(value: unknown, status = 200): typeof fetch {
+  return (async () => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+}
+
+test('Android loads native-auth.json relative to document base URI and preserves encoded redirect', async () => {
+  let requested = '';
+  const request: typeof fetch = async (url, options) => {
+    requested = String(url); assert.equal(options?.cache, 'no-store');
+    return new Response(JSON.stringify({ androidRedirectUri: androidRedirect }));
+  };
+  assert.equal(await loadNativeAuthRedirect('android', 'https://localhost/', request), androidRedirect);
+  assert.equal(requested, 'https://localhost/native-auth.json');
+  await loadNativeAuthRedirect('android', 'https://app.example/nested/', request);
+  assert.equal(requested, 'https://app.example/nested/native-auth.json');
+});
+
+test('opaque custom-scheme URL parser from Chromium 124 cannot reject valid Android redirect', async () => {
+  const OriginalURL = globalThis.URL;
+  class Chromium124URL extends OriginalURL {
+    constructor(value: string | URL, base?: string | URL) {
+      if (String(value).startsWith('msauth://')) {
+        super('https://opaque.invalid');
+        Object.defineProperty(this, 'hostname', { value: '' });
+        Object.defineProperty(this, 'pathname', { value: String(value).slice('msauth:'.length) });
+      } else super(value, base);
+    }
+  }
+  globalThis.URL = Chromium124URL;
+  try {
+    assert.equal(new URL(androidRedirect).hostname, '');
+    assert.equal(validateMobileRedirect('android', androidRedirect), androidRedirect);
+    assert.equal(await loadNativeAuthRedirect('android', 'https://localhost/', configFetch({ androidRedirectUri: androidRedirect })), androidRedirect);
+    assert.equal(parseMobileCallback(`${androidRedirect}?code=verified&state=expected`, androidRedirect, 'expected'), 'verified');
+  } finally { globalThis.URL = OriginalURL; }
+});
+
+test('missing Android redirect is classified separately from malformed asset, HTTP and invalid URI', async () => {
+  for (const value of [{}, { androidRedirectUri: '' }, { androidRedirectUri: null }])
+    await assert.rejects(loadNativeAuthRedirect('android', 'https://localhost/', configFetch(value)),
+      (error: unknown) => error instanceof NativeAuthConfigError && error.reason === 'redirect-missing');
+  await assert.rejects(loadNativeAuthRedirect('android', 'https://localhost/', configFetch(null)),
+    (error: unknown) => error instanceof NativeAuthConfigError && error.reason === 'asset-shape');
+  await assert.rejects(loadNativeAuthRedirect('android', 'https://localhost/', configFetch({}, 404)),
+    (error: unknown) => error instanceof NativeAuthConfigError && error.reason === 'asset-http');
+  await assert.rejects(loadNativeAuthRedirect('android', 'https://localhost/', configFetch({ androidRedirectUri: 'msauth://wrong/hash' })),
+    (error: unknown) => error instanceof NativeAuthConfigError && error.reason === 'redirect-invalid');
+  await assert.rejects(loadNativeAuthRedirect('android', 'https://localhost/', configFetch({ androidRedirectUri: 123 })),
+    (error: unknown) => error instanceof NativeAuthConfigError && error.reason === 'redirect-invalid');
+});
+
+test('iOS keeps its registered redirect and capacitor asset origin', async () => {
+  let requested = '';
+  assert.equal(await loadNativeAuthRedirect('ios', 'capacitor://localhost/', async url => {
+    requested = String(url); return new Response('{}');
+  }), IOS_REDIRECT_URI);
+  assert.equal(requested, 'capacitor://localhost/native-auth.json');
+});
 
 function fixture(result: Record<string, unknown> = { access_token: 'api-access', id_token: 'not-a-bearer', token_type: 'Bearer', expires_in: '3600', refresh_token: 'refresh' }) {
   let opened = '', exchanges = 0, lastBody = '', closes = 0;

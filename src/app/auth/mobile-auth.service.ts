@@ -3,7 +3,8 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { getApiConfiguration } from './api-config';
-import { authPlatform, IOS_REDIRECT_URI, validateMobileRedirect } from './entra-settings';
+import { authPlatform } from './entra-settings';
+import { loadNativeAuthRedirect, NativeAuthConfigError } from './native-auth-config';
 import { MobileAuthError, MobileAuthSession } from './mobile-auth-core';
 
 export const MOBILE_AUTH_MESSAGES = {
@@ -28,18 +29,20 @@ export class MobileAuthService {
 
   initialize(): Promise<void> {
     if (!this.native) return Promise.resolve();
-    return this.initialization ??= this.setup().catch(() => {
+    return this.initialization ??= this.setup().catch(error => {
       this.initialization = null;
-      throw new MobileAuthError('configuration');
+      if (error instanceof NativeAuthConfigError) {
+        console.warn('[AUTH native] configuration unavailable:', error.reason);
+        throw new MobileAuthError('configuration');
+      }
+      console.warn('[AUTH native] initialization failed: native-plugin');
+      throw new MobileAuthError('token');
     });
   }
 
   private async setup(): Promise<void> {
-    const response = await fetch('/native-auth.json');
-    if (!response.ok) throw new MobileAuthError('configuration');
-    const config = await response.json() as { androidRedirectUri?: string };
     const platform = Capacitor.getPlatform();
-    const redirect = validateMobileRedirect(platform, platform === 'ios' ? IOS_REDIRECT_URI : config.androidRedirectUri ?? '');
+    const redirect = await loadNativeAuthRedirect(platform, document.baseURI);
     this.session = new MobileAuthSession({
       open: url => Browser.open({ url }),
       close: async () => { if (platform === 'ios') await Browser.close(); },
@@ -59,7 +62,7 @@ export class MobileAuthService {
     });
     // No persisted transaction: a callback after process death cannot be redeemed.
     const launch = await App.getLaunchUrl();
-    if (launch?.url.startsWith(redirect)) this.error.set(MOBILE_AUTH_MESSAGES['expired']);
+    if (launch?.url?.startsWith(redirect)) this.error.set(MOBILE_AUTH_MESSAGES['expired']);
   }
 
   async login(): Promise<void> {
