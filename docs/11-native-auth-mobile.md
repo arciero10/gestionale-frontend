@@ -52,6 +52,13 @@ nessun ID token/header fiduciario. Nessun replay automatico delle scritture su 4
 
 ## Post-login e home mobile
 
+Aggiornamento ruoli/approvazioni: vedere docs/01 e docs/08. Il form ordinario non
+offre Catechista, seleziona comunita DB e mostra il riepilogo pending o rifiutato.
+Verifica approvazione aggiorna /api/me e apre Home solo con linkedToCommunity=true.
+Altro mostra Appartenenze e deleghe solo con permessi backend di approvazione;
+Profilo consente di ricaricare le deleghe senza rifare il login. Card e quattro
+tab restano invariati; calendario, compleanni, gruppi e avvisi restano placeholder.
+
 La home Capacitor ha shell propria, senza sidebar desktop, header da `/api/me`,
 card comunita/calendario/compleanni/gruppi/avvisi/convivenze e quattro tab inferiori:
 Home, Calendario, Comunita, Altro. Profilo mostra solo dati del contesto backend;

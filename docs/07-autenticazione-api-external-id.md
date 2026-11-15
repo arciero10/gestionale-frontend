@@ -87,6 +87,8 @@ Il resolver restituisce CommunityId, numero, nome e ruolo dal database.
 Il numero e un dato di presentazione e non viene mai usato come chiave DB.
 Permessi responsabile sono limitati alla propria appartenenza; corresponsabile,
 catechista e ostiario partono con consultazione, senza dedurre deleghe o equipe.
+Il Corresponsabile riceve inoltre soltanto le deleghe esplicite presenti in
+CommunityMemberDelegations per la propria membership attiva (vedere docs/08).
 Le future API comunitarie devono usare la stessa policy e il resolver per ogni
 richiesta: mai un parametro communityId del client come fonte autorevole.
 

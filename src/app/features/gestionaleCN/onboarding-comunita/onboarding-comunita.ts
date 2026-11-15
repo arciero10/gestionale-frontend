@@ -13,7 +13,8 @@ import { Carisma, PermessoOperativo, getPermessiByCarismi, normalizeCarismaForPe
 import { TAPPE_CAMMINO, TappaCammino } from '../data/tappe-cammino.mock';
 import { getApiConfiguration } from '../../../auth/api-config';
 import { CurrentUserService } from '../../../auth/current-user.service';
-import { BackendParish, OnboardingApiService } from '../../../auth/onboarding-api.service';
+import { BackendCommunity, BackendParish, OnboardingApiService, OwnOnboardingRequest } from '../../../auth/onboarding-api.service';
+import { COMMUNITY_ONBOARDING_ROLES, communityRoleLabel } from '../../../auth/community-roles';
 import { clearOnboardingInvitation, readOnboardingInvitation } from '../../../auth/onboarding-invitation';
 import { Capacitor } from '@capacitor/core';
 import { postLoginDestination } from '../../../auth/post-login-route';
@@ -90,8 +91,14 @@ interface OnboardingPayload {
                         <section class="privacy-consent" role="status">
                             <h2>In attesa di approvazione</h2>
                             <p>La richiesta di appartenenza è stata salvata. Nessun ruolo operativo è ancora abilitato.</p>
+                            <p><strong>Comunità richiesta:</strong> {{ richiestaCorrente?.communityNumber ?? numeroComunita }}ª Comunità · {{ richiestaCorrente?.parishName || nomeParrocchiaBackend }}</p>
+                            <p><strong>Ruolo richiesto:</strong> {{ roleLabel(richiestaCorrente?.requestedRole ?? 'MEMBER') }}</p>
+                            <p><strong>Stato:</strong> In attesa di approvazione</p>
                             <button pButton type="button" label="Verifica approvazione" icon="pi pi-refresh" [disabled]="saving" (click)="verificaApprovazione()"></button>
                         </section>
+                    }
+                    @if (richiestaCorrente?.status === 'RESPINTA') {
+                        <p role="alert" class="privacy-consent">La richiesta è stata rifiutata. Puoi correggere i dati qui sotto e ripresentarla.</p>
                     }
                     @if (loadingRequest) { <p role="status">Caricamento profilo...</p> } @else {
                     <form class="community-form" novalidate (ngSubmit)="confermaBackend()">
@@ -107,7 +114,7 @@ interface OnboardingPayload {
                         </div>
                         <div class="field" data-validation-field="parrocchia" [class.field-error]="hasFieldError('parrocchia')">
                             <label for="backendParish">Parrocchia</label>
-                            <p-select inputId="backendParish" name="backendParish" [options]="backendParishes" optionLabel="name" optionValue="id" [filter]="true" [loading]="loadingParishes" [(ngModel)]="backendParishId" placeholder="Seleziona la parrocchia" appendTo="body"></p-select>
+                            <p-select inputId="backendParish" name="backendParish" [options]="backendParishes" optionLabel="name" optionValue="id" [filter]="true" [loading]="loadingParishes" [(ngModel)]="backendParishId" (onChange)="cambiaParrocchiaBackend()" placeholder="Seleziona la parrocchia" appendTo="body"></p-select>
                             <small class="field-error-message">{{ getFieldErrorMessage('parrocchia') }}</small>
                             @if (!loadingParishes && backendParishes.length === 0) {
                                 <p>Nessuna parrocchia disponibile. Contatta la segreteria.</p>
@@ -116,16 +123,24 @@ interface OnboardingPayload {
                         </div>
                         <div class="field" data-validation-field="numeroComunita" [class.field-error]="hasFieldError('numeroComunita')">
                             <label for="backendCommunity">Numero comunità</label>
-                            <p-select inputId="backendCommunity" name="backendCommunity" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
+                            @if (ruoloComunitario === 'responsabile') {
+                                <p-select inputId="backendCommunity" name="backendCommunity" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
+                                <small>Il primo censimento richiede l'approvazione dell'amministrazione superiore.</small>
+                            } @else {
+                                <p-select inputId="backendCommunity" name="backendCommunity" [options]="backendCommunities" optionLabel="number" optionValue="number" [(ngModel)]="numeroComunita" [loading]="loadingCommunities" placeholder="Seleziona una comunità censita"></p-select>
+                                @if (backendParishId && !loadingCommunities && !backendCommunities.length) { <small>Nessuna comunità censita. Contatta il responsabile.</small> }
+                            }
                             <small class="field-error-message">{{ getFieldErrorMessage('numeroComunita') }}</small>
                         </div>
-                        <div class="field">
+                        <div class="field" data-validation-field="tappaCammino" [class.field-error]="hasFieldError('tappaCammino')">
                             <label for="backendStage">Tappa del Cammino richiesta</label>
                             <p-select inputId="backendStage" name="backendStage" [options]="tappeCammino" [(ngModel)]="tappaCammino"></p-select>
+                            <small class="field-error-message">{{ getFieldErrorMessage('tappaCammino') }}</small>
                         </div>
-                        <div class="field">
-                            <label for="backendRole">Carisma / ruolo richiesto</label>
+                        <div class="field" data-validation-field="carisma" [class.field-error]="hasFieldError('carisma')">
+                            <label for="backendRole">Ruolo richiesto</label>
                             <p-select inputId="backendRole" name="backendRole" [options]="carismiOnboarding" optionLabel="label" optionValue="value" [(ngModel)]="ruoloComunitario"></p-select>
+                            <small class="field-error-message">{{ getFieldErrorMessage('carisma') }}</small>
                         </div>
                         <div class="field">
                             <label for="backendPhone">Telefono opzionale</label>
@@ -819,6 +834,11 @@ export class OnboardingComunita implements OnInit {
     firstName = '';
     lastName = '';
     backendParishes: BackendParish[] = [];
+    backendCommunities: BackendCommunity[] = [];
+    loadingCommunities = false;
+    richiestaCorrente: OwnOnboardingRequest | null = null;
+    readonly roleLabel = communityRoleLabel;
+    get nomeParrocchiaBackend(): string { return this.backendParishes.find(p => p.id === this.backendParishId)?.name ?? ''; }
     backendParishId: number | null = null;
     loadingParishes = false;
     loadingRequest = true;
@@ -838,18 +858,20 @@ export class OnboardingComunita implements OnInit {
         try {
             const request = await this.onboardingApi.getCurrentRequest();
             if (!request) return;
+            this.richiestaCorrente = request;
             this.firstName = request.firstName;
             this.lastName = request.lastName;
             this.telefono = request.phone;
             this.backendParishId = request.parishId;
             this.numeroComunita = request.communityNumber;
             const roles: Record<string, RuoloComunitario> = {
-                MEMBER: '', RESPONSIBLE: 'responsabile', CO_RESPONSIBLE: 'corresponsabile', CATECHIST: 'catechista',
+                MEMBER: '', RESPONSIBLE: 'responsabile', CO_RESPONSIBLE: 'corresponsabile',
                 OSTIARIO: 'ostiario', CANTOR: 'cantore', PRESBYTER: 'presbitero', DEACON: 'diacono', LECTOR: 'lettore', DIDASCAL: 'didascalo'
             };
             this.ruoloComunitario = roles[request.requestedRole] ?? '';
             if (this.tappeCammino.includes(request.requestedStage as TappaCammino)) this.tappaCammino = request.requestedStage as TappaCammino;
             this.pendingApproval = request.status === 'IN_ATTESA_APPROVAZIONE';
+            await this.caricaComunitaBackend();
         } catch {
             this.feedbackType = 'error';
             this.feedbackMessage = 'Impossibile recuperare la richiesta precedente. Riprova più tardi.';
@@ -867,6 +889,20 @@ export class OnboardingComunita implements OnInit {
         } finally { this.loadingParishes = false; }
     }
 
+    cambiaParrocchiaBackend(): void { this.numeroComunita = 0; void this.caricaComunitaBackend(); }
+    async caricaComunitaBackend(): Promise<void> {
+        const parishId = this.backendParishId;
+        this.backendCommunities = [];
+        if (!parishId) return;
+        this.loadingCommunities = true;
+        try {
+            const communities = await this.onboardingApi.getCommunities(parishId);
+            if (this.backendParishId === parishId) this.backendCommunities = communities;
+        } catch {
+            this.feedbackType = 'error'; this.feedbackMessage = 'Impossibile caricare le comunità censite. Riprova selezionando la parrocchia.';
+        } finally { if (this.backendParishId === parishId) this.loadingCommunities = false; }
+    }
+
     async confermaBackend(): Promise<void> {
         if (this.saving) return;
         this.submitAttempted = true;
@@ -878,6 +914,9 @@ export class OnboardingComunita implements OnInit {
         required('cognome', 'Cognome', Boolean(this.lastName.trim()));
         required('parrocchia', 'Parrocchia', this.backendParishes.some(p => p.id === this.backendParishId));
         required('numeroComunita', 'Numero comunità', Number.isInteger(this.numeroComunita) && this.numeroComunita > 0);
+        if (this.ruoloComunitario !== 'responsabile') required('numeroComunita', 'Comunità censita', this.backendCommunities.some(c => c.number === this.numeroComunita));
+        required('carisma', 'Ruolo richiesto', COMMUNITY_ONBOARDING_ROLES.some(r => r.value === this.ruoloComunitario));
+        required('tappaCammino', 'Tappa del Cammino', this.tappeCammino.includes(this.tappaCammino));
         required('privacyConsenso', 'Privacy e consenso', this.privacyConsenso);
         if (this.validationErrors.length) {
             this.feedbackType = 'error';
@@ -898,6 +937,7 @@ export class OnboardingComunita implements OnInit {
                 invitationToken: this.invitationToken.trim() || undefined
             });
             await this.currentUser.refresh();
+            await this.caricaRichiestaCorrente();
             if (this.currentUser.context()?.linkedToCommunity === true) {
                 clearOnboardingInvitation();
                 this.feedbackType = 'success';
@@ -920,11 +960,12 @@ export class OnboardingComunita implements OnInit {
         this.saving = true;
         try {
             await this.currentUser.refresh();
+            await this.caricaRichiestaCorrente();
             if (this.currentUser.context()?.linkedToCommunity) await this.router.navigateByUrl(postLoginDestination(Capacitor.isNativePlatform(), true));
             else {
                 this.pendingApproval = this.currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE';
                 this.feedbackType = this.pendingApproval ? 'success' : 'error';
-                this.feedbackMessage = this.pendingApproval ? 'La richiesta è ancora in attesa di approvazione.' : 'Appartenenza non autorizzata. Contatta la segreteria.';
+                this.feedbackMessage = this.pendingApproval ? 'La richiesta è ancora in attesa di approvazione.' : this.currentUser.context()?.status === 'RESPINTA' ? 'Richiesta rifiutata. Correggi i dati e ripresentala.' : 'Appartenenza non autorizzata. Contatta la segreteria.';
             }
         } catch {
             this.feedbackType = 'error';
@@ -951,18 +992,7 @@ export class OnboardingComunita implements OnInit {
         statoVerifica: 'Inserita manualmente'
     };
 
-    readonly carismiOnboarding: Array<{ label: string; value: RuoloComunitario }> = [
-        { label: 'Nessun carisma', value: '' },
-        { label: 'Responsabile', value: 'responsabile' },
-        { label: 'Corresponsabile', value: 'corresponsabile' },
-        { label: 'Catechista', value: 'catechista' },
-        { label: 'Cantore', value: 'cantore' },
-        { label: 'Presbitero', value: 'presbitero' },
-        { label: 'Diacono', value: 'diacono' },
-        { label: 'Lettore', value: 'lettore' },
-        { label: 'Ostiario', value: 'ostiario' },
-        { label: 'Didascalo/a', value: 'didascalo' }
-    ];
+    readonly carismiOnboarding: Array<{ label: string; value: RuoloComunitario }> = COMMUNITY_ONBOARDING_ROLES.map(r => ({ label: r.label, value: r.value }));
 
     readonly collaborazioneOptions = [
         { label: 'No', value: false },

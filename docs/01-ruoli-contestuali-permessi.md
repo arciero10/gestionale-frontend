@@ -1,5 +1,31 @@
 # Ruoli contestuali e permessi utenti
 
+## Onboarding e approvazioni ordinarie (decisione 15 novembre 2026)
+
+Il normale onboarding richiede Fratello/Sorella, Responsabile, Corresponsabile o
+un servizio comunitario. Catechista non e selezionabile in questo flusso: resta
+nel dominio come incarico sovra-comunita/equipe, senza eliminare dati esistenti.
+Fratello, servizi e Corresponsabile richiedono approvazione del Responsabile
+della stessa comunita. Il Responsabile richiede un amministratore superiore
+distinto dal richiedente, configurato nel backend; nessuna autoapprovazione,
+neppure se il richiedente e anche amministratore.
+
+Il Corresponsabile non sostituisce formalmente il Responsabile. Le deleghe DB
+esplicite e revocabili sono: APPROVE_MEMBERS (solo Fratelli/Sorelle), EDIT_MEMBRI,
+EDIT_COMUNITA, EDIT_CALENDAR, EDIT_AVVISI, EDIT_GROUPS, CREATE_CONVIVENZA,
+EDIT_CONVIVENZA. Nessun privilegio operativo e implicito nel ruolo.
+Il Responsabile della comunita assegna/revoca queste deleghe a un
+Corresponsabile attivo della stessa comunita. L'amministrazione superiore
+configurata puo registrare esplicitamente la delega nel contesto DB verificato
+anche se il Responsabile non usa strumenti digitali, senza impersonarlo.
+Il contesto /api/me ne e fonte
+autorevole. Gestire ruoli o approvare Responsabili non e delegabile.
+
+Le scritture di questo workflow (richiesta, approvazione/rifiuto, censimento,
+inviti e deleghe) conservano un audit con oid/tid dell'attore JWT reale.
+Non si impersona il Responsabile. I futuri handler calendario/avvisi/gruppi
+devono controllare la specifica permission e registrare lo stesso audit.
+
 ## Modello fondamentale
 
 Una persona NON ha un ruolo globale fisso. Ha ruoli diversi in contesti diversi.

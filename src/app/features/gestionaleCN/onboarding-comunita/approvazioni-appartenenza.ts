@@ -25,8 +25,9 @@ import { CommunityAccessRequest, OnboardingApiService } from '../../../auth/onbo
                             <label [for]="'person-' + request.id">Persona già censita, se presente</label>
                             <p-select [inputId]="'person-' + request.id" [options]="request.existingPeople" optionLabel="name" optionValue="id" [showClear]="true" placeholder="Nuova persona" [(ngModel)]="selectedPeople[request.id]" appendTo="body"></p-select>
                             <div class="actions">
-                                <button pButton type="button" label="Approva" icon="pi pi-check" [disabled]="busy" (click)="review(request.id, 'approve')"></button>
-                                <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined [disabled]="busy" (click)="review(request.id, 'reject')"></button>
+                                @if (request.canApprove) { <button pButton type="button" label="Approva" icon="pi pi-check" [disabled]="busy" (click)="review(request.id, 'approve')"></button> }
+                                @if (request.canReject) { <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined [disabled]="busy" (click)="review(request.id, 'reject')"></button> }
+                                @if (!request.canApprove && !request.canReject) { <span>È richiesta un'approvazione superiore; non puoi approvare la tua richiesta.</span> }
                             </div>
                         }
                     </article>

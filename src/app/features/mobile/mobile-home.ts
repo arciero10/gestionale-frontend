@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../auth/current-user.service';
 import { AuthService } from '../../auth/auth.service';
 
@@ -24,9 +24,13 @@ import { AuthService } from '../../auth/auth.service';
       <h1>{{ title }}</h1>
       @if (section === 'profilo') {
         <dl><dt>Nome</dt><dd>{{ current.context()?.displayName || 'Non disponibile' }}</dd><dt>Comunità</dt><dd>{{ current.context()?.communityName || 'Non associata' }}</dd><dt>Numero comunità</dt><dd>{{ current.context()?.communityNumber ?? 'Non disponibile' }}</dd><dt>Parrocchia</dt><dd>{{ current.context()?.parishName || 'Non disponibile' }}</dd><dt>Ruolo</dt><dd>{{ current.context()?.role || 'Non disponibile' }}</dd></dl>
+        @if (profileFeedback) { <p role="status">{{ profileFeedback }}</p> }
+        <button type="button" class="back" [disabled]="refreshing" (click)="refreshContext()"><i class="pi pi-refresh" aria-hidden="true"></i> Aggiorna profilo e permessi</button>
         <button type="button" class="logout" (click)="auth.logout()"><i class="pi pi-sign-out" aria-hidden="true"></i> Esci dall'app</button>
       } @else if (section === 'altro') {
-        <div class="links"><a routerLink="/mobile/profilo">Il mio profilo <i class="pi pi-user" aria-hidden="true"></i></a><a routerLink="/mobile/compleanni">Compleanni <i class="pi pi-gift" aria-hidden="true"></i></a><a routerLink="/mobile/gruppi">Gruppi <i class="pi pi-users" aria-hidden="true"></i></a><a routerLink="/mobile/avvisi">Avvisi <i class="pi pi-bell" aria-hidden="true"></i></a><a routerLink="/faq">Aiuto / FAQ <i class="pi pi-question-circle" aria-hidden="true"></i></a><a routerLink="/privacy">Privacy e consensi <i class="pi pi-shield" aria-hidden="true"></i></a></div>
+        <div class="links"><a routerLink="/mobile/profilo">Il mio profilo <i class="pi pi-user" aria-hidden="true"></i></a>
+          @if (canApprove()) { <a routerLink="/mobile/approvazioni">Appartenenze e deleghe <i class="pi pi-check-square" aria-hidden="true"></i></a> }
+          <a routerLink="/mobile/compleanni">Compleanni <i class="pi pi-gift" aria-hidden="true"></i></a><a routerLink="/mobile/gruppi">Gruppi <i class="pi pi-users" aria-hidden="true"></i></a><a routerLink="/mobile/avvisi">Avvisi <i class="pi pi-bell" aria-hidden="true"></i></a><a routerLink="/faq">Aiuto / FAQ <i class="pi pi-question-circle" aria-hidden="true"></i></a><a routerLink="/privacy">Privacy e consensi <i class="pi pi-shield" aria-hidden="true"></i></a></div>
       } @else {
         <section class="empty"><i [class]="'pi ' + emptyIcon" aria-hidden="true"></i><h2>{{ title }}</h2><p>{{ unavailableMessage }}</p>@if (section === 'calendario') { <a routerLink="/mobile/convivenze">Apri le convivenze <i class="pi pi-arrow-right" aria-hidden="true"></i></a> }</section>
       }
@@ -43,6 +47,19 @@ export class MobileHome {
   protected readonly current = inject(CurrentUserService);
   protected readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  protected refreshing = false;
+  protected profileFeedback = '';
+  protected async refreshContext(): Promise<void> {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    try {
+      await this.current.refresh();
+      if (!this.current.context()?.linkedToCommunity) await this.router.navigateByUrl('/mobile/onboarding');
+      else this.profileFeedback = 'Profilo e permessi aggiornati.';
+    } catch { this.profileFeedback = 'Impossibile aggiornare il profilo. Riprova.'; }
+    finally { this.refreshing = false; }
+  }
   protected readonly section: string = this.route.snapshot.data['section'];
   protected readonly title: string = this.route.snapshot.data['title'];
   protected readonly cards = [
@@ -53,6 +70,7 @@ export class MobileHome {
     { title: 'Convivenze', path: 'convivenze', icon: 'pi-calendar-plus', background: '#dcfce7', color: '#166534' }
   ];
   protected canOrganize(): boolean { return this.current.context()?.permissions.includes('CREATE_CONVIVENZA') === true; }
+  protected canApprove(): boolean { return this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
   protected get emptyIcon(): string { return this.cards.find(card => card.path === this.section)?.icon ?? 'pi-info-circle'; }
   protected get unavailableMessage(): string {
     return ({ calendario: 'Le date degli incontri della comunità non sono ancora disponibili. Puoi consultare le convivenze.',

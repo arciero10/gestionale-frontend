@@ -1,5 +1,6 @@
 ﻿import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -83,8 +84,8 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
         <div class="community-page">
             @if (useBackend) {
                 <section class="identity-card">
-                    <div><h1>{{ backendCommunity?.context?.communityName || nomeComunita }}</h1>
-                        <p>{{ backendCommunity?.context?.parishName || parrocchiaComunita }}</p>
+                    <div><h1>{{ backendCommunity?.context?.communityName || 'La mia comunità' }}</h1>
+                        <p>{{ backendCommunity?.context?.parishName || '' }}</p>
                         <p>Ruolo: {{ backendCommunity?.context?.role || 'Non autorizzato' }}</p>
                     </div>
                     <button pButton type="button" label="Aggiorna" icon="pi pi-refresh" [disabled]="loadingBackend" (click)="caricaComunitaBackend()"></button>
@@ -97,6 +98,20 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                 }
                 <section class="member-card">
                     <h2>Membri comunità</h2>
+                    @if (backendCommunity?.context?.permissions?.includes('EDIT_MEMBRI')) {
+                        <button pButton type="button" label="Aggiungi fratello" icon="pi pi-user-plus" (click)="censusBackendOpen = !censusBackendOpen"></button>
+                        @if (censusBackendOpen) {
+                            <form class="community-form" (ngSubmit)="censisciBackend()">
+                                <label>Nome<input pInputText name="censusFirst" [(ngModel)]="backendCensus.firstName" required maxlength="100" /></label>
+                                <label>Cognome<input pInputText name="censusLast" [(ngModel)]="backendCensus.lastName" required maxlength="100" /></label>
+                                <label>Email opzionale<input pInputText type="email" name="censusEmail" [(ngModel)]="backendCensus.email" maxlength="256" /></label>
+                                <label>Telefono opzionale<input pInputText name="censusPhone" [(ngModel)]="backendCensus.phone" maxlength="32" /></label>
+                                <p>L'inserimento non crea un account e non accetta consensi al posto del fratello. Il ruolo iniziale è Fratello.</p>
+                                <button pButton type="submit" label="Salva anagrafica" icon="pi pi-check" [disabled]="savingBackendCensus"></button>
+                            </form>
+                        }
+                    }
+                    @if (messaggio) { <p role="status">{{ messaggio }}</p> }
                     @if (loadingBackend) { <p>Caricamento membri...</p> }
                     @else if (backendCommunity) {
                         <p-table [value]="backendCommunity.members" [scrollable]="true" scrollHeight="500px">
@@ -104,7 +119,7 @@ const PUBLIC_INVITE_BASE_URL = 'https://test.eventidicomunita.it';
                             <ng-template #body let-member><tr>
                                 <td>{{ member.firstName }}</td><td>{{ member.lastName }}</td><td>{{ member.role === 'MEMBER' ? '—' : member.role }}</td>
                                 <td>{{ member.email || '—' }}</td><td>{{ member.phoneNumber || '—' }}</td><td>
-                                    @if (backendCommunity.context.role === 'RESPONSIBLE') {
+                                    @if (backendCommunity.context.role === 'RESPONSIBLE' || (member.role === 'MEMBER' && backendCommunity.context.permissions.includes('EDIT_MEMBRI') && backendCommunity.context.permissions.includes('APPROVE_MEMBERS'))) {
                                         <button pButton type="button" label="Invita" icon="pi pi-send" [disabled]="invitingBackend" (click)="invitaBackend(member.personId)"></button>
                                     }
                                 </td>
@@ -1297,6 +1312,23 @@ export class Comunita implements OnInit {
     loadingBackend = false;
     invitingBackend = false;
     backendInviteLink = '';
+    censusBackendOpen = false;
+    savingBackendCensus = false;
+    backendCensus = { firstName: '', lastName: '', email: '', phone: '' };
+    async censisciBackend(): Promise<void> {
+        if (this.savingBackendCensus || !this.backendCensus.firstName.trim() || !this.backendCensus.lastName.trim()) return;
+        this.savingBackendCensus = true;
+        try {
+            await this.onboardingApi.censusMember({ ...this.backendCensus });
+            this.backendCensus = { firstName: '', lastName: '', email: '', phone: '' };
+            this.censusBackendOpen = false;
+            this.messaggio = 'Fratello censito. Nessun account o consenso è stato creato.';
+            await this.caricaComunitaBackend();
+        } catch (error) {
+            const message = (error as { error?: { message?: unknown } })?.error?.message;
+            this.messaggio = typeof message === 'string' ? message : 'Inserimento non riuscito. I dati sono conservati.';
+        } finally { this.savingBackendCensus = false; }
+    }
 
     ngOnInit(): void { if (this.useBackend) void this.caricaComunitaBackend(); }
     async caricaComunitaBackend(): Promise<void> {
@@ -1311,7 +1343,8 @@ export class Comunita implements OnInit {
         this.invitingBackend = true;
         try {
             const invitation = await this.onboardingApi.invite(this.backendCommunity.context.communityId, personId);
-            this.backendInviteLink = `${window.location.origin}/gestionale-cn/onboarding-comunita?invitationToken=${encodeURIComponent(invitation.invitationToken)}`;
+            const origin = Capacitor.isNativePlatform() ? PUBLIC_INVITE_BASE_URL : window.location.origin;
+            this.backendInviteLink = `${origin}/gestionale-cn/onboarding-comunita?invitationToken=${encodeURIComponent(invitation.invitationToken)}`;
             this.messaggio = 'Invito personale creato. Condividi il link con il destinatario.';
         } catch { this.messaggio = 'Invito non creato. Verifica email, appartenenza e autorizzazioni.'; }
         finally { this.invitingBackend = false; }

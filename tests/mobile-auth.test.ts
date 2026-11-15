@@ -6,6 +6,14 @@ import { MobileAuthSession, parseMobileCallback } from '../src/app/auth/mobile-a
 import { loadNativeAuthRedirect, NativeAuthConfigError } from '../src/app/auth/native-auth-config';
 import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, NativeSubmission } from '../src/app/auth/entra-native-core';
 import { postLoginDestination } from '../src/app/auth/post-login-route';
+import { COMMUNITY_ONBOARDING_ROLES } from '../src/app/auth/community-roles';
+
+test('ordinary onboarding excludes catechist and keeps brother responsible and corresponsible', () => {
+  assert.equal(COMMUNITY_ONBOARDING_ROLES.some(r => String(r.backend) === 'CATECHIST'), false);
+  assert.ok(COMMUNITY_ONBOARDING_ROLES.some(r => r.backend === 'MEMBER' && r.value === ''));
+  assert.ok(COMMUNITY_ONBOARDING_ROLES.some(r => r.backend === 'RESPONSIBLE'));
+  assert.ok(COMMUNITY_ONBOARDING_ROLES.some(r => r.backend === 'CO_RESPONSIBLE'));
+});
 
 test('post-login keeps browser dashboard and selects native home/onboarding by backend linkage', () => {
   assert.equal(postLoginDestination(true, true), '/mobile/home');

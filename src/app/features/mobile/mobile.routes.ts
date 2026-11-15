@@ -17,6 +17,7 @@ export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   section('home', 'Home'), section('calendario', 'Calendario'), section('compleanni', 'Compleanni'),
   section('gruppi', 'Gruppi'), section('avvisi', 'Avvisi'), section('profilo', 'Profilo'), section('altro', 'Altro'),
+  { path: 'approvazioni', loadComponent: () => import('./mobile-approvals').then(c => c.MobileApprovals), canMatch: [linkedGuard] },
   { path: 'onboarding', loadComponent: () => import('../gestionaleCN/onboarding-comunita/onboarding-comunita').then(c => c.OnboardingComunita) },
   { path: 'comunita', loadComponent: () => import('../gestionaleCN/comunita/comunita').then(c => c.Comunita), canMatch: [linkedGuard] },
   { path: 'convivenze', loadComponent: () => import('../gestionaleCN/convivenze/convivenze').then(c => c.Convivenze), canMatch: [linkedGuard] },

@@ -53,9 +53,12 @@ Il codice invito nell'URL onboarding viene ricordato per un'ora in sessionStorag
 prima del bootstrap, per attraversare il redirect Microsoft. Non e identita o
 fonte di ruolo: viene validato dal backend. Nessuna email reale viene inviata.
 
-Un responsabile approva appartenenze ordinarie della propria comunita. Le richieste
-RESPONSIBLE, CO_RESPONSIBLE e CATECHIST sono riservate all'amministrazione di
-sistema; nessuna delega o equipe viene generata da questo flusso.
+Un responsabile approva Fratelli, servizi e CO_RESPONSIBLE della propria comunita.
+Solo RESPONSIBLE richiede l'amministrazione superiore; nessuno puo approvare la
+propria richiesta, nemmeno un amministratore. CATECHIST e rifiutato nelle nuove
+richieste ordinarie, ma dati, membership e inviti gia autorizzati non sono eliminati.
+Un Corresponsabile con APPROVE_MEMBERS puo approvare solo MEMBER della stessa
+comunita. Non puo approvare servizi, Corresponsabili o Responsabili.
 
 Per amministrazione iniziale configurare nell'ambiente backend i GUID degli
 account autorizzati in Onboarding__AdminObjectIds__0, __1, ecc. Il confronto usa
@@ -84,10 +87,61 @@ sull'onboarding con Verifica approvazione. Errori non cancellano i dati del form
 Il contesto resta in memoria per account, senza recuperare privilegi da storage.
 
 La pagina Comunita legge il nuovo endpoint scoped: niente membri locali mescolati
-ai record DB. In modalita API e una vista di consultazione con inviti verificati
-e approvazioni. I form censimento/modifica mock non scrivono record DB e non sono
-mostrati in questa vista; un eventuale CRUD anagrafico reale resta un modulo
-successivo. Demo e anteprima conservano il percorso preesistente.
+ai record DB. POST /api/me/community/members censisce una Person e una membership
+MEMBER, senza User e senza accettare consensi altrui. Richiede EDIT_MEMBRI, deriva
+CommunityId dal contesto JWT/DB e ignora ruoli/comunita aggiuntivi del client.
+Duplicati compatibili sono bloccati; la successiva approvazione seleziona
+esplicitamente la Person censita, senza dedurre identita da email o nome.
+Modifica avanzata, coppie/unita e consensi di dettaglio non sono sostituiti da
+questo inserimento individuale minimo. Demo e anteprima restano separate.
+
+## Deleghe operative e audit
+
+GET /api/onboarding/delegations e PUT /api/onboarding/delegations/{personId}
+richiedono il Responsabile attivo oppure l'admin superiore configurato. Comunita e destinatario CO_RESPONSIBLE sono
+controllati sul DB. La whitelist e in CommunityPermissions; il ruolo formale
+non cambia. Ogni sostituzione/revoca e auditata. /api/me rilegge le deleghe;
+Profilo mobile offre Aggiorna profilo e permessi. La gestione si apre da
+Altro > Appartenenze e deleghe. Il backend restituisce canApprove/canReject
+per ogni richiesta: la UI non deduce l'autorizzazione dalla selezione di un ruolo.
+Per il Responsabile il contesto e sempre derivato da /api/me. L'admin superiore
+puo selezionare un CommunityId DB con querystring GET o payload PUT per registrare
+una delega anche se il Responsabile non e digitale; solo l'oid amministrativo
+validato concede questa facolta, mai il CommunityId del browser.
+
+Il Corresponsabile puo emettere inviti verificati solo con EDIT_MEMBRI e
+APPROVE_MEMBERS insieme e solo per membership MEMBER: la sola gestione anagrafica
+non aggira la verifica dell'appartenenza. Gli inviti mobile generano URL pubblici,
+non localhost. CommunityActionAudits conserva attore JWT oid/tid, azione, target
+e contesto, senza token, email o consensi delegati. I nuovi endpoint mutanti
+scrivono audit nella stessa transazione dei dati. Le API legacy ProxyTrust
+non diventano automaticamente equivalenti alle nuove API JWT scoped.
+
+## Aggiornamento schema di questa fase
+
+Migration CommunityOperationalDelegations: crea CommunityMemberDelegations e
+CommunityActionAudits; non altera o elimina ruoli Catechista, Person o User.
+E stata preparata, NON applicata ad Azure. Applicarla PRIMA del deploy operativo
+con una connessione test gia configurata in secrets/env:
+
+```powershell
+cd C:\Dev\GestionaleApiClean
+dotnet ef database update --project .\Gestionale.csproj --startup-project .\Gestionale.csproj
+```
+
+Il form carica le comunita reali da GET /api/onboarding/parishes/{id}/communities.
+Solo il richiedente Responsabile puo proporre un numero non ancora censito,
+che viene creato esclusivamente dopo approvazione superiore. Il numero non e un ID.
+Pending mostra comunita/ruolo/stato; RESPINTA consente correzione e ripresentazione
+sulla stessa richiesta. Dopo approvazione /api/me linked=true apre /mobile/home.
+
+Verifiche di questa fase: 67 controlli backend Identity (JWT locale + DB in memoria),
+24 test auth frontend e 21 scenari UI, inclusi pending/home e rifiuto/ripresentazione.
+dotnet test sul progetto API non scopre suite: i controlli effettivi si eseguono
+con dotnet run --project Tests/Identity/IdentityChecks.csproj.
+Build .NET senza errori, con warning XML/NuGet esistenti; build Angular con warning
+CSS/CommonJS. Node 22 e due worker sono stati usati per evitare uscite locali
+senza diagnostica di alcune esecuzioni Node 20. Nessuna configurazione web modificata.
 
 ## Migration e verifiche
 

@@ -5,6 +5,7 @@ import { getApiConfiguration } from './api-config';
 import { CurrentUserContext } from './current-user-context';
 
 export interface BackendParish { id: number; name: string; address: string | null; }
+export interface BackendCommunity { id: number; number: number; }
 export interface CompleteOnboardingRequest {
     firstName: string; lastName: string; parishId: number; communityNumber: number;
     role: string; phone: string; stage: string; privacyConsent: boolean; invitationToken?: string;
@@ -13,11 +14,12 @@ export interface CommunityAccessRequest {
     id: number; firstName: string; lastName: string; parishId: number; parishName: string;
     communityNumber: number; requestedRole: string; requestedStage: string; status: string; submittedAt: string;
     existingPeople: Array<{ id: number; name: string }>;
+    canApprove: boolean; canReject: boolean;
 }
 export interface OnboardingResult { status: string; requestId: number; context: CurrentUserContext; }
 export interface OwnOnboardingRequest {
     firstName: string; lastName: string; phone: string; parishId: number; communityNumber: number;
-    requestedRole: string; requestedStage: string; status: string;
+    requestedRole: string; requestedStage: string; status: string; parishName?: string;
 }
 export interface CommunityData {
     context: CurrentUserContext;
@@ -31,6 +33,15 @@ export class OnboardingApiService {
     getParishes(): Promise<BackendParish[]> {
         return firstValueFrom(this.http.get<BackendParish[]>(`${this.url}/parishes`).pipe(timeout(15000)));
     }
+    getCommunities(parishId: number): Promise<BackendCommunity[]> {
+        return firstValueFrom(this.http.get<BackendCommunity[]>(`${this.url}/parishes/${parishId}/communities`).pipe(timeout(15000)));
+    }
+    getDelegations(): Promise<{ availablePermissions: string[]; members: Array<{personId: number; name: string; permissions: string[]}> }> {
+        return firstValueFrom(this.http.get<{ availablePermissions: string[]; members: Array<{personId: number; name: string; permissions: string[]}> }>(`${this.url}/delegations`).pipe(timeout(15000)));
+    }
+    saveDelegations(personId: number, permissions: string[]): Promise<unknown> {
+        return firstValueFrom(this.http.put(`${this.url}/delegations/${personId}`, { permissions }).pipe(timeout(15000)));
+    }
     getCurrentRequest(): Promise<OwnOnboardingRequest | null> {
         return firstValueFrom(this.http.get<OwnOnboardingRequest | null>(`${this.url}/current`).pipe(timeout(15000)));
     }
@@ -42,6 +53,9 @@ export class OnboardingApiService {
     }
     getMyCommunity(): Promise<CommunityData> {
         return firstValueFrom(this.http.get<CommunityData>(`${getApiConfiguration().apiBaseUrl}/me/community`).pipe(timeout(15000)));
+    }
+    censusMember(payload: { firstName: string; lastName: string; email: string; phone: string }): Promise<unknown> {
+        return firstValueFrom(this.http.post(`${getApiConfiguration().apiBaseUrl}/me/community/members`, payload).pipe(timeout(15000)));
     }
     invite(communityId: number, personId: number): Promise<{ invitationToken: string }> {
         return firstValueFrom(this.http.post<{ invitationToken: string }>(`${this.url}/invitations`, { communityId, personId }).pipe(timeout(15000)));
