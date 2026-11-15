@@ -6,23 +6,39 @@ import { CommunityApiService, CommunityMemberView, CommunityView } from '../../s
 import { communityRoleLabel } from '../../auth/community-roles';
 
 @Component({
-  selector: 'app-mobile-community', standalone: true, imports: [FormsModule, RouterLink, DatePipe], styleUrl: './mobile-community.scss',
+  selector: 'app-mobile-community', standalone: true, imports: [FormsModule, RouterLink, DatePipe], styleUrl: './mobile-community-list.scss',
   template: `
-    <div class="page-title"><div><h1>La mia comunità</h1>@if (data) { <p>{{ data.context.communityName }} · {{ data.context.parishName }}</p><span class="muted">{{ data.members.length }} membri</span> }</div><button class="icon" type="button" aria-label="Aggiorna membri" title="Aggiorna membri" (click)="load()" [disabled]="loading"><i class="pi pi-refresh" aria-hidden="true"></i></button></div>
+    <header class="community-header">
+      <div class="heading-row"><h1>La mia comunità</h1><button class="icon" type="button" aria-label="Aggiorna membri" title="Aggiorna membri" (click)="load()" [disabled]="loading"><i class="pi pi-refresh" aria-hidden="true"></i></button></div>
+      @if (data) {
+        <p class="community-context">{{ data.context.communityName }} · {{ data.context.parishName }}</p>
+        <div class="community-meta"><span>Ruolo: {{ roleLabel(data.context.role || 'MEMBER') }}</span><strong>{{ memberCountLabel }}</strong></div>
+      }
+    </header>
     @if (loading) { <div role="status" aria-label="Caricamento membri" aria-busy="true">@for (row of [1,2,3,4]; track row) { <div class="skeleton"></div> }</div> }
     @else if (error) { <section class="state" role="alert"><h2>Comunità non disponibile</h2><p>{{ error }}</p><button class="primary" type="button" (click)="load()">Riprova</button></section> }
     @else if (data) {
-      <div class="community-actions">@if (data.canAddMember) { <a class="primary" routerLink="/mobile/community/add"><i class="pi pi-user-plus" aria-hidden="true"></i> Aggiungi fratello</a> }<a class="secondary" [routerLink]="'/mobile/community/member/' + data.context.personId"><i class="pi pi-shield" aria-hidden="true"></i> La mia scheda e privacy</a></div>
-      <label class="search">Cerca membro<input type="search" name="query" [(ngModel)]="query" placeholder="Nome o cognome" autocomplete="off" /></label>
+      @if (data.canAddMember) { <a class="primary" routerLink="/mobile/community/add"><i class="pi pi-plus" aria-hidden="true"></i><span>Aggiungi fratello</span></a> }
+      <div class="search-bar">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <input type="search" name="query" [(ngModel)]="query" aria-label="Cerca nella comunità" placeholder="Cerca nella comunità" autocomplete="off" enterkeyhint="search" />
+        @if (query) { <button class="icon" type="button" aria-label="Cancella ricerca" (click)="query = ''"><i class="pi pi-times" aria-hidden="true"></i></button> }
+      </div>
       @if (!data.members.length) { <section class="state"><i class="pi pi-users" aria-hidden="true"></i><h2>Nessun fratello censito</h2></section> }
       @else if (!filtered.length) { <section class="state"><h2>Nessun risultato</h2><p>Nessun membro corrisponde alla ricerca.</p></section> }
-      <div class="member-list">@for (member of filtered; track member.personId) {
+      <ul class="member-list" aria-label="Fratelli della comunità">@for (member of filtered; track member.personId) {
+        <li>
         <a class="member-row" [routerLink]="'/mobile/community/member/' + member.personId">
-          <span class="avatar">@if (member.photoUrl && !failedPhotos.has(member.personId)) { <img [src]="member.photoUrl" alt="" (error)="failedPhotos.add(member.personId)" /> } @else { {{ initials(member) }} }</span>
-          <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong>@if (member.role !== 'MEMBER') { <span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span> }@if (member.birthDate) { <small><i class="pi pi-gift" aria-hidden="true"></i> {{ member.birthDate | date:'dd/MM':'UTC' }}</small> }</span>
-          <i class="pi pi-angle-right muted" aria-hidden="true"></i>
+          <span class="avatar">@if (member.photoUrl && !failedPhotos.has(member.personId)) { <img [src]="member.photoUrl" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="failedPhotos.add(member.personId)" /> } @else { {{ initials(member) }} }</span>
+          <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ member.birthDate | date:'dd/MM':'UTC' }}</small> }</span>
+          <i class="pi pi-angle-right chevron" aria-hidden="true"></i>
         </a>
-      }</div>
+        </li>
+      }</ul>
+      <nav class="community-links" aria-label="Altre azioni comunità">
+        @if (data.context.personId) { <a [routerLink]="'/mobile/community/member/' + data.context.personId"><i class="pi pi-shield" aria-hidden="true"></i><span>La mia scheda e privacy</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
+        @if (canReview) { <a routerLink="/mobile/approvazioni"><i class="pi pi-history" aria-hidden="true"></i><span>Richieste e storico</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
+      </nav>
     }
   `
 })
@@ -33,7 +49,9 @@ export class MobileCommunity implements OnInit {
   protected error = '';
   protected query = '';
   protected readonly failedPhotos = new Set<number>();
-  protected readonly roleLabel = communityRoleLabel;
+  protected roleLabel(role: string): string { return role === 'MEMBER' ? 'Fratello / Sorella' : communityRoleLabel(role); }
+  protected get memberCountLabel(): string { const count = this.data?.members.length ?? 0; return count === 1 ? '1 fratello' : count + ' fratelli'; }
+  protected get canReview(): boolean { return this.data?.context.permissions?.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
   ngOnInit(): void { void this.load(); }
   protected async load(): Promise<void> {
     this.loading = true; this.error = ''; this.data = null;

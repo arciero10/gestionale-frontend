@@ -6,7 +6,7 @@ import { CurrentUserContext } from '../auth/current-user-context';
 
 export interface CommunityMemberView {
   personId: number; firstName: string; lastName: string; role: string;
-  phoneNumber?: string; email?: string; birthDate?: string; photoUrl?: string;
+  phoneNumber?: string; email?: string; birthDate?: string; photoUrl?: string; stage?: string;
 }
 export interface CommunityView { context: CurrentUserContext; members: CommunityMemberView[]; canAddMember: boolean; assignableRoles: string[] }
 export interface CommunityMemberDetail {

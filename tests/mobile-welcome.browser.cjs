@@ -159,9 +159,10 @@ async function installNative(context, platform) {
       let communityManager = false;
       let privacySaved = false;
       let communityState = 'ready';
+      let approvalCalls = 0;
       const communityMembers = [
         { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER' },
-        { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', birthDate: '1985-05-03' }
+        { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', stage: 'Rinnovate Promesse Battesimali', birthDate: '1985-05-03', email: 'shared@example.test', phoneNumber: '3331234567' }
       ];
       await context.route('**/api/**', async route => {
         const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' };
@@ -186,8 +187,10 @@ async function installNative(context, platform) {
             await route.fulfill({ headers, json: { member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
               canEditPhone: false, canEditEmail: false, canEditBirthDate: false, canManageRole: communityManager,
               assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
-          } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia di test' },
-            members: communityState === 'empty' ? [] : communityMembers, canAddMember: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
+          } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
+              role: communityManager ? 'RESPONSIBLE' : 'MEMBER', permissions: communityManager ? ['EDIT_MEMBRI', 'APPROVE_REQUESTS'] : ['VIEW_MEMBRI'] },
+            members: communityState === 'empty' ? [] : communityState === 'single' ? communityMembers.slice(0,1) : communityMembers,
+            canAddMember: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
           return;
         }
         if (new URL(route.request().url()).pathname.endsWith('/me')) {
@@ -197,7 +200,7 @@ async function installNative(context, platform) {
           const linked = flow === 'linked' || flow === 'pending' && meCalls > 1;
           await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE'] : [],
             ...(linked ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: 'MEMBER', memberCount: 2 } : {}) } });
-        } else if (route.request().url().endsWith('/onboarding/requests')) await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : [] });
+        } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : [] }); }
         else if (route.request().url().endsWith('/onboarding/requests/101/approve')) {
           assert.equal(route.request().method(), 'POST'); bootstrapApproved = true;
           await route.fulfill({ headers, json: { status: 'APPROVATA' } });
@@ -263,16 +266,29 @@ async function installNative(context, platform) {
         await page.waitForURL(url => url.pathname === '/mobile/community');
         await page.locator('.member-row').first().waitFor();
         assert.equal(await page.locator('.member-row').count(), 2);
+        assert.match(await page.locator('.community-header').textContent(), /3ª Comunità · Parrocchia Martiri Canadesi/);
+        await page.getByText('2 fratelli', { exact: true }).waitFor();
+        assert.equal(await page.locator('app-mobile-community table, app-mobile-community app-member-editor').count(), 0);
+        assert.equal(await page.locator('.member-list a[href^="tel:"],.member-list a[href^="mailto:"]').count(), 0);
+        assert.ok(!(await page.locator('.member-list').textContent()).includes('shared@example.test'));
+        assert.ok(!(await page.locator('.member-list').textContent()).includes('3331234567'));
+        await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('Rinnovate Promesse Battesimali', {exact:true}).waitFor();
+        assert.equal(await page.getByRole('link', { name: 'Richieste e storico' }).count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).count(), 0);
         assert.equal(await page.locator('.mobile-bottom a.active').textContent(), 'Comunità');
-        await page.getByRole('searchbox').fill('rossi');
+        await page.getByRole('searchbox', {name:'Cerca nella comunità'}).fill('rossi Anna');
         assert.equal(await page.locator('.member-row').count(), 1);
+        assert.equal(await page.locator('.member-row').first().locator('.birthday,.stage,img').count(), 0);
         await page.getByRole('searchbox').fill('nessuno');
         await page.getByRole('heading', { name: 'Nessun risultato' }).waitFor();
-        await page.getByRole('searchbox').fill('');
+        await page.getByRole('button', {name:'Cancella ricerca'}).click();
+        await page.waitForFunction(() => document.querySelector('input[type="search"]')?.value === '');
+        assert.equal(await page.getByRole('searchbox').inputValue(), '');
         for (const width of [320, 390, 412, 768]) {
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          assert.ok(await page.locator('.member-copy').evaluateAll(nodes => nodes.every(n => n.scrollWidth <= n.clientWidth)));
+          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(), ['Home','Calendario','Comunità','Altro']);
           await page.screenshot({path:path.join(output,`community-${width}.png`),fullPage:true});
         }
         await page.setViewportSize({width:390,height:844});
@@ -287,8 +303,15 @@ async function installNative(context, platform) {
         await page.screenshot({path:path.join(output,'community-detail.png'),fullPage:true});
         communityManager = true;
         await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
+        await page.getByRole('link', {name:'Richieste e storico'}).waitFor();
+        assert.equal(await page.getByRole('link', {name:'Richieste e storico'}).getAttribute('href'), '/mobile/approvazioni');
+        assert.equal(approvalCalls, 0, 'La pagina comunita non carica richieste approvate');
+        assert.equal(await page.locator('app-mobile-community table, app-mobile-community app-member-editor').count(), 0);
         await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/mobile/community/add');
+        await page.locator('app-member-editor').waitFor();
+        assert.equal(await page.locator('app-mobile-community').count(), 0);
+        assert.equal(await page.locator('app-member-editor').count(), 1);
         await page.getByLabel('Nome', { exact: true }).fill('Nuovo');
         await page.getByLabel('Cognome', { exact: true }).fill('Fratello');
         const roles = await page.getByLabel('Ruolo nella comunità').locator('option').allTextContents();
@@ -309,6 +332,16 @@ async function installNative(context, platform) {
         await page.getByRole('button', { name: 'Aggiorna membri' }).click();
         await page.locator('.member-row').filter({hasText:'Nuovo Fratello'}).waitFor();
         await page.screenshot({path:path.join(output,'community-created.png'),fullPage:true});
+        communityState = 'single';
+        await page.getByRole('button', { name: 'Aggiorna membri' }).click();
+        await page.getByText('1 fratello', {exact:true}).waitFor();
+        for (const width of [320,390,393,412]) {
+          await page.setViewportSize({width,height:844});
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          const add = page.getByRole('link', {name:'Aggiungi fratello',exact:true});
+          assert.ok(await add.evaluate(n => n.getBoundingClientRect().height >= 48 && n.scrollWidth <= n.clientWidth));
+          await page.screenshot({path:path.join(output,`community-manager-${width}.png`),fullPage:true});
+        }
         console.log('PASS mobile community: scoped API, ricerca, privacy personale, creazione, route e viewport');
       }
       if (flow === 'pending' || flow === 'rejected') {
