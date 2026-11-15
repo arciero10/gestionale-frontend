@@ -10,6 +10,10 @@ export const mobileAccessGuard: CanMatchFn = () => {
   return auth.signedIn() || router.parseUrl('/');
 };
 const linkedGuard: CanMatchFn = () => inject(CurrentUserService).context()?.linkedToCommunity === true || inject(Router).parseUrl('/mobile/onboarding');
+const approvalGuard: CanMatchFn = () => {
+  const context = inject(CurrentUserService).context();
+  return context?.isOnboardingAdmin === true || context?.linkedToCommunity === true || inject(Router).parseUrl('/mobile/onboarding');
+};
 const structureGuard: CanMatchFn = () => inject(CurrentUserService).context()?.permissions.includes('CREATE_CONVIVENZA') || inject(Router).parseUrl('/forbidden');
 const section = (path: string, title: string) => ({ path, loadComponent: () => import('./mobile-home').then(c => c.MobileHome), data: { section: path, title }, canMatch: [linkedGuard] });
 
@@ -17,7 +21,7 @@ export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   section('home', 'Home'), section('calendario', 'Calendario'), section('compleanni', 'Compleanni'),
   section('gruppi', 'Gruppi'), section('avvisi', 'Avvisi'), section('profilo', 'Profilo'), section('altro', 'Altro'),
-  { path: 'approvazioni', loadComponent: () => import('./mobile-approvals').then(c => c.MobileApprovals), canMatch: [linkedGuard] },
+  { path: 'approvazioni', loadComponent: () => import('./mobile-approvals').then(c => c.MobileApprovals), canMatch: [approvalGuard] },
   { path: 'onboarding', loadComponent: () => import('../gestionaleCN/onboarding-comunita/onboarding-comunita').then(c => c.OnboardingComunita) },
   { path: 'comunita', loadComponent: () => import('../gestionaleCN/comunita/comunita').then(c => c.Comunita), canMatch: [linkedGuard] },
   { path: 'convivenze', loadComponent: () => import('../gestionaleCN/convivenze/convivenze').then(c => c.Convivenze), canMatch: [linkedGuard] },

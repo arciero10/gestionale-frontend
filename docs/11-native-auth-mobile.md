@@ -52,6 +52,12 @@ nessun ID token/header fiduciario. Nessun replay automatico delle scritture su 4
 
 ## Post-login e home mobile
 
+Bootstrap primo Responsabile: l'amministratore superiore configurato riceve
+isOnboardingAdmin da /api/me anche se non associato. L'intestazione mobile offre
+Appartenenze e approvazioni e la route /mobile/approvazioni non richiede membership
+per questa capability. Home resta riservata a linkedToCommunity=true; nessun
+cambiamento al login o al divieto di autoapprovazione. Procedura completa in docs/08.
+
 Aggiornamento ruoli/approvazioni: vedere docs/01 e docs/08. Il form ordinario non
 offre Catechista, seleziona comunita DB e mostra il riepilogo pending o rifiutato.
 Verifica approvazione aggiorna /api/me e apre Home solo con linkedToCommunity=true.

@@ -31,6 +31,42 @@ approvazione di sistema. Non si creano parrocchie dai dati mock.
 
 ## Richiesta, invito e approvazione
 
+### Bootstrap del primo Responsabile
+
+Non serve un Responsabile gia attivo nella comunita. Si usano gli endpoint
+esistenti GET /api/onboarding/requests e POST /api/onboarding/requests/{id}/approve.
+L'admin superiore e riconosciuto esclusivamente tramite oid del JWT validato,
+confrontato con Onboarding:AdminObjectIds nel backend (env Azure
+Onboarding__AdminObjectIds__0, __1, ecc.), nel tenant External ID gia verificato.
+Email mock, ruolo richiesto, claim ADMIN e CommunityId del client non abilitano
+questa funzione. L'account approvatore deve essere distinto dal richiedente:
+il divieto di autoapprovazione resta valido anche per un admin configurato.
+
+Procedura operativa:
+
+1. Configurare l'oid reale di un amministratore superiore distinto dal richiedente
+   nella configurazione backend esistente, senza inventare GUID o condividere token.
+2. Accedere nell'app come amministratore. GET /api/me espone sempre la capability
+   isOnboardingAdmin, anche con linkedToCommunity=false e senza User/Person locali.
+   oid/tid restano esposti soltanto nelle modalita debug gia previste.
+3. Dall'intestazione mobile aprire Appartenenze e approvazioni. Se l'admin e gia
+   associato, usare Altro > Appartenenze e deleghe. La route e /mobile/approvazioni.
+4. Cercare la richiesta della 3a Comunita e della parrocchia Martiri Canadesi
+   verificando i dati reali della lista; non assumere CommunityId o RequestId = 3.
+5. Se esiste una Person compatibile, selezionarla dopo verifica; altrimenti usare
+   Nuova persona. Premere Approva: il POST esistente completa il collegamento
+   e l'audit MEMBERSHIP_APPROVED registra oid/tid dell'amministratore reale.
+6. Il richiedente preme Verifica approvazione. GET /api/me ritorna
+   linkedToCommunity=true, ruolo RESPONSIBLE e ID DB reale; si apre /mobile/home.
+
+La dashboard admin web esistente include gia il componente ApprovazioniAppartenenza.
+La capability UI non cambia le autorizzazioni degli endpoint. Se il pulsante
+Approva manca o il server risponde 403, verificare configurazione amministrativa,
+identita distinta e stato account: non aggirare il controllo dal frontend.
+Nessun nuovo endpoint o schema DB per questo bootstrap. Resta prerequisito
+la migration CommunityOperationalDelegations gia introdotta nella fase precedente.
+Questa modifica non approva automaticamente richieste reali nel database remoto.
+
 Una richiesta senza prova resta IN_ATTESA_APPROVAZIONE. Vengono salvati i dati
 minimi, ruolo/tappa richiesti e data consenso per la richiesta di accesso.
 Questo consenso non sostituisce i futuri consensi individuali di dettaglio.

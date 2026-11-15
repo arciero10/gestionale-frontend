@@ -70,7 +70,7 @@ export class MobileHome {
     { title: 'Convivenze', path: 'convivenze', icon: 'pi-calendar-plus', background: '#dcfce7', color: '#166534' }
   ];
   protected canOrganize(): boolean { return this.current.context()?.permissions.includes('CREATE_CONVIVENZA') === true; }
-  protected canApprove(): boolean { return this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
+  protected canApprove(): boolean { return this.current.context()?.isOnboardingAdmin === true || this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
   protected get emptyIcon(): string { return this.cards.find(card => card.path === this.section)?.icon ?? 'pi-info-circle'; }
   protected get unavailableMessage(): string {
     return ({ calendario: 'Le date degli incontri della comunità non sono ancora disponibili. Puoi consultare le convivenze.',

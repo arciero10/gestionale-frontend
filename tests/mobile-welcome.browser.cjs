@@ -150,11 +150,12 @@ async function installNative(context, platform) {
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected']) {
+    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await installNative(context, 'android');
       let meCalls = 0;
       let resubmitted = false;
+      let bootstrapApproved = false;
       await context.route('**/api/**', async route => {
         const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
         if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
@@ -163,8 +164,12 @@ async function installNative(context, platform) {
           meCalls++;
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
           const linked = flow === 'linked' || flow === 'pending' && meCalls > 1;
-          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE'] : [],
+          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE'] : [],
             ...(linked ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: 'MEMBER', memberCount: 2 } : {}) } });
+        } else if (route.request().url().endsWith('/onboarding/requests')) await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : [] });
+        else if (route.request().url().endsWith('/onboarding/requests/101/approve')) {
+          assert.equal(route.request().method(), 'POST'); bootstrapApproved = true;
+          await route.fulfill({ headers, json: { status: 'APPROVATA' } });
         } else if (route.request().url().endsWith('/onboarding/parishes')) await route.fulfill({ headers, json: [{ id: 11, name: 'Parrocchia di test', address: '' }] });
         else if (route.request().url().endsWith('/communities')) await route.fulfill({ headers, json: [{ id: 91, number: 3 }] });
         else if (route.request().url().endsWith('/onboarding/current')) await route.fulfill({ headers, json: ['pending', 'rejected'].includes(flow) ? { firstName: 'Test', lastName: 'Member', phone: '', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'MEMBER', requestedStage: 'Precatecumenato', status: flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : 'RESPINTA' } : null });
@@ -180,9 +185,9 @@ async function installNative(context, platform) {
       if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (['password', 'linked', 'retry', 'pending', 'rejected'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (!['password', 'linked', 'retry', 'pending', 'rejected'].includes(flow)) {
+      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap'].includes(flow)) {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -201,6 +206,15 @@ async function installNative(context, platform) {
       } else {
         await page.waitForURL(url => url.pathname === (flow === 'linked' ? '/mobile/home' : '/mobile/onboarding'));
         assert.equal(meCalls, flow === 'retry' ? 2 : 1);
+      }
+      if (flow === 'bootstrap') {
+        await page.getByRole('link', { name: 'Appartenenze e approvazioni', exact: true }).click();
+        await page.waitForURL(url => url.pathname === '/mobile/approvazioni');
+        await page.getByRole('button', { name: 'Approva', exact: true }).click();
+        await page.getByText('Appartenenza approvata.', { exact: true }).waitFor();
+        assert.equal(bootstrapApproved, true);
+        assert.equal(await page.locator('.layout-container').count(), 0);
+        await page.screenshot({path:path.join(output,'bootstrap-admin.png'),fullPage:true});
       }
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();
