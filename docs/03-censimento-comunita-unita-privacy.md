@@ -96,14 +96,30 @@ Se è una coppia:
 
 ## Visibilità dati nella comunità
 
-I fratelli e le sorelle possono vedere l'elenco della propria comunità e i contatti essenziali:
+I fratelli e le sorelle possono vedere l'elenco della propria comunità.
+I contatti essenziali sono condivisi solo con il consenso individuale del titolare:
 
 | Visibile | Non visibile |
 |---|---|
 | Nome e cognome | Documenti privacy altrui |
-| Telefono | Dati sensibili |
-| Email | Note riservate |
+| Telefono, se autorizzato | Dati sensibili |
+| Email, se autorizzata | Note riservate |
 | Ruolo comunitario | Audit/log |
+
+Foto e data di nascita/compleanno richiedono anch'essi consenso esplicito.
+Tutti i flag di condivisione e le preferenze notifiche nascono disattivati,
+anche per le persone censite dal Responsabile. Il consenso onboarding al trattamento
+non equivale al consenso alla condivisione nella rubrica.
+
+Il filtro viene applicato dal backend: i campi non condivisi non sono serializzati.
+Il titolare vede i propri dati e gestisce solo i propri consensi. Il Responsabile
+non puo abilitare consensi altrui o sovrascrivere contatti nascosti.
+Il collegamento al coniuge e visibile solo con consenso di entrambi, matrimonio
+attivo e membership attiva di entrambi nella stessa comunita. Nessuna storia
+matrimoniale o nota libera viene restituita.
+
+L'amministrazione tecnica/onboarding non attribuisce accesso ai dati personali
+di altre comunita. Per API, migration e UX mobile vedere docs/12-mobile-community.md.
 
 ---
 

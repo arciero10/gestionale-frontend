@@ -24,7 +24,7 @@ import { AuthService } from '../../auth/auth.service';
       @if (current.context()?.linkedToCommunity) {
         <nav class="mobile-bottom" aria-label="Navigazione app">
           @for (tab of tabs; track tab.path) {
-            <a [routerLink]="tab.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page"><i [class]="'pi ' + tab.icon" aria-hidden="true"></i><span>{{ tab.label }}</span></a>
+            <a [routerLink]="tab.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: tab.path !== '/mobile/community' }" ariaCurrentWhenActive="page"><i [class]="'pi ' + tab.icon" aria-hidden="true"></i><span>{{ tab.label }}</span></a>
           }
         </nav>
       }
@@ -50,7 +50,7 @@ export class MobileShell implements OnInit, OnDestroy {
   protected readonly tabs = [
     { label: 'Home', icon: 'pi-home', path: '/mobile/home' },
     { label: 'Calendario', icon: 'pi-calendar', path: '/mobile/calendario' },
-    { label: 'Comunità', icon: 'pi-users', path: '/mobile/comunita' },
+    { label: 'Comunità', icon: 'pi-users', path: '/mobile/community' },
     { label: 'Altro', icon: 'pi-ellipsis-h', path: '/mobile/altro' }
   ];
   ngOnInit(): void {

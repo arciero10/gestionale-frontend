@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
 import { getApiConfiguration } from './api-config';
 import { CurrentUserContext } from './current-user-context';
+import { CommunityApiService, CommunityView } from '../services/community-api.service';
 
 export interface BackendParish { id: number; name: string; address: string | null; }
 export interface BackendCommunity { id: number; number: number; }
@@ -21,14 +22,12 @@ export interface OwnOnboardingRequest {
     firstName: string; lastName: string; phone: string; parishId: number; communityNumber: number;
     requestedRole: string; requestedStage: string; status: string; parishName?: string;
 }
-export interface CommunityData {
-    context: CurrentUserContext;
-    members: Array<{ personId: number; role: string; firstName: string; lastName: string; email: string; phoneNumber: string }>;
-}
+export type CommunityData = CommunityView;
 
 @Injectable({ providedIn: 'root' })
 export class OnboardingApiService {
     private readonly http = inject(HttpClient);
+    private readonly community = inject(CommunityApiService);
     private get url(): string { return `${getApiConfiguration().apiBaseUrl}/onboarding`; }
     getParishes(): Promise<BackendParish[]> {
         return firstValueFrom(this.http.get<BackendParish[]>(`${this.url}/parishes`).pipe(timeout(15000)));
@@ -52,10 +51,10 @@ export class OnboardingApiService {
         return firstValueFrom(this.http.get<CommunityAccessRequest[]>(`${this.url}/requests`).pipe(timeout(15000)));
     }
     getMyCommunity(): Promise<CommunityData> {
-        return firstValueFrom(this.http.get<CommunityData>(`${getApiConfiguration().apiBaseUrl}/me/community`).pipe(timeout(15000)));
+        return this.community.getCommunity();
     }
     censusMember(payload: { firstName: string; lastName: string; email: string; phone: string }): Promise<unknown> {
-        return firstValueFrom(this.http.post(`${getApiConfiguration().apiBaseUrl}/me/community/members`, payload).pipe(timeout(15000)));
+        return this.community.createMember(payload);
     }
     invite(communityId: number, personId: number): Promise<{ invitationToken: string }> {
         return firstValueFrom(this.http.post<{ invitationToken: string }>(`${this.url}/invitations`, { communityId, personId }).pipe(timeout(15000)));

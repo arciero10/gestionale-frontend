@@ -174,6 +174,9 @@ Non inserire access token nei report o log, non simulare il superamento delle po
 
 ## Fonti ufficiali
 
+La funzione dedicata "La mia comunita" usa ora /mobile/community e scheda mobile,
+senza riutilizzare Comunita desktop. API e consensi: docs/12-mobile-community.md.
+
 - https://learn.microsoft.com/en-us/entra/identity-platform/tutorial-native-authentication-prepare-android-app
 - https://learn.microsoft.com/en-us/entra/identity-platform/tutorial-native-authentication-android-sign-up
 - https://learn.microsoft.com/en-us/entra/identity-platform/tutorial-native-authentication-android-self-service-password-reset

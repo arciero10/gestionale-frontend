@@ -8,7 +8,7 @@ import { AuthService } from '../../auth/auth.service';
   template: `
     @if (section === 'home') {
       <div class="greeting"><p>La vita della comunità</p><h1>{{ current.context()?.displayName ? 'Benvenuto, ' + current.context()?.displayName : 'Benvenuto' }}</h1><span>{{ current.context()?.parishName }}</span></div>
-      <a class="community-card" routerLink="/mobile/comunita">
+      <a class="community-card" routerLink="/mobile/community">
         <img src="assets/images/login-bg.jpg" alt="" />
         <div><span class="eyebrow">INSIEME, OGNI GIORNO</span><h2>La mia comunità</h2><p>{{ current.context()?.communityName }}@if (current.context()?.memberCount !== undefined) { · {{ current.context()?.memberCount }} membri }</p><i class="pi pi-arrow-right" aria-hidden="true"></i></div>
       </a>

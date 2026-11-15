@@ -23,7 +23,10 @@ export default [{ path: '', component: MobileShell, children: [
   section('gruppi', 'Gruppi'), section('avvisi', 'Avvisi'), section('profilo', 'Profilo'), section('altro', 'Altro'),
   { path: 'approvazioni', loadComponent: () => import('./mobile-approvals').then(c => c.MobileApprovals), canMatch: [approvalGuard] },
   { path: 'onboarding', loadComponent: () => import('../gestionaleCN/onboarding-comunita/onboarding-comunita').then(c => c.OnboardingComunita) },
-  { path: 'comunita', loadComponent: () => import('../gestionaleCN/comunita/comunita').then(c => c.Comunita), canMatch: [linkedGuard] },
+  { path: 'comunita', redirectTo: 'community', pathMatch: 'full' },
+  { path: 'community', loadComponent: () => import('./mobile-community').then(c => c.MobileCommunity), canMatch: [linkedGuard] },
+  { path: 'community/add', loadComponent: () => import('./mobile-community-member').then(c => c.MobileCommunityMember), canMatch: [linkedGuard] },
+  { path: 'community/member/:id', loadComponent: () => import('./mobile-community-member').then(c => c.MobileCommunityMember), canMatch: [linkedGuard] },
   { path: 'convivenze', loadComponent: () => import('../gestionaleCN/convivenze/convivenze').then(c => c.Convivenze), canMatch: [linkedGuard] },
   { path: 'posti-convivenza', loadComponent: () => import('../gestionaleCN/posti-convivenza/posti-convivenza').then(c => c.PostiConvivenza), canMatch: [linkedGuard, structureGuard] }
 ] }] satisfies Routes;

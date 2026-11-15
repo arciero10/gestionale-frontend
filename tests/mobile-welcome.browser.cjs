@@ -156,9 +156,40 @@ async function installNative(context, platform) {
       let meCalls = 0;
       let resubmitted = false;
       let bootstrapApproved = false;
+      let communityManager = false;
+      let privacySaved = false;
+      let communityState = 'ready';
+      const communityMembers = [
+        { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER' },
+        { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', birthDate: '1985-05-03' }
+      ];
       await context.route('**/api/**', async route => {
-        const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
+        const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' };
         if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
+        const apiPath = new URL(route.request().url()).pathname;
+        if (apiPath.startsWith('/api/me/community')) {
+          assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
+          if (apiPath.endsWith('/community') && communityState === 'error') {
+            await route.fulfill({ status: 503, headers, json: {} }); return;
+          }
+          if (apiPath.endsWith('/privacy')) {
+            if (route.request().method() === 'PUT') { assert.equal(route.request().postDataJSON().showPhone, true); privacySaved = true; }
+            await route.fulfill({ headers, json: { showPhone: privacySaved, showEmail: false, showBirthDate: false, showPhoto: false, showFamily: false, receiveBirthdayNotifications: false, receiveCommunityNotifications: false } });
+          } else if (apiPath.endsWith('/members') && route.request().method() === 'POST') {
+            const payload = route.request().postDataJSON();
+            assert.equal(payload.firstName, 'Nuovo'); assert.equal(payload.role, 'MEMBER');
+            assert.equal(payload.communityId, undefined);
+            communityMembers.push({ personId: 14, firstName: payload.firstName, lastName: payload.lastName, role: payload.role });
+            await route.fulfill({ status: 201, headers, json: { personId: 14 } });
+          } else if (/\/members\/\d+$/.test(apiPath)) {
+            const member = communityMembers.find(m => m.personId === Number(apiPath.split('/').pop()));
+            await route.fulfill({ headers, json: { member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
+              canEditPhone: false, canEditEmail: false, canEditBirthDate: false, canManageRole: communityManager,
+              assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
+          } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia di test' },
+            members: communityState === 'empty' ? [] : communityMembers, canAddMember: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
+          return;
+        }
         if (new URL(route.request().url()).pathname.endsWith('/me')) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
@@ -228,6 +259,57 @@ async function installNative(context, platform) {
           assert.ok(await page.locator('.mobile-bottom a').evaluateAll(nodes => nodes.every(n => n.getBoundingClientRect().height >= 48)));
           await page.screenshot({path:path.join(output,`home-${name}.png`),fullPage:true});
         }
+        await page.locator('.community-card').click();
+        await page.waitForURL(url => url.pathname === '/mobile/community');
+        await page.locator('.member-row').first().waitFor();
+        assert.equal(await page.locator('.member-row').count(), 2);
+        assert.equal(await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).count(), 0);
+        assert.equal(await page.locator('.mobile-bottom a.active').textContent(), 'Comunità');
+        await page.getByRole('searchbox').fill('rossi');
+        assert.equal(await page.locator('.member-row').count(), 1);
+        await page.getByRole('searchbox').fill('nessuno');
+        await page.getByRole('heading', { name: 'Nessun risultato' }).waitFor();
+        await page.getByRole('searchbox').fill('');
+        for (const width of [320, 390, 412, 768]) {
+          await page.setViewportSize({width,height:844});
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          await page.screenshot({path:path.join(output,`community-${width}.png`),fullPage:true});
+        }
+        await page.setViewportSize({width:390,height:844});
+        await page.locator('.member-row').filter({hasText:'Anna Rossi'}).click();
+        await page.waitForURL(url => url.pathname === '/mobile/community/member/12');
+        await page.getByRole('heading', { name: 'Anna Rossi' }).waitFor();
+        assert.equal(await page.getByRole('button', { name: 'Modifica scheda' }).count(), 0);
+        await page.getByLabel('Mostra telefono alla comunità').check();
+        await page.getByRole('button', { name: 'Salva preferenze' }).click();
+        await page.getByText('Preferenze privacy salvate.', { exact: true }).waitFor();
+        assert.equal(privacySaved, true);
+        await page.screenshot({path:path.join(output,'community-detail.png'),fullPage:true});
+        communityManager = true;
+        await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
+        await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).click();
+        await page.waitForURL(url => url.pathname === '/mobile/community/add');
+        await page.getByLabel('Nome', { exact: true }).fill('Nuovo');
+        await page.getByLabel('Cognome', { exact: true }).fill('Fratello');
+        const roles = await page.getByLabel('Ruolo nella comunità').locator('option').allTextContents();
+        assert.ok(roles.every(role => !role.includes('Catechista') && role !== 'Responsabile'));
+        await page.screenshot({path:path.join(output,'community-add.png'),fullPage:true});
+        await page.getByRole('button', { name: 'Salva fratello', exact: true }).click();
+        await page.waitForURL(url => url.pathname === '/mobile/community/member/14');
+        await page.getByRole('heading', { name: 'Nuovo Fratello', exact: true }).waitFor();
+        assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);
+        await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
+        communityState = 'error';
+        await page.getByRole('button', { name: 'Aggiorna membri' }).click();
+        await page.getByRole('heading', { name: 'Comunità non disponibile' }).waitFor();
+        communityState = 'empty';
+        await page.getByRole('button', { name: 'Riprova', exact: true }).click();
+        await page.getByRole('heading', { name: 'Nessun fratello censito' }).waitFor();
+        communityState = 'ready';
+        await page.getByRole('button', { name: 'Aggiorna membri' }).click();
+        await page.locator('.member-row').filter({hasText:'Nuovo Fratello'}).waitFor();
+        await page.screenshot({path:path.join(output,'community-created.png'),fullPage:true});
+        console.log('PASS mobile community: scoped API, ricerca, privacy personale, creazione, route e viewport');
       }
       if (flow === 'pending' || flow === 'rejected') {
         await page.locator('#backendFirstName').waitFor();
