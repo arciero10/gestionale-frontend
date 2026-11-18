@@ -30,7 +30,7 @@ import { communityRoleLabel } from '../../auth/community-roles';
         <li>
         <a class="member-row" [routerLink]="'/mobile/community/member/' + member.personId">
           <span class="avatar">@if (member.photoUrl && !failedPhotos.has(member.personId)) { <img [src]="member.photoUrl" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="failedPhotos.add(member.personId)" /> } @else { {{ initials(member) }} }</span>
-          <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ member.birthDate | date:'dd/MM':'UTC' }}</small> }</span>
+          <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ (member.birthDate + 'T00:00:00Z') | date:'dd/MM':'UTC' }}</small> }</span>
           <i class="pi pi-angle-right chevron" aria-hidden="true"></i>
         </a>
         </li>

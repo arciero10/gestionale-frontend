@@ -59,7 +59,8 @@ solo preferenze persistite: nessun motore invio notifiche e introdotto qui.
 Le note libere Person.Notes non vengono mai restituite.
 Un campo privato omesso da una modifica resta invariato.
 Audit registra oid/tid reali per inserimenti, modifiche, ruoli e consensi.
-Marriage e letto soltanto: nessun nuovo modello o editor coppie in questa fase.
+Marriage e riutilizzato anche per il collegamento operativo del coniuge:
+vedere la sezione anagrafica e coniugi sotto.
 
 ## Schema e rilascio
 
@@ -103,3 +104,61 @@ contatti nella lista, link secondario storico senza caricare richieste,
 bottom nav e viewport 320/390/393/412/768 senza overflow orizzontale.
 Sync Android/iOS e assembleDebug riusciti con JDK 21. Nessuna build Xcode
 o nuova verifica su dispositivo fisico eseguita in questa rifinitura.
+
+## Anagrafica e coniugi
+
+Nascita opzionale: input date nativo, vuoto per default, max oggi e riepilogo
+dd/MM/yyyy. Il giorno viaggia come YYYY-MM-DD (DateOnly API), viene persistito
+nel campo esistente come mezzanotte UTC. Per visualizzarlo il formatter riceve
+esplicitamente YYYY-MM-DDT00:00:00Z e formatta in UTC: nessuno slittamento di
+un giorno in elenco, scheda o form. Il picker apre sull'anno scelto dal sistema
+operativo, senza attribuire una data fittizia alla persona.
+
+Scheda: Account collegato / Non ancora registrato, tappa, ruolo e dati personali
+consentiti. Sposato/a deriva dal coniuge attivo condiviso, non da un nuovo
+campo libero. Nessuna deduzione di stato celibe/nubile se il dato e privato.
+
+GET /api/me/community/spouse-options?personId=... e esclusivamente operativo:
+richiede Responsabile o Corresponsabile con EDIT_MEMBRI, sempre nella comunita
+derivata dal JWT. Per nuova persona si omette personId. Restituisce candidati
+validi, coniuge attuale e versione currentMarriageId per evitare modifiche
+stale. Esclude se stessi, estranei e persone occupate da un altro matrimonio.
+Non restituisce telefono/email/date/consensi dei candidati.
+
+POST/PUT members estesi con updateSpouse, spouseId e expectedMarriageId.
+Se il coniuge non cambia il client non invia una modifica matrimoniale.
+La correzione e esplicita, richiede la versione corrente e disattiva la vecchia
+relazione; nessuna cancellazione. Una coppia storica viene riattivata nella
+stessa riga per rispettare l'indice univoco A/B. Marriage non ha intervalli
+temporali: la cronologia delle modifiche e nel CommunityActionAudit.
+Nessuna entity duplicata e nessuna migration in questa fase.
+
+I matrimoni sono bidirezionali: un solo record, non due campi indipendenti.
+Tutti i controlli sono ripetuti al salvataggio. Transazione serializable,
+lock PostgreSQL transazionale condiviso tra scritture contestuali, controlli
+su entrambe le colonne e indici esistenti impediscono assegnazioni concorrenti.
+Conflitti/versioni obsolete richiedono refresh (HTTP 409), senza replay automatico.
+Scritture SQL esterne non passano dalla policy: non usarle per gestire matrimoni.
+
+La rubrica continua ad applicare ShowFamily di entrambi; l'accesso al selettore
+operativo e una permission distinta e non abilita consensi altrui.
+Se il coniuge non esiste, censirlo normalmente prima, poi associarlo.
+Nessun placeholder anonimo. Dopo il censimento si torna a /mobile/community
+e la lista viene riletta dal backend.
+
+Verifiche: 144 controlli backend (EF InMemory/JWT locali); test UI su production
+per nascita futura, riepilogo italiano, selettore, scheda, coniuge condiviso,
+account, modifica consentita e viewport 320/390/393/412.
+La prova concorrente PostgreSQL reale non e stata eseguita; i test in memoria
+non certificano lock/indici del provider. Prima del rilascio operativo provare
+due modifiche simultanee sul DB test e i picker sui dispositivi Android/iOS.
+
+Verifica finale 18 novembre 2026: build Angular production riuscita dopo pulizia
+della cache Angular (un tentativo precedente aveva un deadlock esbuild).
+Suite UI production passata sia in Europe/Rome sia in Pacific/Honolulu;
+24 test auth passati. Sync Android e iOS riusciti, assembleDebug finale
+riuscito con JDK 21. Build backend e 144 controlli Identity passati,
+modello EF/snapshot allineati. Nessuna migration creata o applicata.
+dotnet test non scopre suite nel progetto API: i controlli effettivi sono
+eseguiti dal runner Tests/Identity. Restano warning preesistenti di build.
+Nessuna nuova compilazione Xcode o prova su dispositivo fisico.

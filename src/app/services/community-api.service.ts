@@ -8,15 +8,21 @@ export interface CommunityMemberView {
   personId: number; firstName: string; lastName: string; role: string;
   phoneNumber?: string; email?: string; birthDate?: string; photoUrl?: string; stage?: string;
 }
-export interface CommunityView { context: CurrentUserContext; members: CommunityMemberView[]; canAddMember: boolean; assignableRoles: string[] }
+export interface CommunityView { context: CurrentUserContext; members: CommunityMemberView[]; canAddMember: boolean; assignableRoles: string[]; canManageMarriage?: boolean }
+export interface SpouseOptions {
+  currentSpouseId: number | null; currentMarriageId: number | null;
+  candidates: { personId: number; firstName: string; lastName: string }[];
+}
 export interface CommunityMemberDetail {
   member: CommunityMemberView; stage: string; isSelf: boolean; canEdit: boolean; canManageRole: boolean;
   canEditPhone: boolean; canEditEmail: boolean; canEditBirthDate: boolean; assignableRoles: string[];
   spouse?: { personId: number; firstName: string; lastName: string };
+  accountLinked?: boolean; canManageMarriage?: boolean;
 }
 export interface MemberWrite {
   firstName: string; lastName: string; email?: string; phone?: string; birthDate?: string;
   clearBirthDate?: boolean; stage?: string; role?: string;
+  updateSpouse?: boolean; spouseId?: number | null; expectedMarriageId?: number | null;
 }
 export interface MemberPrivacy {
   showPhone: boolean; showEmail: boolean; showBirthDate: boolean; showPhoto: boolean; showFamily: boolean;
@@ -29,6 +35,9 @@ export class CommunityApiService {
   private get url(): string { return `${getApiConfiguration().apiBaseUrl}/me/community`; }
   getCommunity(): Promise<CommunityView> { return firstValueFrom(this.http.get<CommunityView>(this.url).pipe(timeout(20000))); }
   getMember(id: number): Promise<CommunityMemberDetail> { return firstValueFrom(this.http.get<CommunityMemberDetail>(`${this.url}/members/${id}`).pipe(timeout(20000))); }
+  getSpouseOptions(id?: number): Promise<SpouseOptions> {
+    return firstValueFrom(this.http.get<SpouseOptions>(`${this.url}/spouse-options`, { params: id === undefined ? {} : { personId: id } }).pipe(timeout(20000)));
+  }
   createMember(payload: MemberWrite): Promise<{ personId: number }> { return firstValueFrom(this.http.post<{ personId: number }>(`${this.url}/members`, payload).pipe(timeout(20000))); }
   updateMember(id: number, payload: MemberWrite): Promise<unknown> { return firstValueFrom(this.http.put(`${this.url}/members/${id}`, payload).pipe(timeout(20000))); }
   getPrivacy(): Promise<MemberPrivacy> { return firstValueFrom(this.http.get<MemberPrivacy>(`${this.url}/privacy`).pipe(timeout(20000))); }

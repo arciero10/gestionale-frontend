@@ -151,7 +151,7 @@ async function installNative(context, platform) {
       await context.close();
     }
     for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap']) {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
       await installNative(context, 'android');
       let meCalls = 0;
       let resubmitted = false;
@@ -160,6 +160,9 @@ async function installNative(context, platform) {
       let privacySaved = false;
       let communityState = 'ready';
       let approvalCalls = 0;
+      let spouseId = null;
+      let censusCalls = 0;
+      let memberUpdates = 0;
       const communityMembers = [
         { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER' },
         { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', stage: 'Rinnovate Promesse Battesimali', birthDate: '1985-05-03', email: 'shared@example.test', phoneNumber: '3331234567' }
@@ -173,24 +176,40 @@ async function installNative(context, platform) {
           if (apiPath.endsWith('/community') && communityState === 'error') {
             await route.fulfill({ status: 503, headers, json: {} }); return;
           }
-          if (apiPath.endsWith('/privacy')) {
+          if (apiPath.endsWith('/spouse-options')) {
+            assert.equal(communityManager, true);
+            const current = new URL(route.request().url()).searchParams.get('personId') === '14' ? spouseId : null;
+            await route.fulfill({ headers, json: { currentSpouseId: current, currentMarriageId: current === null ? null : 51,
+              candidates: communityMembers.filter(m => m.personId !== 14).map(({personId,firstName,lastName}) => ({personId,firstName,lastName})) } });
+          } else if (apiPath.endsWith('/privacy')) {
             if (route.request().method() === 'PUT') { assert.equal(route.request().postDataJSON().showPhone, true); privacySaved = true; }
             await route.fulfill({ headers, json: { showPhone: privacySaved, showEmail: false, showBirthDate: false, showPhoto: false, showFamily: false, receiveBirthdayNotifications: false, receiveCommunityNotifications: false } });
           } else if (apiPath.endsWith('/members') && route.request().method() === 'POST') {
             const payload = route.request().postDataJSON();
             assert.equal(payload.firstName, 'Nuovo'); assert.equal(payload.role, 'MEMBER');
             assert.equal(payload.communityId, undefined);
+            assert.equal(payload.birthDate, '1984-02-29'); assert.equal(payload.spouseId, 13); assert.equal(payload.updateSpouse, true);
+            assert.equal(payload.expectedMarriageId, null); spouseId = payload.spouseId; censusCalls++;
             communityMembers.push({ personId: 14, firstName: payload.firstName, lastName: payload.lastName, role: payload.role });
             await route.fulfill({ status: 201, headers, json: { personId: 14 } });
           } else if (/\/members\/\d+$/.test(apiPath)) {
             const member = communityMembers.find(m => m.personId === Number(apiPath.split('/').pop()));
+            if (route.request().method() === 'PUT') {
+              memberUpdates++;
+              const payload = route.request().postDataJSON();
+              if (memberUpdates === 1) assert.equal(payload.updateSpouse, undefined, 'Coniuge invariato non riscritto');
+              else { assert.equal(payload.spouseId, null); assert.equal(payload.expectedMarriageId, 51); spouseId = null; }
+              await route.fulfill({ headers, json: {} }); return;
+            }
             await route.fulfill({ headers, json: { member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
               canEditPhone: false, canEditEmail: false, canEditBirthDate: false, canManageRole: communityManager,
+              accountLinked: member.personId !== 14, canManageMarriage: communityManager,
+              ...(member.personId === 13 ? {spouse:{personId:12,firstName:'Anna',lastName:'Rossi'}} : {}),
               assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
           } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
               role: communityManager ? 'RESPONSIBLE' : 'MEMBER', permissions: communityManager ? ['EDIT_MEMBRI', 'APPROVE_REQUESTS'] : ['VIEW_MEMBRI'] },
             members: communityState === 'empty' ? [] : communityState === 'single' ? communityMembers.slice(0,1) : communityMembers,
-            canAddMember: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
+            canAddMember: communityManager, canManageMarriage: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
           return;
         }
         if (new URL(route.request().url()).pathname.endsWith('/me')) {
@@ -273,6 +292,7 @@ async function installNative(context, platform) {
         assert.ok(!(await page.locator('.member-list').textContent()).includes('shared@example.test'));
         assert.ok(!(await page.locator('.member-list').textContent()).includes('3331234567'));
         await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('Rinnovate Promesse Battesimali', {exact:true}).waitFor();
+        await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('03/05', {exact:true}).waitFor();
         assert.equal(await page.getByRole('link', { name: 'Richieste e storico' }).count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).count(), 0);
         assert.equal(await page.locator('.mobile-bottom a.active').textContent(), 'Comunità');
@@ -292,10 +312,16 @@ async function installNative(context, platform) {
           await page.screenshot({path:path.join(output,`community-${width}.png`),fullPage:true});
         }
         await page.setViewportSize({width:390,height:844});
-        await page.locator('.member-row').filter({hasText:'Anna Rossi'}).click();
+        await page.locator('.member-row').filter({hasText:'Marco Verdi'}).click();
+        await page.getByRole('heading', {name:'Marco Verdi',exact:true}).waitFor();
+        await page.getByText('03/05/1985', {exact:true}).waitFor();
+        await page.getByText('Sposato/a', {exact:true}).waitFor();
+        await page.getByRole('link', {name:'Anna Rossi',exact:true}).click();
         await page.waitForURL(url => url.pathname === '/mobile/community/member/12');
         await page.getByRole('heading', { name: 'Anna Rossi' }).waitFor();
         assert.equal(await page.getByRole('button', { name: 'Modifica scheda' }).count(), 0);
+        await page.getByText('Account collegato', {exact:true}).waitFor();
+        assert.equal(await page.getByLabel('Coniuge opzionale').count(), 0);
         await page.getByLabel('Mostra telefono alla comunità').check();
         await page.getByRole('button', { name: 'Salva preferenze' }).click();
         await page.getByText('Preferenze privacy salvate.', { exact: true }).waitFor();
@@ -316,10 +342,45 @@ async function installNative(context, platform) {
         await page.getByLabel('Cognome', { exact: true }).fill('Fratello');
         const roles = await page.getByLabel('Ruolo nella comunità').locator('option').allTextContents();
         assert.ok(roles.every(role => !role.includes('Catechista') && role !== 'Responsabile'));
+        const birth = page.getByLabel('Data di nascita opzionale', {exact:true});
+        assert.equal(await birth.getAttribute('type'), 'date'); assert.equal(await birth.inputValue(), '');
+        assert.equal(await birth.getAttribute('lang'), 'it-IT');
+        assert.match(await birth.getAttribute('max'), /^\d{4}-\d{2}-\d{2}$/);
+        await birth.fill('2999-01-01');
+        await page.getByRole('button', {name:'Salva fratello',exact:true}).click();
+        await page.getByText('Inserisci una data di nascita valida, non futura.', {exact:true}).waitFor();
+        assert.equal(censusCalls, 0);
+        await birth.fill('1984-02-29');
+        await page.waitForFunction(() => !document.querySelector('app-member-editor [role="alert"]'));
+        try { await page.locator('#birth-summary').filter({hasText:'29/02/1984'}).waitFor({timeout:5000}); }
+        catch (error) {
+          console.log('Birth UI diagnostic:', await birth.inputValue(), await page.locator('#birth-summary').textContent());
+          await page.screenshot({path:path.join(output,'birth-error.png'),fullPage:true}); throw error;
+        }
+        await page.getByLabel('Coniuge opzionale').selectOption({label:'Marco Verdi'});
+        assert.deepEqual(await page.getByLabel('Coniuge opzionale').locator('option').allTextContents(), ['Nessun collegamento','Anna Rossi','Marco Verdi']);
         await page.screenshot({path:path.join(output,'community-add.png'),fullPage:true});
         await page.getByRole('button', { name: 'Salva fratello', exact: true }).click();
-        await page.waitForURL(url => url.pathname === '/mobile/community/member/14');
-        await page.getByRole('heading', { name: 'Nuovo Fratello', exact: true }).waitFor();
+        await page.waitForURL(url => url.pathname === '/mobile/community');
+        await page.locator('.member-row').filter({hasText:'Nuovo Fratello'}).click();
+        await page.getByRole('heading', {name:'Nuovo Fratello',exact:true}).waitFor();
+        await page.getByText('Non ancora registrato', {exact:true}).waitFor();
+        await page.getByRole('button', {name:'Modifica scheda'}).click();
+        await page.getByLabel('Coniuge opzionale').waitFor();
+        assert.equal(await page.getByLabel('Coniuge opzionale').locator('option:checked').textContent(), 'Marco Verdi');
+        assert.equal(await page.getByLabel('Data di nascita opzionale').count(), 0, 'Nascita privata non editabile da terzi');
+        for (const width of [320,390,393,412]) {
+          await page.setViewportSize({width,height:844});
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          await page.screenshot({path:path.join(output,`member-edit-${width}.png`),fullPage:true});
+        }
+        await page.getByRole('button', {name:'Salva fratello',exact:true}).click();
+        await page.getByText('Scheda aggiornata.', {exact:true}).waitFor();
+        await page.getByRole('button', {name:'Modifica scheda'}).click();
+        await page.getByLabel('Coniuge opzionale').selectOption({label:'Nessun collegamento'});
+        await page.getByRole('button', {name:'Salva fratello',exact:true}).click();
+        await page.getByText('Scheda aggiornata.', {exact:true}).waitFor();
+        assert.equal(censusCalls, 1); assert.equal(memberUpdates, 2); assert.equal(spouseId, null);
         assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);
         await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
         communityState = 'error';

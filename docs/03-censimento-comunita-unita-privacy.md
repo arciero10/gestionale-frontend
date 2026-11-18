@@ -114,9 +114,17 @@ non equivale al consenso alla condivisione nella rubrica.
 Il filtro viene applicato dal backend: i campi non condivisi non sono serializzati.
 Il titolare vede i propri dati e gestisce solo i propri consensi. Il Responsabile
 non puo abilitare consensi altrui o sovrascrivere contatti nascosti.
-Il collegamento al coniuge e visibile solo con consenso di entrambi, matrimonio
+Nella consultazione ordinaria il collegamento al coniuge e visibile solo con consenso di entrambi, matrimonio
 attivo e membership attiva di entrambi nella stessa comunita. Nessuna storia
 matrimoniale o nota libera viene restituita.
+
+La gestione anagrafica e un contesto distinto: Responsabile e Corresponsabile
+con delega EDIT_MEMBRI possono aprire il selettore operativo del coniuge,
+limitato ai nominativi/identificativi necessari nella propria comunita.
+Questo non abilita la condivisione del matrimonio nella rubrica e non modifica
+ShowFamily o altri consensi. Il backend verifica il permesso prima di restituire
+il selettore; un Fratello non riceve questi dati operativi.
+Ogni modifica del collegamento e auditata con l'utente reale.
 
 L'amministrazione tecnica/onboarding non attribuisce accesso ai dati personali
 di altre comunita. Per API, migration e UX mobile vedere docs/12-mobile-community.md.
