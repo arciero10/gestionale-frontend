@@ -137,7 +137,7 @@ Può:
 - compilare consensi individuali
 - vedere eventi/convivenze a cui partecipa
 - vedere l'elenco della propria comunità
-- vedere contatti essenziali dei fratelli della propria comunità (telefono, email) solo con consenso individuale alla condivisione
+- vedere contatti essenziali dei fratelli della propria comunità (telefono, email), coniuge e compleanno giorno/mese, anche senza account del soggetto
 
 Non può:
 - modificare dati degli altri

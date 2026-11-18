@@ -157,7 +157,6 @@ async function installNative(context, platform) {
       let resubmitted = false;
       let bootstrapApproved = false;
       let communityManager = false;
-      let privacySaved = false;
       let communityState = 'ready';
       let approvalCalls = 0;
       let spouseId = null;
@@ -168,12 +167,13 @@ async function installNative(context, platform) {
       const birthdayItems = [
         {personId:12,displayName:'Anna Rossi',day:18,month:11,dateLabel:'18 novembre',isToday:true,daysUntilBirthday:0,section:'today'},
         {personId:13,displayName:'Marco Verdi',day:21,month:11,dateLabel:'21 novembre',isToday:false,daysUntilBirthday:3,section:'week'},
-        {personId:15,displayName:'Elena Bianchi',day:30,month:11,dateLabel:'30 novembre',isToday:false,daysUntilBirthday:12,section:'month'},
+        {personId:15,displayName:'Emmanuel Baciarini',day:10,month:8,dateLabel:'10 agosto',isToday:false,daysUntilBirthday:265,section:'later'},
+        {personId:17,displayName:'Elena Bianchi',day:30,month:11,dateLabel:'30 novembre',isToday:false,daysUntilBirthday:12,section:'month'},
         {personId:16,displayName:'Luca Neri',day:5,month:1,dateLabel:'5 gennaio',isToday:false,daysUntilBirthday:48,section:'later'}
       ];
       const communityMembers = [
-        { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER' },
-        { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', stage: 'Rinnovate Promesse Battesimali', birthDate: '1985-05-03', email: 'shared@example.test', phoneNumber: '3331234567' }
+        { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER', phoneNumber:'333 1234567', email:'anna@example.test', birthdayLabel:'6 maggio' },
+        { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', stage: 'Rinnovate Promesse Battesimali', birthDate: '1985-05-03', birthdayLabel:'3 maggio', email: 'shared@example.test', phoneNumber: '+44 20 7946 0018' }
       ];
       await context.route('**/api/**', async route => {
         const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' };
@@ -202,7 +202,7 @@ async function installNative(context, platform) {
             if (route.request().method() === 'PUT') {
               const payload = route.request().postDataJSON();
               assert.equal(payload.personId, undefined); assert.equal(payload.communityId, undefined);
-              Object.assign(preferences,payload); privacySaved = preferences.showPhone;
+              Object.assign(preferences,payload);
             }
             await route.fulfill({ headers, json: preferences });
           } else if (apiPath.endsWith('/members') && route.request().method() === 'POST') {
@@ -214,7 +214,8 @@ async function installNative(context, platform) {
             communityMembers.push({ personId: 14, firstName: payload.firstName, lastName: payload.lastName, role: payload.role });
             await route.fulfill({ status: 201, headers, json: { personId: 14 } });
           } else if (/\/members\/\d+$/.test(apiPath)) {
-            const member = communityMembers.find(m => m.personId === Number(apiPath.split('/').pop()));
+            const member = communityMembers.find(m => m.personId === Number(apiPath.split('/').pop())) ??
+              {personId:15,firstName:'Emmanuel',lastName:'Baciarini',role:'MEMBER',birthdayLabel:'10 agosto',phoneNumber:'0039 02 12345678',email:'emmanuel@example.test'};
             if (route.request().method() === 'PUT') {
               memberUpdates++;
               const payload = route.request().postDataJSON();
@@ -223,8 +224,8 @@ async function installNative(context, platform) {
               await route.fulfill({ headers, json: {} }); return;
             }
             await route.fulfill({ headers, json: { member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
-              canEditPhone: false, canEditEmail: false, canEditBirthDate: false, canManageRole: communityManager,
-              accountLinked: member.personId !== 14, canManageMarriage: communityManager,
+              canEditPhone: communityManager, canEditEmail: communityManager, canEditBirthDate: false, canManageRole: communityManager,
+              accountLinked: ![14,15].includes(member.personId), canManageMarriage: communityManager,
               ...(member.personId === 13 ? {spouse:{personId:12,firstName:'Anna',lastName:'Rossi'}} : {}),
               assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
           } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
@@ -297,9 +298,9 @@ async function installNative(context, platform) {
         await page.waitForURL(url => url.pathname === '/mobile/birthdays');
         for (const title of ['Oggi','Prossimi 7 giorni','Questo mese','Prossimamente'])
           await page.getByRole('heading',{name:title,exact:true}).waitFor();
-        assert.equal(await page.locator('app-mobile-birthdays .member-row').count(), 4);
+        assert.equal(await page.locator('app-mobile-birthdays .member-row').count(), 5);
         assert.equal(await page.locator('app-mobile-birthdays table').count(), 0);
-        assert.equal(new Set(await page.locator('app-mobile-birthdays .member-row').evaluateAll(nodes => nodes.map(n=>n.getAttribute('href')))).size,4);
+        assert.equal(new Set(await page.locator('app-mobile-birthdays .member-row').evaluateAll(nodes => nodes.map(n=>n.getAttribute('href')))).size,5);
         assert.ok(!(await page.locator('app-mobile-birthdays').textContent()).includes('1960'));
         for (const width of [320,390,393,412]) {
           await page.setViewportSize({width,height:844});
@@ -307,8 +308,13 @@ async function installNative(context, platform) {
           assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
           await page.screenshot({path:path.join(output,`birthdays-${width}.png`),fullPage:true});
         }
-        await page.locator('app-mobile-birthdays .member-row').filter({hasText:'Anna Rossi'}).click();
-        await page.getByRole('heading',{name:'Anna Rossi',exact:true}).waitFor();
+        await page.locator('app-mobile-birthdays .member-row').filter({hasText:'Emmanuel Baciarini'}).click();
+        await page.getByRole('heading',{name:'Emmanuel Baciarini',exact:true}).waitFor();
+        await page.getByText('Non ancora registrato',{exact:true}).waitFor();
+        await page.getByText('10 agosto',{exact:true}).waitFor();
+        assert.equal(await page.getByRole('link',{name:'Chiama',exact:true}).getAttribute('href'),'tel:+390212345678');
+        assert.equal(await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href'),'https://wa.me/390212345678');
+        assert.equal(await page.getByRole('link',{name:'Email',exact:true}).getAttribute('href'),'mailto:emmanuel@example.test');
         await page.getByRole('link',{name:'Home',exact:true}).click();
         await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
         birthdayState = 'loading';
@@ -320,20 +326,31 @@ async function installNative(context, platform) {
         await page.getByRole('heading',{name:'Compleanni non disponibili',exact:true}).waitFor();
         birthdayState = 'empty';
         await page.getByRole('button',{name:'Riprova',exact:true}).click();
-        await page.getByRole('heading',{name:'Nessun compleanno condiviso',exact:true}).waitFor();
+        await page.getByRole('heading',{name:'Nessun compleanno disponibile',exact:true}).waitFor();
         await page.getByRole('link',{name:'Home',exact:true}).click();
         await page.getByText('Nessun compleanno imminente',{exact:true}).waitFor();
         await page.getByRole('link',{name:'Profilo',exact:true}).click();
-        await page.getByRole('link',{name:'Privacy e notifiche',exact:true}).click();
-        await page.getByLabel('Mostra il mio compleanno alla comunità',{exact:true}).check();
+        await page.getByRole('link',{name:'Preferenze notifiche',exact:true}).click();
+        await page.getByLabel('Ricevi notifiche sui compleanni',{exact:true}).waitFor();
+        assert.equal(await page.locator('app-mobile-privacy input[type=checkbox]').count(),2);
+        assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
         await page.getByLabel('Ricevi notifiche sui compleanni',{exact:true}).check();
         await page.getByRole('button',{name:'Salva preferenze',exact:true}).click();
         await page.getByText('Preferenze salvate.',{exact:true}).waitFor();
-        assert.equal(preferences.showBirthday,true); assert.equal(preferences.showBirthDate,false); assert.equal(preferences.showEmail,true);
+        assert.equal(preferences.showBirthday,false); assert.equal(preferences.showBirthDate,false); assert.equal(preferences.showEmail,true);
+        await page.getByLabel('Ricevi notifiche sui compleanni',{exact:true}).uncheck();
+        await page.getByRole('button',{name:'Salva preferenze',exact:true}).click();
+        await page.getByText('Preferenze salvate.',{exact:true}).waitFor();
+        assert.equal(preferences.receiveBirthdayNotifications,false);
         await page.screenshot({path:path.join(output,'birthday-privacy.png'),fullPage:true});
         birthdayState = 'ready';
         await page.getByRole('link',{name:'Home',exact:true}).click();
         await page.getByText('2 nei prossimi 7 giorni',{exact:true}).waitFor();
+        await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Avvisi',exact:true})}).click();
+        await page.waitForURL(url => url.pathname === '/mobile/avvisi');
+        await page.locator('app-mobile-home h1').filter({hasText:'Avvisi'}).waitFor();
+        assert.equal(preferences.receiveCommunityNotifications,false);
+        await page.getByRole('link',{name:'Home',exact:true}).first().click();
         console.log('PASS birthdays: sezioni, scheda, riepilogo Home, privacy, loading/error/empty e viewport');
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /3ª Comunità/);
         assert.equal(await page.locator('.mobile-bottom a').count(), 4);
@@ -356,13 +373,14 @@ async function installNative(context, platform) {
         assert.ok(!(await page.locator('.member-list').textContent()).includes('shared@example.test'));
         assert.ok(!(await page.locator('.member-list').textContent()).includes('3331234567'));
         await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('Rinnovate Promesse Battesimali', {exact:true}).waitFor();
-        await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('03/05', {exact:true}).waitFor();
+        await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('3 maggio', {exact:true}).waitFor();
         assert.equal(await page.getByRole('link', { name: 'Richieste e storico' }).count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).count(), 0);
         assert.equal(await page.locator('.mobile-bottom a.active').textContent(), 'Comunità');
         await page.getByRole('searchbox', {name:'Cerca nella comunità'}).fill('rossi Anna');
         assert.equal(await page.locator('.member-row').count(), 1);
-        assert.equal(await page.locator('.member-row').first().locator('.birthday,.stage,img').count(), 0);
+        assert.equal(await page.locator('.member-row').first().locator('.stage,img').count(), 0);
+        assert.equal(await page.locator('.member-row').first().locator('.birthday').count(), 1);
         await page.getByRole('searchbox').fill('nessuno');
         await page.getByRole('heading', { name: 'Nessun risultato' }).waitFor();
         await page.getByRole('button', {name:'Cancella ricerca'}).click();
@@ -378,18 +396,21 @@ async function installNative(context, platform) {
         await page.setViewportSize({width:390,height:844});
         await page.locator('.member-row').filter({hasText:'Marco Verdi'}).click();
         await page.getByRole('heading', {name:'Marco Verdi',exact:true}).waitFor();
-        await page.getByText('03/05/1985', {exact:true}).waitFor();
-        await page.getByText('Sposato/a', {exact:true}).waitFor();
+        await page.getByText('3 maggio', {exact:true}).waitFor();
+        assert.ok(!(await page.locator('app-mobile-community-member').textContent()).includes('1985'));
+        assert.equal(await page.getByRole('link',{name:'Chiama',exact:true}).getAttribute('href'),'tel:+442079460018');
+        assert.equal(await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href'),'https://wa.me/442079460018');
         await page.getByRole('link', {name:'Anna Rossi',exact:true}).click();
         await page.waitForURL(url => url.pathname === '/mobile/community/member/12');
         await page.getByRole('heading', { name: 'Anna Rossi' }).waitFor();
         assert.equal(await page.getByRole('button', { name: 'Modifica scheda' }).count(), 0);
         await page.getByText('Account collegato', {exact:true}).waitFor();
         assert.equal(await page.getByLabel('Coniuge opzionale').count(), 0);
-        await page.getByLabel('Mostra telefono alla comunità').check();
-        await page.getByRole('button', { name: 'Salva preferenze' }).click();
-        await page.getByText('Preferenze privacy salvate.', { exact: true }).waitFor();
-        assert.equal(privacySaved, true);
+        assert.equal(await page.getByRole('link',{name:'Chiama',exact:true}).getAttribute('href'),'tel:+393331234567');
+        assert.equal(await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href'),'https://wa.me/393331234567');
+        assert.ok(await page.locator('.contact-actions a').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height >= 48 && n.scrollWidth <= n.clientWidth)));
+        assert.equal(await page.locator('app-mobile-community-member input[type=checkbox]').count(),0);
+        assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
         await page.screenshot({path:path.join(output,'community-detail.png'),fullPage:true});
         communityManager = true;
         await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();

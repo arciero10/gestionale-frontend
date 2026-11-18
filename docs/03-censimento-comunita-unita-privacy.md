@@ -97,40 +97,38 @@ Se è una coppia:
 ## Visibilità dati nella comunità
 
 I fratelli e le sorelle possono vedere l'elenco della propria comunità.
-I contatti essenziali sono condivisi solo con il consenso individuale del titolare:
+Telefono, email, coniuge e compleanno sono dati comunitari visibili nella stessa comunita, se presenti:
 
 | Visibile | Non visibile |
 |---|---|
 | Nome e cognome | Documenti privacy altrui |
-| Telefono, se autorizzato | Dati sensibili |
-| Email, se autorizzata | Note riservate |
+| Telefono, se presente | Dati sensibili |
+| Email, se presente | Note riservate |
 | Ruolo comunitario | Audit/log |
 
-Foto e data di nascita/compleanno richiedono anch'essi consenso esplicito.
-Il calendario compleanni usa ShowBirthday (solo giorno/mese), distinto da
-ShowBirthDate (data completa nella scheda). Preferenze notifiche e visibilita
-sono separate. Dettagli e rilascio: docs/13-mobile-birthdays.md.
-Tutti i flag di condivisione e le preferenze notifiche nascono disattivati,
-anche per le persone censite dal Responsabile. Il consenso onboarding al trattamento
-non equivale al consenso alla condivisione nella rubrica.
+La visibilita comunitaria non richiede un User per la persona censita.
+ShowPhone, ShowEmail, ShowFamily e ShowBirthday restano nel DB come flag legacy,
+ma non filtrano questi dati. Nessuna nuova migration e nessuna cancellazione.
+Il compleanno e solo giorno/mese: il nuovo BirthdayLabel non contiene l'anno.
+ShowBirthDate continua a proteggere la data completa; ShowPhoto resta separato.
 
-Il filtro viene applicato dal backend: i campi non condivisi non sono serializzati.
-Il titolare vede i propri dati e gestisce solo i propri consensi. Il Responsabile
-non puo abilitare consensi altrui o sovrascrivere contatti nascosti.
-Nella consultazione ordinaria il collegamento al coniuge e visibile solo con consenso di entrambi, matrimonio
-attivo e membership attiva di entrambi nella stessa comunita. Nessuna storia
-matrimoniale o nota libera viene restituita.
+Il backend applica lo scoping alla comunita autenticata. Nessuna storia
+matrimoniale, nota libera o dato sensibile e restituito. Marriage attivo
+e membership attive dei due coniugi nella stessa comunita determinano il
+collegamento visibile; non i toggle legacy.
+Solo il titolare modifica ReceiveBirthdayNotifications e
+ReceiveCommunityNotifications. Notifica OFF non nasconde contenuti nell'app.
 
 La gestione anagrafica e un contesto distinto: Responsabile e Corresponsabile
 con delega EDIT_MEMBRI possono aprire il selettore operativo del coniuge,
 limitato ai nominativi/identificativi necessari nella propria comunita.
-Questo non abilita la condivisione del matrimonio nella rubrica e non modifica
-ShowFamily o altri consensi. Il backend verifica il permesso prima di restituire
+Questo non modifica preferenze personali. Il backend verifica il permesso prima di restituire
 il selettore; un Fratello non riceve questi dati operativi.
 Ogni modifica del collegamento e auditata con l'utente reale.
 
 L'amministrazione tecnica/onboarding non attribuisce accesso ai dati personali
 di altre comunita. Per API, migration e UX mobile vedere docs/12-mobile-community.md.
+Le regole correnti sui dati comunitari e notifiche sono in docs/13-mobile-birthdays.md.
 
 ---
 

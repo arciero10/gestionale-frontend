@@ -1,5 +1,12 @@
 # La mia comunita mobile
 
+> Aggiornamento vincolante: telefono/email/coniuge/compleanno sono dati comunitari,
+> anche per membri senza User. ShowPhone/ShowEmail/ShowFamily/ShowBirthday sono
+> legacy e non filtrano piu questi dati. La data completa e le foto restano
+> distinte. Solo le preferenze notifiche sono esposte nella pagina personale.
+> Le sezioni storiche sui vecchi consensi di visibilita sono superate dalla
+> regola corrente di docs/03 e docs/13-mobile-birthdays.md.
+
 ## Dominio e contesto
 
 Implementazione dedicata mobile, non adattamento della pagina desktop.

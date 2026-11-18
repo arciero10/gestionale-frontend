@@ -30,13 +30,13 @@ import { communityRoleLabel } from '../../auth/community-roles';
         <li>
         <a class="member-row" [routerLink]="'/mobile/community/member/' + member.personId">
           <span class="avatar">@if (member.photoUrl && !failedPhotos.has(member.personId)) { <img [src]="member.photoUrl" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="failedPhotos.add(member.personId)" /> } @else { {{ initials(member) }} }</span>
-          <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ (member.birthDate + 'T00:00:00Z') | date:'dd/MM':'UTC' }}</small> }</span>
+          <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthdayLabel || member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ member.birthdayLabel || ((member.birthDate + 'T00:00:00Z') | date:'dd/MM':'UTC') }}</small> }</span>
           <i class="pi pi-angle-right chevron" aria-hidden="true"></i>
         </a>
         </li>
       }</ul>
       <nav class="community-links" aria-label="Altre azioni comunità">
-        @if (data.context.personId) { <a [routerLink]="'/mobile/community/member/' + data.context.personId"><i class="pi pi-shield" aria-hidden="true"></i><span>La mia scheda e privacy</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
+        @if (data.context.personId) { <a [routerLink]="'/mobile/community/member/' + data.context.personId"><i class="pi pi-user" aria-hidden="true"></i><span>La mia scheda</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
         @if (canReview) { <a routerLink="/mobile/approvazioni"><i class="pi pi-history" aria-hidden="true"></i><span>Richieste e storico</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
       </nav>
     }

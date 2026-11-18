@@ -1,146 +1,107 @@
-# Compleanni, privacy e notifiche mobile
+# Dati comunitari, compleanni e notifiche mobile
 
-## Consensi
+## Regola corrente
 
-Riusa Person, CommunityMember, User e i flag ReceiveBirthdayNotifications,
-ReceiveCommunityNotifications e ShowPhoto. Nessuna entity duplicata.
+All'interno della comunita autenticata telefono, email, coniuge e compleanno
+sono dati comunitari visibili se presenti, anche per Person senza User.
+Non richiedono un toggle personale. L'accesso resta esclusivamente scoped
+alla membership attiva del lettore. Admin onboarding non ha accesso globale.
+Ruolo e permessi operativi continuano a controllare le modifiche, non questi
+contenuti in lettura. Dati sanitari, note riservate e storico matrimoniale
+non sono inclusi nei DTO.
 
-ShowBirthDate resta il consenso alla data completa in scheda/rubrica.
-Il nuovo ShowBirthday e distinto: autorizza il calendario e il piano notifiche
-con solo giorno/mese. Default false, senza migrare o dedurre consensi precedenti.
-Attivare ShowBirthday non attiva ShowBirthDate e non divulga anno o eta.
-Disattivarlo non revoca un eventuale consenso separato alla data completa.
+ShowPhone, ShowEmail, ShowFamily e ShowBirthday sono LEGACY/DEPRECATED come
+filtri di visibilita comunitaria. Le colonne e il contratto legacy restano
+per compatibilita; nessuna nuova migration o cancellazione in questa fase.
+La precedente migration AddBirthdayVisibility e gia applicata al DB TEST.
 
-Solo l'utente titolare salva i propri consensi via GET/PUT
-/api/me/community/privacy. Oid/tid e PersonId vengono risolti dal JWT validato
-e dal DB. Responsabile e Corresponsabile non possono accettare per altri.
-La creazione Person non accetta privacy per conto dell'interessato.
-Nel PUT il nuovo ShowBirthday omesso viene preservato, per compatibilita
-con i client precedenti. I client attuali caricano e reinviano le preferenze
-complete, preservando foto, contatti e le altre opzioni.
+ShowBirthDate continua a controllare l'esposizione della data completa
+(anno incluso), salvo la lettura dei propri dati. ShowPhoto resta distinto.
+Il nuovo member.birthdayLabel contiene solo giorno/mese indipendentemente
+dal consenso legacy alla data completa; non aggiunge colonne al DB.
 
-Anche con ShowBirthday erroneamente true, una Person senza User Microsoft
-collegato e attivo non viene esposta ne diventa festeggiato nel piano.
-Il linking futuro riusa Person esistente: dopo il collegamento il titolare
-puo esprimere il consenso. Nessuna associazione automatica per email.
+## API e calendario
 
-## API e visibilita
+GET /api/mobile/birthdays include tutti i CommunityMember attivi della
+comunita corrente con BirthDate presente. Non filtra per User, ShowBirthday,
+ShowBirthDate o preferenze notifiche.
+Risposta con communityName/parishName, today Europe/Rome e compleanni con
+personId/memberId, nome, foto se consentita, giorno/mese, label italiana,
+daysUntilBirthday, isToday, section e route sicura verso la scheda.
+Mai anno di nascita, eta, contatti o note nel calendario.
 
-GET /api/mobile/birthdays usa esclusivamente la comunita corrente derivata
-da User e membership attiva. Query communityId non attribuisce accesso.
-Admin onboarding non ha bypass. Nessun compleanno nascosto e restituito
-nemmeno al Responsabile; eventuali dati anagrafici sono un contesto separato.
+Ordinamento per prossima occorrenza e nome. Sezioni disgiunte: oggi,
+prossimi 7 giorni, resto del mese corrente, prossimamente.
+Il 29 febbraio viene celebrato il 28 negli anni non bisestili; il testo
+mantiene il compleanno reale. Europe/Rome e autoritativo, anche a Honolulu.
+Le API applicano Cache-Control no-store; nessuna cache personale localStorage.
 
-Risposta: communityName, parishName, today (giorno corrente della comunita),
-birthdays con memberId, personId, displayName, photoUrl se consentita, day,
-month, dateLabel italiana, isToday, daysUntilBirthday, section e memberRoute.
-Nessun anno di nascita, eta, BirthDate, telefono/email o note nel payload.
-today contiene l'anno corrente di calendario, non l'anno di nascita.
-Cache-Control no-store. Nessuna cache di compleanni in localStorage.
+## Scheda e contatti
 
-## Calendario
+/mobile/community/member/:id mostra nome, ruolo, tappa, compleanno giorno/mese,
+telefono, email, coniuge attivo della stessa comunita e stato account.
+Un membro non ancora registrato e immediatamente consultabile.
+Dati assenti: Non disponibile. Non si usa Non condiviso per questi campi.
+La modifica richiede i permessi backend esistenti; le regole Marriage restano.
+La data completa non e esposta automaticamente per rendere pubblico il compleanno.
 
-BirthdayService e testabile con TimeProvider. Il riferimento e Europe/Rome,
-indipendente dal fuso del dispositivo. La nascita e letta come data di dominio,
-senza conversioni locali del client.
+Chiama usa tel: con numero E.164; Email usa mailto:; WhatsApp usa wa.me
+con cifre internazionali. libphonenumber-js normalizza prefissi espliciti
+internazionali, 00 e numeri nazionali italiani (regione di default IT),
+preservando anche lo zero dei fissi italiani. Nessuna deduzione di un paese
+estero da un numero nazionale senza prefisso. Numeri non validi restano
+leggibili ma non generano link di chiamata/WhatsApp potenzialmente sbagliati.
 
-Per ogni giorno/mese si calcola la prossima occorrenza nell'anno corrente,
-oppure nell'anno successivo se gia passata. Ordinamento per giorni mancanti,
-poi nome. Gestiti cambio anno e DST.
+## Preferenze notifiche
 
-Regola 29 febbraio: 29 negli anni bisestili; 28 febbraio negli altri.
-Il testo conserva il compleanno reale "29 febbraio"; il badge Oggi/Tra N giorni
-e la notifica seguono l'occorrenza del 28 negli anni non bisestili.
+Profilo e scheda personale collegano a Preferenze notifiche (/mobile/privacy,
+route mantenuta per compatibilita). Solo due opzioni:
+ReceiveCommunityNotifications e ReceiveBirthdayNotifications.
+Nessun toggle di visibilita e nessun input URL foto tecnico.
+Upload/Cambia foto sono futuri, non un campo URL da compilare.
+La UI preserva gli altri valori del payload legacy al salvataggio.
 
-Sezioni esclusive, calcolate dal server con questa priorita:
-Oggi; Prossimi 7 giorni; Questo mese (solo anno e mese correnti); Prossimamente.
-La stessa persona compare una sola volta.
+Le preferenze controllano SOLO la consegna notifiche.
+Compleanni e contenuti restano consultabili con entrambe le opzioni OFF.
+Un futuro avviso pubblicato dal Responsabile sara leggibile da tutti i
+membri della comunita; soltanto i destinatari opt-in riceveranno la push.
+Il modulo Avvisi attuale e ancora un placeholder: il test UI verifica
+accesso alla sezione con notifiche OFF, non lettura di record pubblicati
+da un endpoint avvisi che ancora non esiste.
 
-## Mobile
+## Dominio e futuro trasporto
 
-/mobile/birthdays e dedicata mobile. /mobile/compleanni resta un alias.
-Card Home reale: conteggio di compleanni tra oggi e i prossimi sette giorni,
-oppure stato vuoto/non disponibile distinto. Nessun nome privato nel riepilogo.
-Tap su un compleanno apre /mobile/community/member/:personId.
-Loading, errore con retry, vuoto, refresh, avatar fallback e bottom nav esistente.
+BirthdayNotificationService produce il piano dei compleanni di oggi,
+compresi i festeggiati senza account. I destinatari sono invece User
+Microsoft attivi con membership corrente e ReceiveBirthdayNotifications=true.
+I festeggiati sono esclusi dai destinatari dell'aggregato. Messaggio con
+soli nomi, senza anno, eta, contatti o note. Nessun piano se non ci sono eventi.
+Le preferenze del festeggiato non sopprimono l'evento comunitario.
 
-Profilo -> Privacy e notifiche apre /mobile/privacy.
-Gestisce ShowBirthday, ShowBirthDate e le due preferenze notifiche esistenti.
-La scheda personale mantiene gli stessi flag, non un secondo archivio.
-Se il backend non espone ancora ShowBirthday, il nuovo pannello mostra
-"Servizio compleanni in aggiornamento" senza fingere un salvataggio riuscito.
+Non ci sono push reali, job schedulati o inbox persistente in questa fase.
+Il futuro trasporto FCM/APNs deve essere separato dal dominio, con token
+dispositivi autenticati, opt-in OS, rotazione/revoca, scheduler Europe/Rome,
+deduplicazione e rivalidazione delle preferenze al momento dell'invio.
+Chiavi e certificati in secret store, mai nei sorgenti.
 
-## Dominio notifiche
+## Schema, sicurezza e test
 
-BirthdayNotificationService.PrepareAsync e interno, non un endpoint di
-amministrazione esposto al browser. Riceve il contesto dal futuro worker
-fiduciario, non un CommunityId selezionato liberamente dal frontend.
+Zero migration per questo riallineamento. Nessun cambio a login/Native Auth.
+CommunityId deriva dal JWT e dal DB, non da un valore del client.
+Telefono/email/coniuge/compleanno non vengono restituiti fuori contesto.
 
-Produce festeggiati di oggi, destinatari UserId e messaggio aggregato.
-Destinatari: account Microsoft attivo, membership attiva della comunita
-corrente e ReceiveBirthdayNotifications=true. Tutti i festeggiati sono
-esclusi dai destinatari dell'aggregato, anche se opt-in.
-Non vengono inclusi account senza contesto corrente risolvibile.
-Nessun messaggio se non ci sono festeggiati. Messaggio con soli nomi,
-senza eta, nascita completa o contatti.
-
-Non esistono ancora trasporto push, job schedulato, inbox persistente
-o invio reale. Salvare una preferenza non richiede permessi OS e non abilita
-di nascosto APNs/FCM. La UI segnala che le push non sono ancora attive.
-
-## FCM e APNs: prossimo passo
-
-Introdurre un trasporto separato dal servizio di dominio, con scheduler
-Europe/Rome e idempotenza per comunita/data/destinatario. Rivalidare
-membership e consensi prima dell'invio, non conservare snapshot sensibili
-obsoleti. Definire retry e deduplicazione senza invii doppi.
-
-Android: progetto Firebase/FCM e registrazione token dispositivo.
-iOS: APNs, bundle/provisioning corretti e ambienti sandbox/production.
-Possibile broker/provider server-side comune. Registrare token su endpoint
-autenticati, gestire rotazione, revoca, logout e consenso OS esplicito.
-Credenziali server FCM e chiavi/certificati APNs in secret store/Key Vault,
-mai nel repository o nel client. Nessuna credenziale introdotta in questa fase.
-
-## Migration e rilascio
-
-20261118201404_AddBirthdayVisibility: aggiunge solo People.ShowBirthday,
-boolean NOT NULL DEFAULT false. Nessuna modifica ai consensi esistenti.
-Necessaria per distinguere il calendario senza anno dalla data completa.
-Preparata, NON applicata al database remoto.
-
-Per richiesta esplicita dell'utente il push backend resta SOSPESO finche
-la migration TEST non e applicata e confermata. Il deploy automatico senza
-schema aggiornato romperebbe anche /api/me, che legge Person.
-
-Con connessione TEST gia configurata in secrets/env, senza password nei file:
-
-```powershell
-cd C:\Dev\GestionaleApiClean
-dotnet ef database update --project .\Gestionale.csproj --startup-project .\Gestionale.csproj
-```
-
-Dopo verifica schema si puo pubblicare il commit backend e verificare il deploy.
-Fino ad allora il frontend pubblicato gestisce l'API mancante con stato errore,
-non con un elenco finto o mock. Nessuna dichiarazione di funzionalita live.
-
-## Verifiche
-
-Tests/Identity: JWT locali + EF InMemory, isolamento comunita, privacy, account
-assente, ordinamento, dicembre/gennaio, 29 febbraio, Europe/Rome e rappresentazione
-dello stesso istante a Honolulu, destinatari opt-in e aggregazione.
-Non e un test PostgreSQL remoto ne un test di consegna push.
-dotnet test sul progetto API non scopre suite: il runner effettivo e
+Tests/Identity usa JWT locali ed EF InMemory: controlli dati comunitari,
+membri senza User, flag legacy ignorati, scoping, anno completo protetto,
+notifiche opt-in e algoritmo compleanni. Non e un test PostgreSQL remoto.
+dotnet test non scopre suite nel progetto API: il runner effettivo e
 dotnet run --project Tests/Identity/IdentityChecks.csproj.
+Playwright production verifica schede, Emmanuel senza account (fixture),
+azioni di contatto, due sole preferenze, contenuti accessibili con opzioni OFF,
+timezone e responsive. I dati fixture non modificano i dati reali del DB.
+Su Windows il sync iOS non e una build Xcode; serve prova su device reale.
 
-Playwright su build production con bridge/API simulati: route, sezioni,
-scheda, Home, toggles personali, loading/error/empty, viewport 320/390/393/412
-e bottom nav invariata. Testare su device reali dopo migration/deploy;
-iOS richiede macOS/Xcode per compilazione e prova APNs.
-
-Esiti locali 18 novembre 2026: build Angular production riuscita con warning
-preesistenti; 24 test auth passati; suite UI passata in Europe/Rome e
-Pacific/Honolulu. Sync Android/iOS e assembleDebug con JDK 21 riusciti.
-Build backend riuscita, 168 controlli Identity passati, snapshot EF coerente.
-La migration non e stata applicata al DB e il push backend rimane sospeso
-per richiesta dell'utente. Nessuna prova PostgreSQL remoto, Xcode o push reale.
+Verifiche del riallineamento: 168 controlli Identity passati, snapshot EF
+invariato, build .NET e Angular riuscite con warning non bloccanti.
+24 test auth e suite UI production passati in Europe/Rome e Pacific/Honolulu.
+Sync Android/iOS e assembleDebug finale con JDK 21 riusciti.
+Nessun aggiornamento DB remoto, nuova migration o prova Xcode/dispositivo fisico.

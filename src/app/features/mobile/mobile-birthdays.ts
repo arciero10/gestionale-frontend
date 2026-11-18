@@ -11,7 +11,7 @@ import { BirthdayApiService, BirthdayCalendar, BirthdayItem } from '../../servic
     @if (loading) { <div role="status" aria-label="Caricamento compleanni" aria-busy="true">@for (i of [1,2,3]; track i) { <div class="skeleton"></div> }</div> }
     @else if (error) { <section class="state" role="alert"><h2>Compleanni non disponibili</h2><p>Impossibile caricare i compleanni. Controlla la connessione e riprova.</p><button type="button" class="primary" (click)="load()">Riprova</button></section> }
     @else if (data) {
-      @if (!data.birthdays.length) { <section class="state"><i class="pi pi-gift" aria-hidden="true"></i><h2>Nessun compleanno condiviso</h2><p>Non ci sono compleanni visibili nella tua comunità.</p></section> }
+      @if (!data.birthdays.length) { <section class="state"><i class="pi pi-gift" aria-hidden="true"></i><h2>Nessun compleanno disponibile</h2><p>Non sono presenti date di nascita per i membri della comunità.</p></section> }
       @for (group of groups; track group.key) {
         @if (members(group.key).length) { <section [attr.aria-label]="group.title"><h2>{{ group.title }}</h2><ul class="member-list">
           @for (person of members(group.key); track person.personId) {
@@ -24,7 +24,7 @@ import { BirthdayApiService, BirthdayCalendar, BirthdayItem } from '../../servic
         </ul></section> }
       }
     }
-    <nav class="community-links"><a routerLink="/mobile/privacy"><i class="pi pi-shield" aria-hidden="true"></i><span>Privacy e notifiche</span><i class="pi pi-angle-right" aria-hidden="true"></i></a></nav>
+    <nav class="community-links"><a routerLink="/mobile/privacy"><i class="pi pi-bell" aria-hidden="true"></i><span>Preferenze notifiche</span><i class="pi pi-angle-right" aria-hidden="true"></i></a></nav>
   `
 })
 export class MobileBirthdays implements OnInit, OnDestroy {

@@ -24,7 +24,7 @@ import { AuthService } from '../../auth/auth.service';
       <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a>
       <h1>{{ title }}</h1>
       @if (section === 'profilo') {
-        <a class="back" routerLink="/mobile/privacy"><i class="pi pi-shield" aria-hidden="true"></i> Privacy e notifiche</a>
+        <a class="back" routerLink="/mobile/privacy"><i class="pi pi-bell" aria-hidden="true"></i> Preferenze notifiche</a>
         <dl><dt>Nome</dt><dd>{{ current.context()?.displayName || 'Non disponibile' }}</dd><dt>Comunità</dt><dd>{{ current.context()?.communityName || 'Non associata' }}</dd><dt>Numero comunità</dt><dd>{{ current.context()?.communityNumber ?? 'Non disponibile' }}</dd><dt>Parrocchia</dt><dd>{{ current.context()?.parishName || 'Non disponibile' }}</dd><dt>Ruolo</dt><dd>{{ current.context()?.role || 'Non disponibile' }}</dd></dl>
         @if (profileFeedback) { <p role="status">{{ profileFeedback }}</p> }
         <button type="button" class="back" [disabled]="refreshing" (click)="refreshContext()"><i class="pi pi-refresh" aria-hidden="true"></i> Aggiorna profilo e permessi</button>
@@ -32,7 +32,7 @@ import { AuthService } from '../../auth/auth.service';
       } @else if (section === 'altro') {
         <div class="links"><a routerLink="/mobile/profilo">Il mio profilo <i class="pi pi-user" aria-hidden="true"></i></a>
           @if (canApprove()) { <a routerLink="/mobile/approvazioni">Appartenenze e deleghe <i class="pi pi-check-square" aria-hidden="true"></i></a> }
-          <a routerLink="/mobile/birthdays">Compleanni <i class="pi pi-gift" aria-hidden="true"></i></a><a routerLink="/mobile/gruppi">Gruppi <i class="pi pi-users" aria-hidden="true"></i></a><a routerLink="/mobile/avvisi">Avvisi <i class="pi pi-bell" aria-hidden="true"></i></a><a routerLink="/faq">Aiuto / FAQ <i class="pi pi-question-circle" aria-hidden="true"></i></a><a routerLink="/mobile/privacy">Privacy e notifiche <i class="pi pi-shield" aria-hidden="true"></i></a></div>
+          <a routerLink="/mobile/birthdays">Compleanni <i class="pi pi-gift" aria-hidden="true"></i></a><a routerLink="/mobile/gruppi">Gruppi <i class="pi pi-users" aria-hidden="true"></i></a><a routerLink="/mobile/avvisi">Avvisi <i class="pi pi-bell" aria-hidden="true"></i></a><a routerLink="/faq">Aiuto / FAQ <i class="pi pi-question-circle" aria-hidden="true"></i></a><a routerLink="/mobile/privacy">Preferenze notifiche <i class="pi pi-bell" aria-hidden="true"></i></a></div>
       } @else {
         <section class="empty"><i [class]="'pi ' + emptyIcon" aria-hidden="true"></i><h2>{{ title }}</h2><p>{{ unavailableMessage }}</p>@if (section === 'calendario') { <a routerLink="/mobile/convivenze">Apri le convivenze <i class="pi pi-arrow-right" aria-hidden="true"></i></a> }</section>
       }
