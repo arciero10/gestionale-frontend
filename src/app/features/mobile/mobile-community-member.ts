@@ -41,7 +41,7 @@ import { MemberDraft, MemberEditor } from './member-editor';
           <section class="privacy"><h2>La mia privacy</h2>
             <form (ngSubmit)="savePrivacy()">
               @for (field of privacyFields; track field.key) {
-                <label class="check"><input type="checkbox" [name]="field.key" [(ngModel)]="privacy[field.key]" [disabled]="busy" />{{ field.label }}</label>
+                <label class="check"><input type="checkbox" [name]="field.key" [(ngModel)]="privacy[field.key]" [disabled]="busy || field.key === 'showBirthday' && privacy.showBirthday === undefined" />{{ field.label }}</label>
               }
               <label>URL foto personale (HTTPS)<input type="url" name="photoUrl" [(ngModel)]="privacy.photoUrl" maxlength="1024" [disabled]="busy" /></label>
               <button class="primary" type="submit" [disabled]="busy">{{ busy ? 'Salvataggio...' : 'Salva preferenze' }}</button>
@@ -78,7 +78,8 @@ export class MobileCommunityMember implements OnInit, OnDestroy {
   protected readonly privacyFields: { key: Exclude<keyof MemberPrivacy, 'photoUrl'>; label: string }[] = [
     { key: 'showPhone', label: 'Mostra telefono alla comunità' },
     { key: 'showEmail', label: 'Mostra email alla comunità' },
-    { key: 'showBirthDate', label: 'Mostra data di nascita e compleanno' },
+    { key: 'showBirthDate', label: 'Mostra data di nascita completa, anno incluso' },
+    { key: 'showBirthday', label: 'Mostra il mio compleanno alla comunità' },
     { key: 'showPhoto', label: 'Mostra foto alla comunità' },
     { key: 'showFamily', label: 'Mostra il collegamento al coniuge' },
     { key: 'receiveBirthdayNotifications', label: 'Ricevi notifiche compleanno' },

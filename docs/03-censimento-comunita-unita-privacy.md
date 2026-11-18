@@ -107,6 +107,9 @@ I contatti essenziali sono condivisi solo con il consenso individuale del titola
 | Ruolo comunitario | Audit/log |
 
 Foto e data di nascita/compleanno richiedono anch'essi consenso esplicito.
+Il calendario compleanni usa ShowBirthday (solo giorno/mese), distinto da
+ShowBirthDate (data completa nella scheda). Preferenze notifiche e visibilita
+sono separate. Dettagli e rilascio: docs/13-mobile-birthdays.md.
 Tutti i flag di condivisione e le preferenze notifiche nascono disattivati,
 anche per le persone censite dal Responsabile. Il consenso onboarding al trattamento
 non equivale al consenso alla condivisione nella rubrica.

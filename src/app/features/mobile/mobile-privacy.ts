@@ -1,0 +1,46 @@
+import { Component, inject, OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { CommunityApiService, MemberPrivacy } from '../../services/community-api.service';
+
+@Component({
+  selector: 'app-mobile-privacy', standalone: true, imports: [RouterLink, FormsModule], styleUrl: './mobile-community.scss',
+  template: `
+    <a class="back" routerLink="/mobile/profilo"><i class="pi pi-arrow-left" aria-hidden="true"></i> Profilo</a><h1>Privacy e notifiche</h1>
+    @if (loading) { <div class="skeleton" role="status" aria-label="Caricamento preferenze"></div> }
+    @else if (preferences && preferences.showBirthday !== undefined) {
+      <section class="privacy"><form (ngSubmit)="save()">
+        <label class="check"><input type="checkbox" name="birthday" [(ngModel)]="preferences.showBirthday" [disabled]="busy" />Mostra il mio compleanno alla comunità</label>
+        <label class="check"><input type="checkbox" name="fullBirth" [(ngModel)]="preferences.showBirthDate" [disabled]="busy" />Mostra la mia data di nascita completa, anno incluso</label>
+        <label class="check"><input type="checkbox" name="birthdayNotifications" [(ngModel)]="preferences.receiveBirthdayNotifications" [disabled]="busy" />Ricevi notifiche sui compleanni</label>
+        <label class="check"><input type="checkbox" name="communityNotifications" [(ngModel)]="preferences.receiveCommunityNotifications" [disabled]="busy" />Ricevi notifiche della comunità</label>
+        <p class="muted">Notifiche push non ancora attive.</p>
+        <button class="primary" type="submit" [disabled]="busy">{{ busy ? 'Salvataggio...' : 'Salva preferenze' }}</button>
+      </form></section>
+    } @else if (!error) { <p class="feedback" role="status">Servizio compleanni in aggiornamento. Riprova più tardi.</p><button class="secondary" type="button" (click)="load()">Aggiorna</button> }
+    @if (error) { <p class="feedback" role="alert">{{ error }}</p><button class="secondary" type="button" [disabled]="busy" (click)="load()">Riprova</button> }
+    @if (feedback) { <p class="feedback" role="status">{{ feedback }}</p> }
+  `
+})
+export class MobilePrivacy implements OnInit {
+  private readonly api = inject(CommunityApiService);
+  protected preferences: MemberPrivacy | null = null;
+  protected loading = true;
+  protected busy = false;
+  protected error = '';
+  protected feedback = '';
+  ngOnInit(): void { void this.load(); }
+  protected async load(): Promise<void> {
+    this.loading = true; this.error = ''; this.feedback = ''; this.preferences = null;
+    try { this.preferences = await this.api.getPrivacy(); }
+    catch { this.error = 'Impossibile caricare le preferenze. Riprova.'; }
+    finally { this.loading = false; }
+  }
+  protected async save(): Promise<void> {
+    if (this.busy || !this.preferences || this.preferences.showBirthday === undefined) return;
+    this.busy = true; this.error = ''; this.feedback = '';
+    try { await this.api.savePrivacy(this.preferences); this.preferences = await this.api.getPrivacy(); this.feedback = 'Preferenze salvate.'; }
+    catch { this.error = 'Impossibile confermare il salvataggio. Riprova.'; }
+    finally { this.busy = false; }
+  }
+}

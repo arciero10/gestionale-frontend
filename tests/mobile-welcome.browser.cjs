@@ -163,6 +163,14 @@ async function installNative(context, platform) {
       let spouseId = null;
       let censusCalls = 0;
       let memberUpdates = 0;
+      let birthdayState = 'ready';
+      const preferences = { showPhone:false, showEmail:true, showBirthday:false, showBirthDate:false, showPhoto:false, showFamily:false, receiveBirthdayNotifications:false, receiveCommunityNotifications:false };
+      const birthdayItems = [
+        {personId:12,displayName:'Anna Rossi',day:18,month:11,dateLabel:'18 novembre',isToday:true,daysUntilBirthday:0,section:'today'},
+        {personId:13,displayName:'Marco Verdi',day:21,month:11,dateLabel:'21 novembre',isToday:false,daysUntilBirthday:3,section:'week'},
+        {personId:15,displayName:'Elena Bianchi',day:30,month:11,dateLabel:'30 novembre',isToday:false,daysUntilBirthday:12,section:'month'},
+        {personId:16,displayName:'Luca Neri',day:5,month:1,dateLabel:'5 gennaio',isToday:false,daysUntilBirthday:48,section:'later'}
+      ];
       const communityMembers = [
         { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER' },
         { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', stage: 'Rinnovate Promesse Battesimali', birthDate: '1985-05-03', email: 'shared@example.test', phoneNumber: '3331234567' }
@@ -171,6 +179,15 @@ async function installNative(context, platform) {
         const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' };
         if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
         const apiPath = new URL(route.request().url()).pathname;
+        if (apiPath === '/api/mobile/birthdays') {
+          assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
+          assert.equal(new URL(route.request().url()).search, '');
+          if (birthdayState === 'error') { await route.fulfill({status:503,headers,json:{}}); return; }
+          if (birthdayState === 'loading') await new Promise(resolve => setTimeout(resolve,500));
+          await route.fulfill({headers,json:{communityName:'3ª Comunità',parishName:'Parrocchia Martiri Canadesi',today:'2026-11-18',
+            birthdays:birthdayState === 'empty' ? [] : birthdayItems}});
+          return;
+        }
         if (apiPath.startsWith('/api/me/community')) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           if (apiPath.endsWith('/community') && communityState === 'error') {
@@ -182,8 +199,12 @@ async function installNative(context, platform) {
             await route.fulfill({ headers, json: { currentSpouseId: current, currentMarriageId: current === null ? null : 51,
               candidates: communityMembers.filter(m => m.personId !== 14).map(({personId,firstName,lastName}) => ({personId,firstName,lastName})) } });
           } else if (apiPath.endsWith('/privacy')) {
-            if (route.request().method() === 'PUT') { assert.equal(route.request().postDataJSON().showPhone, true); privacySaved = true; }
-            await route.fulfill({ headers, json: { showPhone: privacySaved, showEmail: false, showBirthDate: false, showPhoto: false, showFamily: false, receiveBirthdayNotifications: false, receiveCommunityNotifications: false } });
+            if (route.request().method() === 'PUT') {
+              const payload = route.request().postDataJSON();
+              assert.equal(payload.personId, undefined); assert.equal(payload.communityId, undefined);
+              Object.assign(preferences,payload); privacySaved = preferences.showPhone;
+            }
+            await route.fulfill({ headers, json: preferences });
           } else if (apiPath.endsWith('/members') && route.request().method() === 'POST') {
             const payload = route.request().postDataJSON();
             assert.equal(payload.firstName, 'Nuovo'); assert.equal(payload.role, 'MEMBER');
@@ -271,6 +292,49 @@ async function installNative(context, platform) {
       }
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();
+        await page.getByText('2 nei prossimi 7 giorni', {exact:true}).waitFor();
+        await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
+        await page.waitForURL(url => url.pathname === '/mobile/birthdays');
+        for (const title of ['Oggi','Prossimi 7 giorni','Questo mese','Prossimamente'])
+          await page.getByRole('heading',{name:title,exact:true}).waitFor();
+        assert.equal(await page.locator('app-mobile-birthdays .member-row').count(), 4);
+        assert.equal(await page.locator('app-mobile-birthdays table').count(), 0);
+        assert.equal(new Set(await page.locator('app-mobile-birthdays .member-row').evaluateAll(nodes => nodes.map(n=>n.getAttribute('href')))).size,4);
+        assert.ok(!(await page.locator('app-mobile-birthdays').textContent()).includes('1960'));
+        for (const width of [320,390,393,412]) {
+          await page.setViewportSize({width,height:844});
+          assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
+          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+          await page.screenshot({path:path.join(output,`birthdays-${width}.png`),fullPage:true});
+        }
+        await page.locator('app-mobile-birthdays .member-row').filter({hasText:'Anna Rossi'}).click();
+        await page.getByRole('heading',{name:'Anna Rossi',exact:true}).waitFor();
+        await page.getByRole('link',{name:'Home',exact:true}).click();
+        await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
+        birthdayState = 'loading';
+        await page.getByRole('button',{name:'Aggiorna compleanni'}).click();
+        await page.getByRole('status',{name:'Caricamento compleanni'}).waitFor();
+        await page.getByRole('heading',{name:'Oggi',exact:true}).waitFor();
+        birthdayState = 'error';
+        await page.getByRole('button',{name:'Aggiorna compleanni'}).click();
+        await page.getByRole('heading',{name:'Compleanni non disponibili',exact:true}).waitFor();
+        birthdayState = 'empty';
+        await page.getByRole('button',{name:'Riprova',exact:true}).click();
+        await page.getByRole('heading',{name:'Nessun compleanno condiviso',exact:true}).waitFor();
+        await page.getByRole('link',{name:'Home',exact:true}).click();
+        await page.getByText('Nessun compleanno imminente',{exact:true}).waitFor();
+        await page.getByRole('link',{name:'Profilo',exact:true}).click();
+        await page.getByRole('link',{name:'Privacy e notifiche',exact:true}).click();
+        await page.getByLabel('Mostra il mio compleanno alla comunità',{exact:true}).check();
+        await page.getByLabel('Ricevi notifiche sui compleanni',{exact:true}).check();
+        await page.getByRole('button',{name:'Salva preferenze',exact:true}).click();
+        await page.getByText('Preferenze salvate.',{exact:true}).waitFor();
+        assert.equal(preferences.showBirthday,true); assert.equal(preferences.showBirthDate,false); assert.equal(preferences.showEmail,true);
+        await page.screenshot({path:path.join(output,'birthday-privacy.png'),fullPage:true});
+        birthdayState = 'ready';
+        await page.getByRole('link',{name:'Home',exact:true}).click();
+        await page.getByText('2 nei prossimi 7 giorni',{exact:true}).waitFor();
+        console.log('PASS birthdays: sezioni, scheda, riepilogo Home, privacy, loading/error/empty e viewport');
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /3ª Comunità/);
         assert.equal(await page.locator('.mobile-bottom a').count(), 4);
         assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);

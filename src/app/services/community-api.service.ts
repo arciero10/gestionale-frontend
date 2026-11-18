@@ -25,6 +25,7 @@ export interface MemberWrite {
   updateSpouse?: boolean; spouseId?: number | null; expectedMarriageId?: number | null;
 }
 export interface MemberPrivacy {
+  showBirthday?: boolean;
   showPhone: boolean; showEmail: boolean; showBirthDate: boolean; showPhoto: boolean; showFamily: boolean;
   receiveBirthdayNotifications: boolean; receiveCommunityNotifications: boolean; photoUrl?: string | null;
 }

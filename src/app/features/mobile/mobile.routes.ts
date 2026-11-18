@@ -19,7 +19,10 @@ const section = (path: string, title: string) => ({ path, loadComponent: () => i
 
 export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
-  section('home', 'Home'), section('calendario', 'Calendario'), section('compleanni', 'Compleanni'),
+  section('home', 'Home'), section('calendario', 'Calendario'),
+  { path: 'compleanni', redirectTo: 'birthdays', pathMatch: 'full' },
+  { path: 'birthdays', loadComponent: () => import('./mobile-birthdays').then(c => c.MobileBirthdays), canMatch: [linkedGuard] },
+  { path: 'privacy', loadComponent: () => import('./mobile-privacy').then(c => c.MobilePrivacy), canMatch: [linkedGuard] },
   section('gruppi', 'Gruppi'), section('avvisi', 'Avvisi'), section('profilo', 'Profilo'), section('altro', 'Altro'),
   { path: 'approvazioni', loadComponent: () => import('./mobile-approvals').then(c => c.MobileApprovals), canMatch: [approvalGuard] },
   { path: 'onboarding', loadComponent: () => import('../gestionaleCN/onboarding-comunita/onboarding-comunita').then(c => c.OnboardingComunita) },
