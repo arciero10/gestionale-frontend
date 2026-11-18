@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, Injector, inject, signal } from '@angular/core';
+import { CurrentUserService } from './current-user.service';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core';
@@ -19,6 +20,8 @@ export const MOBILE_AUTH_MESSAGES = {
 
 @Injectable({ providedIn: 'root' })
 export class MobileAuthService {
+  private readonly injector = inject(Injector);
+  private logoutPromise: Promise<void> | null = null;
   readonly native = authPlatform(Capacitor.getPlatform()) === 'native';
   readonly signedIn = signal(false);
   readonly error = signal<string | null>(null);
@@ -59,6 +62,9 @@ export class MobileAuthService {
 
   async startNative(options: NativeStart): Promise<void> {
     await this.initialize();
+    const flow = this.requestedFlow();
+    await this.logout(true);
+    this.requestedFlow.set(flow ?? 'signin');
     this.browserMode = false;
     this.error.set(null);
     this.applyOutcome(await this.sdkSession.start(options));
@@ -69,7 +75,11 @@ export class MobileAuthService {
     this.applyOutcome(outcome);
   }
   async resendNative(): Promise<void> { this.applyOutcome(await this.sdkSession.resend()); }
-  async unlockNative(): Promise<void> { this.applyOutcome(await this.sdkSession.unlock()); }
+  async unlockNative(): Promise<void> {
+    const outcome = await this.sdkSession.unlock();
+    if (outcome.step === 'authenticated') await this.accessToken();
+    this.applyOutcome(outcome);
+  }
   async cancelNative(): Promise<void> {
     this.requestedFlow.set(null);
     await this.sdkSession.cancel();
@@ -133,18 +143,33 @@ export class MobileAuthService {
     if (!this.browserMode) return this.tokenPromise ??= this.sdkSession.accessToken().then(token => {
       console.info('[AUTH native] API access token obtained', { obtained: Boolean(token), scope: getApiConfiguration().apiScope });
       return token;
-    }).catch(error => { console.info('[AUTH native] API access token obtained', false); throw error; }).finally(() => { this.tokenPromise = null; });
+    }).catch(async error => {
+      console.info('[AUTH native] API access token obtained', false);
+      if (error?.code === 'SESSION_EXPIRED') {
+        await this.logout();
+        this.error.set(MOBILE_AUTH_MESSAGES.expired);
+      }
+      throw error;
+    }).finally(() => { this.tokenPromise = null; });
     if (!this.session) return Promise.reject(new MobileAuthError('expired'));
     return this.session.accessToken().catch(() => { this.error.set(MOBILE_AUTH_MESSAGES['expired']); throw new MobileAuthError('expired'); });
   }
 
-  logout(): void {
+  logout(preserveLoginPanel = false): Promise<void> {
+    if (this.logoutPromise) return this.logoutPromise;
     this.session?.logout();
+    this.sequence++;
+    this.tokenPromise = null;
+    this.injector.get(CurrentUserService).reset();
     this.browserMode = false;
     this.signedIn.set(false);
     this.error.set(null);
-    this.requestedFlow.set(null);
+    this.requestedFlow.set(preserveLoginPanel ? this.requestedFlow() ?? 'signin' : null);
     this.nativeOutcome.set({ step: 'login' });
-    void this.sdkSession.logout().catch(() => this.error.set('Disconnessione non completata. Riprova prima di chiudere l\'app.'));
+    this.logoutPromise = this.sdkSession.logout().catch(() => {
+      this.error.set('Disconnessione non completata. Riprova prima di accedere con un altro account.');
+      throw new Error(this.error()!);
+    }).finally(() => { this.logoutPromise = null; });
+    return this.logoutPromise;
   }
 }

@@ -23,6 +23,7 @@ export interface NativeAuthBridge {
 export class EntraNativeSession {
   outcome: NativeOutcome = { step: 'login' };
   private version = 0;
+  private signingOut: Promise<void> | null = null;
   constructor(private readonly bridge: NativeAuthBridge) {}
   get signedIn(): boolean { return this.outcome.step === 'authenticated'; }
   private async transition(operation: () => Promise<NativeOutcome>): Promise<NativeOutcome> {
@@ -33,7 +34,24 @@ export class EntraNativeSession {
     return outcome;
   }
   restore(): Promise<NativeOutcome> { return this.transition(() => this.bridge.restore()); }
-  start(options: NativeStart): Promise<NativeOutcome> { return this.transition(() => this.bridge.start(options)); }
+  async start(options: NativeStart): Promise<NativeOutcome> {
+    // Cancelling a challenge does not remove an SDK account from secure storage.
+    const signingOut = this.logout();
+    const version = this.version;
+    await signingOut;
+    if (version !== this.version) throw new Error('Operazione annullata.');
+    return this.transition(async () => {
+      try { return await this.bridge.start(options); }
+      catch (error) {
+        const value = error as { code?: string; message?: string };
+        if (!/account.*already.*signed.?in/i.test(`${value?.code ?? ''} ${value?.message ?? ''}`)) throw error;
+        if (version !== this.version) throw error;
+        await this.bridge.logout();
+        if (version !== this.version) throw new Error('Operazione annullata.');
+        return this.bridge.start(options);
+      }
+    });
+  }
   submit(options: NativeSubmission): Promise<NativeOutcome> { return this.transition(() => this.bridge.submit(options)); }
   resend(): Promise<NativeOutcome> { return this.transition(() => this.bridge.resend()); }
   unlock(): Promise<NativeOutcome> { return this.transition(() => this.bridge.unlock()); }
@@ -50,5 +68,10 @@ export class EntraNativeSession {
     await this.bridge.lock();
   }
   async cancel(): Promise<void> { this.version++; this.outcome = { step: 'login' }; await this.bridge.cancel(); }
-  async logout(): Promise<void> { this.version++; this.outcome = { step: 'login' }; await this.bridge.logout(); }
+  logout(): Promise<void> {
+    this.version++;
+    this.outcome = { step: 'login' };
+    return this.signingOut ??= this.bridge.logout().then(() => undefined)
+      .finally(() => { this.signingOut = null; });
+  }
 }

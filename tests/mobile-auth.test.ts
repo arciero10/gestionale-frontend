@@ -47,7 +47,7 @@ test('native password flow uses SDK, exposes only access token and no retained c
   assert.equal(sdk.input?.flow, 'signin');
   assert.equal(await session.accessToken(), 'api-access-token');
   assert.equal(JSON.stringify(session.outcome).includes('test-only'), false);
-  assert.deepEqual(sdk.calls, ['start']);
+  assert.deepEqual(sdk.calls, ['cache-signout', 'start']);
 });
 test('native OTP challenge and resend never open a browser', async () => {
   const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
@@ -105,15 +105,74 @@ test('only SDK browser-required outcome offers explicit fallback', async () => {
   await session.start({ flow: 'signin', method: 'password', email: 'user@example.test' });
   assert.equal(session.outcome.step, 'fallback');
   assert.equal(session.signedIn, false);
-  assert.deepEqual(sdk.calls, ['start']);
+  assert.deepEqual(sdk.calls, ['cache-signout', 'start']);
 });
 test('logout during delayed native sign-in rejects late result', async () => {
   const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
   let complete!: (value: NativeOutcome) => void;
   sdk.start = () => new Promise(resolve => complete = resolve);
   const pending = session.start({ flow: 'signin', method: 'otp', email: 'user@example.test' });
+  while (!complete) await new Promise(resolve => setTimeout(resolve, 0));
   await session.logout(); complete({ step: 'authenticated' });
   await assert.rejects(pending); assert.equal(session.signedIn, false);
+});
+
+test('switch account drains async SDK signout before starting OTP for B', async () => {
+  const sdk = new SdkMock(); sdk.cached = true;
+  const session = new EntraNativeSession(sdk);
+  await session.restore();
+  let release!: () => void;
+  sdk.logout = async () => { await new Promise<void>(resolve => release = resolve); sdk.cached = false; };
+  sdk.start = async input => {
+    assert.equal(sdk.cached, false); assert.equal(input.email, 'b@example.test');
+    sdk.calls.push('start-B'); return { step: 'code' };
+  };
+  const pending = session.start({ flow: 'signin', method: 'otp', email: 'b@example.test' });
+  assert.deepEqual(sdk.calls, []);
+  release(); await pending;
+  assert.deepEqual(sdk.calls, ['start-B']);
+});
+
+test('already signed in is recovered once by SDK signout without deleting preferences', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  let attempts = 0;
+  sdk.start = async () => {
+    if (++attempts === 1) throw new Error('An account is already signed in');
+    return { step: 'code' };
+  };
+  await session.start({ flow: 'signin', method: 'otp', email: 'b@example.test' });
+  assert.equal(attempts, 2);
+  assert.deepEqual(sdk.calls, ['cache-signout', 'cache-signout']);
+});
+
+test('SDK logout is idempotent and three login logout login cycles clear cached accounts', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  await session.logout(); await session.logout();
+  for (let index = 0; index < 3; index++) {
+    await session.start({ flow: 'signin', method: 'otp', email: `${index}@example.test` });
+    assert.ok(session.signedIn);
+    await session.logout(); assert.equal(sdk.cached, false);
+    assert.equal((await session.restore()).step, 'login');
+  }
+});
+
+test('failed cache clear blocks new login rather than starting over a cached account', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  sdk.logout = async () => { throw new Error('CACHE_CLEAR_FAILED'); };
+  await assert.rejects(session.start({ flow: 'signin', method: 'otp', email: 'a@example.test' }));
+  assert.equal(sdk.input, undefined);
+  assert.equal(session.signedIn, false);
+});
+
+test('logout while preparing new login cancels it before SDK start', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  let release!: () => void;
+  sdk.logout = () => new Promise<void>(resolve => release = resolve);
+  const pending = session.start({ flow: 'signin', method: 'otp', email: 'a@example.test' });
+  const logout = session.logout();
+  release(); await logout;
+  await assert.rejects(pending);
+  assert.equal(sdk.input, undefined);
 });
 
 const scope = 'api://71a9f6da-a231-4285-b475-37d2e65b8fe1/access_as_user';

@@ -21,7 +21,7 @@ export class PlatformAuthInterceptor implements HttpInterceptor {
     return from(this.mobile.accessToken()).pipe(
       switchMap(token => this.sendNative(request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }), next)),
       catchError(error => {
-        if (error instanceof HttpErrorResponse && error.status === 401) this.mobile.logout();
+        if (error instanceof HttpErrorResponse && error.status === 401) void this.mobile.logout().catch(() => undefined);
         // No automatic replay of writes after an authentication failure.
         return throwError(() => error);
       })

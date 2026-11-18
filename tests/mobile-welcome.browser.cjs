@@ -18,8 +18,8 @@ const server = createServer((req, res) => {
   fs.createReadStream(target).pipe(res);
 });
 
-async function installNative(context, platform) {
-  await context.addInitScript(platform => {
+async function installNative(context, platform, cached = false) {
+  await context.addInitScript(({ platform, cached }) => {
     window.CapacitorCustomPlatform = { name: platform };
     window.__nativeCalls = [];
     const methods = {
@@ -34,8 +34,15 @@ async function installNative(context, platform) {
       nativePromise: async (plugin, method, options) => {
         window.__nativeCalls.push(`${plugin}.${method}`);
         if (plugin === 'EntraNativeAuth') {
+          if (method === 'restore') return { step: cached ? 'unlock' : 'login' };
+          if (method === 'unlock') return { step: cached ? 'authenticated' : 'login' };
+          if (method === 'logout') {
+            await new Promise(resolve => setTimeout(resolve, 40)); cached = false;
+            return { step: 'login' };
+          }
           if (method === 'getAccessToken') return { accessToken: 'sdk-api-test-token' };
           if (method === 'start') {
+            if (cached) throw Object.assign(new Error('An account is already signed in'), { code: 'ACCOUNT_ALREADY_SIGNED_IN' });
             window.__nativeFlow = options.flow;
             window.__nativeSubmits = 0;
             return { step: options.flow === 'signin' && options.method === 'password' ? 'authenticated' : 'code' };
@@ -62,7 +69,7 @@ async function installNative(context, platform) {
         return {};
       }
     };
-  }, platform);
+  }, { platform, cached });
 }
 
 (async () => {
@@ -72,6 +79,38 @@ async function installNative(context, platform) {
     const base = `http://127.0.0.1:${server.address().port}`;
     browser = await chromium.launch({ headless: true,
       channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) });
+    for (const platform of ['android', 'ios']) {
+      for (const action of ['unlock', 'switch']) {
+        const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+        await installNative(context, platform, true);
+        await context.route('**/api/**', route => route.fulfill({ json: {
+          authenticated: true, linkedToCommunity: true, communityId: 91, role: 'MEMBER',
+          status: 'LINKED', permissions: [], communityName: 'Comunità test'
+        } }));
+        const page = await context.newPage(), errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        await page.goto(base);
+        await page.getByRole('heading', { name: 'Bentornato', exact: true }).waitFor();
+        if (action === 'unlock') {
+          await page.getByRole('button', { name: 'Sblocca sessione', exact: true }).click();
+          await page.waitForURL('**/mobile/home');
+          assert.equal(await page.evaluate(() => window.__nativeCalls.includes('EntraNativeAuth.logout')), false);
+        } else {
+          await page.getByRole('button', { name: 'Accedi con un altro account', exact: true }).click();
+          await page.locator('#native-email').fill('b@example.test');
+          if (await page.locator('#native-password').count())
+            await page.getByRole('button', { name: 'Accedi con codice via email', exact: true }).click();
+          await page.getByRole('button', { name: 'Accedi', exact: true }).click();
+          await page.locator('#native-code').waitFor();
+          assert.equal(new URL(page.url()).pathname, '/');
+          const calls = await page.evaluate(() => window.__nativeCalls);
+          assert.ok(calls.indexOf('EntraNativeAuth.logout') < calls.indexOf('EntraNativeAuth.start'));
+        }
+        assert.deepEqual(errors, []);
+        console.log(`PASS cached ${platform}: ${action}`);
+        await context.close();
+      }
+    }
     const cases = [
       ['pixel-9', 412, 915, 'android', 24, 24],
       ['android-medium', 360, 800, 'android', 24, 20],
@@ -515,7 +554,8 @@ async function installNative(context, platform) {
       assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
       if (flow === 'retry') {
         assert.equal(await page.evaluate(() => window.__nativeCalls.filter(c => c === 'EntraNativeAuth.start').length), 1);
-        assert.equal(await page.evaluate(() => window.__nativeCalls.includes('EntraNativeAuth.logout')), false);
+        const calls = await page.evaluate(() => window.__nativeCalls);
+        assert.equal(calls.slice(calls.indexOf('EntraNativeAuth.start') + 1).includes('EntraNativeAuth.logout'), false);
       }
       assert.equal(await page.evaluate(() => Object.values(localStorage).some(value => value.includes('sdk-api-test-token'))), false);
       assert.deepEqual(errors, []);

@@ -46,7 +46,7 @@ export class AuthService {
 
   logout(): void {
     if (this.mobile.native) {
-      this.mobile.logout();
+      void this.mobile.logout().catch(() => undefined);
       this.injector.get(CurrentUserService).reset();
       void this.injector.get(Router).navigateByUrl('/', { replaceUrl: true });
       return;

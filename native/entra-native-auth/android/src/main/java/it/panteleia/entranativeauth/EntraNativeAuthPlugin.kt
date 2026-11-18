@@ -48,8 +48,10 @@ class EntraNativeAuthPlugin : Plugin() {
                 }
             } catch (_: CancellationException) {
                 call.reject("Operazione annullata", "CANCELLED")
-            } catch (_: Exception) {
-                call.reject("Accesso non completato. Verifica i dati e la connessione.", "NATIVE_AUTH_FAILED")
+            } catch (error: Exception) {
+                val code = if (error.message == "An account is already signed in.") "ACCOUNT_ALREADY_SIGNED_IN"
+                    else if (error.message == "SESSION_EXPIRED") "SESSION_EXPIRED" else "NATIVE_AUTH_FAILED"
+                call.reject("Accesso non completato. Verifica i dati e la connessione.", code)
             } finally { busy = false }
         }
     }
@@ -77,6 +79,7 @@ class EntraNativeAuthPlugin : Plugin() {
         unlocked = false
         state = null
         requireNotNull(client)
+        clearAccount()
         val sdk = PublicClientApplication.createNativeAuthPublicClientApplication(context,
             NativeAuthPublicClientApplicationParameters(nativeClientId,
                 "https://$subdomain.ciamlogin.com/$subdomain.onmicrosoft.com/",
@@ -196,6 +199,8 @@ class EntraNativeAuthPlugin : Plugin() {
         val current = requireNotNull(account)
         val result = current.getAccessToken(NativeAuthGetAccessTokenParameters().apply { scopes = this@EntraNativeAuthPlugin.scopes })
         check(unlocked && foreground)
+        if (result is NativeError && result.error in listOf("invalid_grant", "interaction_required", "login_required"))
+            throw IllegalStateException("SESSION_EXPIRED")
         if (result !is GetAccessTokenResult.Complete) throw IllegalStateException()
         JSObject().put("accessToken", result.resultValue.accessToken)
     }
@@ -220,12 +225,17 @@ class EntraNativeAuthPlugin : Plugin() {
             // Drain any in-flight SDK operation before clearing its cache.
             while (busy) delay(25)
             run(call) {
-                val current = account ?: (client?.getCurrentAccount() as? GetAccountResult.AccountFound)?.resultValue
-                account = null
-                if (current != null && current.signOut() !is SignOutResult.Complete) throw IllegalStateException()
+                clearAccount()
                 JSObject().put("step", "login")
             }
         }
+    }
+    private suspend fun clearAccount() {
+        val current = (client?.getCurrentAccount() as? GetAccountResult.AccountFound)?.resultValue ?: account
+        if (current != null && current.signOut() !is SignOutResult.Complete) throw IllegalStateException()
+        account = null
+        state = null
+        check(client?.getCurrentAccount() !is GetAccountResult.AccountFound)
     }
     override fun handleOnDestroy() { jobs.cancel(); unlocked = false }
 }

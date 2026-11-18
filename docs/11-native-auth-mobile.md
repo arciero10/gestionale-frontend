@@ -172,6 +172,26 @@ attributi del tenant, annullamento/rete assente, restore dopo process death, bio
 codice OS, refresh reale, background, logout e assenza cache dopo signOut.
 Non inserire access token nei report o log, non simulare il superamento delle policy.
 
+## Cambio account e cache Native Auth
+
+Il cambio account usa signOut SDK, non cancel (che annulla solo il challenge).
+Il servizio attende il logout prima del nuovo accesso, invalida token in volo e
+contesto /api/me senza cancellare localStorage, preferenze o dati applicativi.
+Il form rimane montato durante questa transizione. Ogni nuovo start richiede
+cache SDK vuota; un errore account-already-signed-in provoca un solo retry dopo
+signOut. Se la pulizia fallisce, il nuovo accesso non viene avviato.
+
+Restore conserva la cache protetta e mostra Bentornato; unlock mantiene biometria
+e credenziale dispositivo e verifica di poter acquisire il token. Una revoca
+riconosciuta dal plugin Android o HTTP 401 ripulisce la sessione; un errore di
+rete non cancella automaticamente l'account. iOS attende i callback SDK in corso
+prima di completare signOut; Android verifica che l'account non sia piu presente.
+
+Regressioni: npm run test:auth-mobile e npm run test:mobile-welcome (build richiesta).
+I mock verificano ordine signOut/start, logout lento, restore/unlock e tre cicli
+login/logout. OTP, biometria, process death e cache reali restano da provare su
+dispositivo Android/iOS; la sync iOS su Windows non equivale a una build Xcode.
+
 ## Fonti ufficiali
 
 La funzione dedicata "La mia comunita" usa ora /mobile/community e scheda mobile,

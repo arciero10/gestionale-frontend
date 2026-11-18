@@ -101,9 +101,11 @@ export class NativeAuthPanel {
       if (this.mobile.signedIn()) this.authenticated.emit();
     } catch (error) {
       const code = (error as { code?: string })?.code;
-      this.message.set(code === 'CANCELLED' ? 'Operazione annullata. Puoi riprovare.' : code === 'UNLOCK_UNAVAILABLE'
+      this.message.set(this.mobile.error() ?? (code === 'SESSION_EXPIRED' ? 'Sessione scaduta. Accedi nuovamente.'
+        : code === 'ACCOUNT_ALREADY_SIGNED_IN' ? 'La sessione precedente non si e chiusa. Riprova l\'accesso.'
+        : code === 'CANCELLED' ? 'Operazione annullata. Puoi riprovare.' : code === 'UNLOCK_UNAVAILABLE'
         ? 'Sblocco dispositivo non disponibile. Accedi nuovamente.'
-        : 'Operazione non completata. Controlla i dati, il codice e la connessione, poi riprova.');
+        : 'Operazione non completata. Controlla i dati, il codice e la connessione, poi riprova.'));
     } finally { this.password = ''; this.code = ''; this.busy.set(false); }
   }
   protected submit(): void {
@@ -126,6 +128,11 @@ export class NativeAuthPanel {
   protected resend(): void { void this.perform(() => this.mobile.resendNative()); }
   protected toggleMethod(): void { this.method = this.method === 'password' ? 'otp' : 'password'; this.password = ''; }
   protected resetPassword(): void { this.overrideFlow.set('reset'); this.password = ''; this.message.set(null); }
-  protected newLogin(): void { void this.perform(async () => { await this.mobile.cancelNative(); this.mobile.requestLogin(); }); }
+  protected newLogin(): void { void this.perform(async () => {
+    await this.mobile.logout(true);
+    this.email = ''; this.password = ''; this.code = ''; this.attributes = {};
+    this.overrideFlow.set('signin'); this.method = 'otp';
+    this.mobile.requestLogin();
+  }); }
   protected cancel(): void { void this.perform(async () => { await this.mobile.cancelNative(); this.closed.emit(); }); }
 }

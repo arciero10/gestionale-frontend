@@ -97,7 +97,11 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     func failed(_ error: MSALNativeAuthError) {
         if error.isBrowserRequired { flow?.state = nil; finish(["step": "fallback"]); return }
-        if !cancelled, let call = pending { reject(call, "AUTH_FAILED") }
+        if !cancelled, let call = pending {
+            let code = error.localizedDescription.lowercased().contains("already signed in")
+                ? "ACCOUNT_ALREADY_SIGNED_IN" : "AUTH_FAILED"
+            reject(call, code)
+        }
         pending = nil
         busy = false
         if cancelled { flow = nil }
@@ -123,6 +127,12 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         guard begin(call) else { return }
         do {
             // OTP must not advertise password support: the SDK negotiates the challenge.
+            application?.getNativeAuthUserAccount()?.signOut()
+            guard application?.getNativeAuthUserAccount() == nil else {
+                reject(call, "CACHE_CLEAR_FAILED")
+                pending = nil; busy = false
+                return
+            }
             application = try makeApplication?(method == "otp" ? [.OOB] : [.OOB, .password])
         } catch {
             reject(call, "INVALID_CONFIGURATION")
@@ -277,10 +287,20 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc public func cancel(_ call: CAPPluginCall) { main { [self] in stop(); call.resolve(["step": "login"]) } }
     @objc public func logout(_ call: CAPPluginCall) { main { [self] in
         stop()
+        drainLogout(call, remaining: 200)
+    } }
+    private func drainLogout(_ call: CAPPluginCall, remaining: Int) {
+        if busy {
+            guard remaining > 0 else { reject(call, "CACHE_CLEAR_FAILED"); return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
+                drainLogout(call, remaining: remaining - 1)
+            }
+            return
+        }
         application?.getNativeAuthUserAccount()?.signOut()
         if application?.getNativeAuthUserAccount() != nil { reject(call, "CACHE_CLEAR_FAILED"); return }
         call.resolve(["step": "login"])
-    } }
+    }
 }
 
 // Retains the native plugin in builds made before Capacitor regenerates packageClassList.
