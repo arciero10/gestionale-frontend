@@ -189,13 +189,21 @@ async function installNative(context, platform, cached = false) {
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap']) {
+    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
       await installNative(context, 'android');
       let meCalls = 0;
       let resubmitted = false;
       let bootstrapApproved = false;
-      let communityManager = false;
+      let communityManager = flow === 'calendar-manager';
+      let calendarPublished = false;
+      const calendarEvent = { id: 501, date:'2026-11-20', startTime:'20:30:00', endTime:null, title:'Celebrazione della Parola', eventType:'Parola',
+        description:'Incontro della comunità', location:'Sala parrocchiale', sourceLocator:'Testo, riga 1', sourceText:'20 novembre - Parola',
+        reviewConfirmed:false, duplicateConfirmed:false, isIgnored:false, isCancelled:false, updatedAt:'2026-11-19T10:00:00Z',
+        assignments:[{ personId:12, rawName:'Anna', displayName:'Anna Rossi', matchStatus:'MATCHED', label:'Preparazione della Parola', reminderDaysBefore:3, isMine:true }] };
+      const calendarDraft = { id:71, status:'PARSED', sourceType:'TEXT', updatedAt:'2026-11-19T10:00:00Z', events:[structuredClone(calendarEvent)], people:[{id:12,firstName:'Anna',lastName:'Rossi'}] };
+      calendarDraft.people.push({id:13,firstName:'Paolo',lastName:'Rossi'},{id:14,firstName:'Paolo',lastName:'Verdi'});
+      calendarDraft.events[0].assignments.push({personId:null,rawName:'Paolo',matchStatus:'AMBIGUOUS',label:'Preparazione',reminderDaysBefore:null});
       let communityState = 'ready';
       let approvalCalls = 0;
       let spouseId = null;
@@ -218,6 +226,29 @@ async function installNative(context, platform, cached = false) {
         const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' };
         if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
         const apiPath = new URL(route.request().url()).pathname;
+        if (apiPath.startsWith('/api/mobile/calendar')) {
+          if (!flow.startsWith('calendar-')) { await route.fulfill({headers,json:{today:'2026-11-19',canManage:false,events:[]}}); return; }
+          assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
+          if (apiPath.endsWith('/imports/text')) {
+            assert.ok(route.request().postDataJSON().text.includes('20 novembre'));
+            await route.fulfill({status:201,headers,json:{id:71,existing:false}});
+          } else if (apiPath.endsWith('/imports/excel')) {
+            assert.ok(route.request().headers()['content-type'].includes('multipart/form-data'));
+            await route.fulfill({status:503,headers,json:{message:'Archivio documenti non configurato.'}});
+          } else if (apiPath.endsWith('/imports/71/approve')) {
+            calendarPublished = true; calendarDraft.status = 'APPROVED'; await route.fulfill({headers,json:{id:71,status:'APPROVED'}});
+          } else if (apiPath.endsWith('/imports/71')) {
+            if (route.request().method() === 'PUT') {
+              Object.assign(calendarDraft,route.request().postDataJSON());
+              assert.equal(calendarDraft.events[0].reviewConfirmed,true);
+            }
+            await route.fulfill({headers,json:calendarDraft});
+          } else if (apiPath.endsWith('/imports')) await route.fulfill({headers,json:[{id:71,status:calendarDraft.status,sourceType:'TEXT',count:1}]});
+          else if (apiPath.endsWith('/people')) await route.fulfill({headers,json:calendarDraft.people});
+          else if (apiPath.endsWith('/501')) await route.fulfill({headers,json:{event:calendarEvent,canManage:communityManager}});
+          else await route.fulfill({headers,json:{today:'2026-11-19',canManage:communityManager,events:[calendarEvent]}});
+          return;
+        }
         if (apiPath === '/api/mobile/birthdays') {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           assert.equal(new URL(route.request().url()).search, '');
@@ -277,9 +308,9 @@ async function installNative(context, platform, cached = false) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
-          const linked = flow === 'linked' || flow === 'pending' && meCalls > 1;
+          const linked = flow === 'linked' || flow.startsWith('calendar-') || flow === 'pending' && meCalls > 1;
           await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE'] : [],
-            ...(linked ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: 'MEMBER', memberCount: 2 } : {}) } });
+            ...(linked ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
         } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : [] }); }
         else if (route.request().url().endsWith('/onboarding/requests/101/approve')) {
           assert.equal(route.request().method(), 'POST'); bootstrapApproved = true;
@@ -299,9 +330,9 @@ async function installNative(context, platform, cached = false) {
       if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap'].includes(flow)) {
+      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member'].includes(flow)) {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -318,7 +349,7 @@ async function installNative(context, platform, cached = false) {
         await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
         assert.equal(meCalls, 0);
       } else {
-        await page.waitForURL(url => url.pathname === (flow === 'linked' ? '/mobile/home' : '/mobile/onboarding'));
+        await page.waitForURL(url => url.pathname === (flow === 'linked' || flow.startsWith('calendar-') ? '/mobile/home' : '/mobile/onboarding'));
         assert.equal(meCalls, flow === 'retry' ? 2 : 1);
       }
       if (flow === 'bootstrap') {
@@ -329,6 +360,44 @@ async function installNative(context, platform, cached = false) {
         assert.equal(bootstrapApproved, true);
         assert.equal(await page.locator('.layout-container').count(), 0);
         await page.screenshot({path:path.join(output,'bootstrap-admin.png'),fullPage:true});
+      }
+      if (flow.startsWith('calendar-')) {
+        await page.getByText('Prossimo appuntamento',{exact:true}).waitFor();
+        await page.getByText('Prossimo incarico',{exact:true}).waitFor();
+        await page.locator('.mobile-bottom').getByRole('link',{name:'Calendario',exact:true}).click();
+        await page.locator('app-mobile-calendar .event').filter({hasText:'Celebrazione della Parola'}).first().click();
+        await page.getByRole('heading',{name:'Il tuo incarico',exact:true}).waitFor();
+        await page.getByRole('heading',{name:'Celebrazione della Parola',exact:true}).waitFor();
+        await page.getByRole('link',{name:'Calendario',exact:true}).first().click();
+        if (communityManager) {
+          await page.getByRole('link',{name:'Importa calendario',exact:true}).click();
+          await page.getByRole('button',{name:'Excel .xlsx',exact:true}).click();
+          await page.locator('input[type=file]').setInputFiles({name:'calendario.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('fixture')});
+          await page.getByRole('button',{name:'Analizza e crea bozza',exact:true}).click();
+          await page.getByRole('alert').filter({hasText:'Archivio documenti non configurato'}).waitFor();
+          await page.getByRole('button',{name:'Incolla testo',exact:true}).click();
+          await page.getByLabel('Testo del calendario',{exact:true}).fill('20 novembre - Parola\nAnna');
+          await page.getByRole('button',{name:'Analizza e crea bozza',exact:true}).click();
+          await page.getByRole('heading',{name:'Revisione calendario',exact:true}).waitFor();
+          await page.getByText('Da confermare',{exact:true}).waitFor();
+          await page.getByLabel('Persona',{exact:true}).nth(1).selectOption({label:'Paolo Rossi'});
+          for (const width of [320,390,412]) {
+            await page.setViewportSize({width,height:844});
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            await page.screenshot({path:path.join(output,`calendar-editor-${width}.png`),fullPage:true});
+          }
+          await page.getByLabel('Ho verificato data, titolo e incarichi',{exact:true}).check();
+          await page.getByRole('button',{name:'Approva e pubblica',exact:true}).click();
+          await page.getByText('Calendario approvato e pubblicato nella comunità.',{exact:true}).waitFor();
+          assert.equal(calendarPublished,true);
+        } else assert.equal(await page.getByRole('link',{name:'Importa calendario',exact:true}).count(),0);
+        for (const width of [320,390,412]) {
+          await page.setViewportSize({width,height:844});
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+          await page.screenshot({path:path.join(output,`${flow}-${width}.png`),fullPage:true});
+        }
+        console.log(`PASS ${flow}: Home, incarico, calendario, revisione e permessi`);
       }
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();

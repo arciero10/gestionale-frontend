@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { BirthdayApiService } from '../../services/birthday-api.service';
+import { CalendarApiService, CalendarEvent, calendarDate } from '../../services/calendar-api.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../auth/current-user.service';
 import { AuthService } from '../../auth/auth.service';
@@ -14,9 +15,11 @@ import { AuthService } from '../../auth/auth.service';
         <div><span class="eyebrow">INSIEME, OGNI GIORNO</span><h2>La mia comunità</h2><p>{{ current.context()?.communityName }}@if (current.context()?.memberCount !== undefined) { · {{ current.context()?.memberCount }} membri }</p><i class="pi pi-arrow-right" aria-hidden="true"></i></div>
       </a>
       <h2 class="section-label">La tua app</h2>
+      @if (nextEvent; as event) { <a class="community-card calendar-preview" [routerLink]="['/mobile/calendar', event.id]"><div><span class="eyebrow">Prossimo appuntamento</span><h2>{{ event.title }}</h2><p>{{ calendarDate(event.date) }} · {{ event.startTime?.slice(0,5) }}</p></div></a> }
+      @if (nextAssignment; as event) { <a class="community-card calendar-preview" [routerLink]="['/mobile/calendar', event.id]"><div><span class="eyebrow">Prossimo incarico</span><h2>{{ assignmentLabel(event) }}</h2><p>{{ calendarDate(event.date) }}</p></div></a> }
       <div class="app-grid">
         @for (card of cards; track card.path) {
-          <a class="app-tile" [routerLink]="'/mobile/' + card.path"><span class="tile-icon" [style.background]="card.background" [style.color]="card.color"><i [class]="'pi ' + card.icon" aria-hidden="true"></i></span><h2>{{ card.title }}</h2>@if (card.path === 'birthdays') { <small class="birthday-summary">{{ birthdaySummary }}</small> }<i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a>
+          <a class="app-tile" [routerLink]="'/mobile/' + card.path"><span class="tile-icon" [style.background]="card.background" [style.color]="card.color"><i [class]="'pi ' + card.icon" aria-hidden="true"></i></span><h2>{{ card.title }}</h2>@if (card.path === 'birthdays') { <small class="birthday-summary">{{ birthdaySummary }}</small> }@if (card.path === 'calendario') { <small class="birthday-summary">{{ calendarSummary }}</small> }<i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a>
         }
         @if (canOrganize()) { <a class="app-tile" routerLink="/mobile/posti-convivenza"><span class="tile-icon places"><i class="pi pi-building" aria-hidden="true"></i></span><h2>Posti di convivenza</h2><i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a> }
       </div>
@@ -39,7 +42,7 @@ import { AuthService } from '../../auth/auth.service';
     }
   `,
   styles: [`
-    .birthday-summary{margin-top:8px;color:#475569;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+    .birthday-summary{margin-top:8px;color:#475569;font-size:12px;line-height:1.4;overflow-wrap:anywhere}.calendar-preview{margin:12px 0}
     :host{display:block;color:#0f172a}h1{font-size:25px;line-height:1.25;margin:8px 0;letter-spacing:0;overflow-wrap:anywhere}.greeting{margin:4px 4px 24px}.greeting>p{color:#1d4ed8;font-size:13px;font-weight:650;margin:0}.greeting>span{font-size:14px;color:#475569}
     .community-card{display:block;background:white;border:1px solid #dbe3ee;border-radius:8px;overflow:hidden;color:#0f172a;text-decoration:none}.community-card img{display:block;width:100%;height:134px;object-fit:cover;object-position:center 45%}.community-card>div{padding:18px;position:relative}.eyebrow{font-size:10px;font-weight:700;color:#166534}.community-card h2{font-size:20px;margin:8px 0}.community-card p{font-size:13px;color:#475569;margin:0;padding-right:24px}.community-card .pi{position:absolute;right:18px;bottom:20px;color:#1d4ed8}
     .section-label{font-size:16px;margin:24px 2px 12px}.app-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.app-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:140px;position:relative;padding:18px 14px;border:1px solid #e2e8f0;border-radius:8px;background:white;color:#0f172a;text-decoration:none}.tile-icon{width:42px;height:42px;border-radius:8px;display:grid;place-items:center;font-size:21px}.places{background:#f1f5f9;color:#334155}.app-tile h2{font-size:15px;line-height:1.4;margin:14px 0 0;overflow-wrap:anywhere;padding-right:12px}.arrow{position:absolute;top:18px;right:14px;color:#64748b;font-size:12px}
@@ -48,8 +51,24 @@ import { AuthService } from '../../auth/auth.service';
 })
 export class MobileHome implements OnInit {
   private readonly birthdays = inject(BirthdayApiService);
+  private readonly calendar = inject(CalendarApiService);
+  protected readonly calendarDate = calendarDate;
+  protected nextEvent: CalendarEvent | null = null;
+  protected nextAssignment: CalendarEvent | null = null;
+  protected calendarSummary = 'Caricamento...';
+  protected assignmentLabel(event: CalendarEvent): string { return event.assignments.filter(x => x.isMine).map(x => x.label).join(', '); }
   protected birthdaySummary = 'Caricamento...';
-  ngOnInit(): void { if (this.section === 'home') void this.loadBirthdays(); }
+  ngOnInit(): void { if (this.section === 'home') { void this.loadBirthdays(); void this.loadCalendar(); } }
+  private async loadCalendar(): Promise<void> {
+    try {
+      const result = await this.calendar.get();
+      const events = result.events.filter(x => !x.isCancelled && !x.isIgnored && x.date && x.date >= result.today)
+        .sort((a, b) => `${a.date} ${a.startTime ?? ''}`.localeCompare(`${b.date} ${b.startTime ?? ''}`));
+      this.nextEvent = events[0] ?? null;
+      this.nextAssignment = events.find(x => x.assignments.some(a => a.isMine)) ?? null;
+      this.calendarSummary = this.nextEvent ? this.nextEvent.title : 'Nessun appuntamento pubblicato';
+    } catch { this.calendarSummary = 'Calendario non disponibile'; }
+  }
   private async loadBirthdays(): Promise<void> {
     try { const data = await this.birthdays.get(); const count = data.birthdays.filter(x => x.daysUntilBirthday <= 7).length;
       this.birthdaySummary = count ? count + ' nei prossimi 7 giorni' : 'Nessun compleanno imminente';

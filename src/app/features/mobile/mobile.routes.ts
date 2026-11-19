@@ -19,7 +19,12 @@ const section = (path: string, title: string) => ({ path, loadComponent: () => i
 
 export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
-  section('home', 'Home'), section('calendario', 'Calendario'),
+  section('home', 'Home'),
+  { path: 'calendario', loadComponent: () => import('./mobile-calendar').then(c => c.MobileCalendar), canMatch: [linkedGuard] },
+  { path: 'calendar', loadComponent: () => import('./mobile-calendar').then(c => c.MobileCalendar), canMatch: [linkedGuard] },
+  { path: 'calendar/import', loadComponent: () => import('./mobile-calendar-import').then(c => c.MobileCalendarImport), canMatch: [linkedGuard] },
+  { path: 'calendar/import/:id', loadComponent: () => import('./mobile-calendar-import').then(c => c.MobileCalendarImport), canMatch: [linkedGuard] },
+  { path: 'calendar/:id', loadComponent: () => import('./mobile-calendar-detail').then(c => c.MobileCalendarDetail), canMatch: [linkedGuard] },
   { path: 'compleanni', redirectTo: 'birthdays', pathMatch: 'full' },
   { path: 'birthdays', loadComponent: () => import('./mobile-birthdays').then(c => c.MobileBirthdays), canMatch: [linkedGuard] },
   { path: 'privacy', loadComponent: () => import('./mobile-privacy').then(c => c.MobilePrivacy), canMatch: [linkedGuard] },
