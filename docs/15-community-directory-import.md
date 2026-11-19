@@ -123,7 +123,7 @@ operative da definire prima dell'uso oltre il TEST, trattandosi di dati personal
 
 ## Migration
 
-20261119214828_AddCommunityDirectoryImport: SOLO CREATA, non applicata ad Azure.
+20261119214828_AddCommunityDirectoryImport: applicata a TEST dall'operatore e pubblicata nella fase V1.
 
 CommunityDirectoryImports: Id identity, CommunityId, SourceType, SourceHash,
 OriginalFileName, OriginalReference, RawText, Status, CreatedBy/CreatedAt,
@@ -144,7 +144,7 @@ Default di dominio: DRAFT, NEW, SourceSelected=true, altri flag false, conteggi 
 timestamp assegnati nelle operazioni, senza seed o default SQL dinamici.
 Nessuna colonna aggiunta/modificata a Person/User/CommunityMember/Marriage.
 
-Push di entrambi i repository sospeso fino a conferma migration TEST applicata.
+La V1.1 non richiede altre migration. Lo schema V1 resta invariato.
 Dalla sessione con connessione configurata, senza stampare o inviare segreti:
 
 ```powershell
@@ -165,3 +165,34 @@ riuso/nuova/ignora, coniuge, conferma, ricerca telefono e bottom nav.
 Viewport Android/iOS 320/390/412 con verifica overflow e screenshot.
 Build Angular, cap sync android/ios e assembleDebug. Nessuna build Xcode su
 Windows; upload tramite picker e sessione su dispositivi fisici restano da provare.
+
+## V1.1: blocchi e coppie
+
+Il testo viene normalizzato (HTML con AngleSharp, Markdown, mailto, NBSP,
+separatori) e suddiviso per intestazioni anagrafiche, non per righe non vuote.
+Le righe vuote non separano i contatti dal nucleo. Le coppie generano due righe;
+il cognome comune non viene assegnato come certo a entrambi. Email personali e
+contatti gia censiti nella stessa comunita possono suggerire cognomi distinti.
+Ogni inferenza conserva valore, origine e stato da verificare.
+
+Telefoni con slash vengono normalizzati; etichette personali attribuiscono i
+cellulari. Il fisso del nucleo resta metadata, senza sovrascrivere il mobile.
+L'ordine dei contatti e solo un segnale debole. Indirizzi e contatti non attribuiti
+restano visibili nella sorgente. Person ha gia Address, ma l'import non scrive
+automaticamente un indirizzo domestico condiviso su singole persone.
+
+SourceText usa un envelope JSON versionato nelle colonne TEXT esistenti;
+l'API espone separatamente sourceText leggibile ed evidence. Le vecchie bozze
+senza envelope restano compatibili. Hash sorgente versionato per non riusare
+bozze V1 interpretate dal vecchio parser. RawText conserva il testo originale.
+
+Il fuzzy conservativo usa distanza Levenshtein: nome esatto e cognome vicino
+(o viceversa), minimo 5 caratteri, distanza 1/2 e similarita almeno 80%.
+Produce solo POSSIBLE_DUPLICATE, mai riuso automatico: Emmanuel Baciarlini
+propone Emmanuel Baciarini e richiede decisione esplicita del responsabile.
+
+La lista mobile raggruppa i due componenti; la revisione singola mostra origine
+e richiede verifica esplicita dei dati inferiti. Conferma coppia salva solo la
+scelta in bozza (PUT /:id/couple), non approva i campi. MarriageService crea il
+matrimonio solo alla conferma finale, con scoping, transazione, audit e idempotenza.
+Nessuna modifica ad autenticazione, consensi o calendario.

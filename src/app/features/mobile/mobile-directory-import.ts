@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CurrentUserService } from '../../auth/current-user.service';
-import { DirectoryDraft, DirectoryImportApiService, DirectorySummary, directoryStateLabel } from '../../services/directory-import-api.service';
+import { DirectoryDraft, DirectoryRow, DirectoryImportApiService, DirectorySummary, directoryStateLabel } from '../../services/directory-import-api.service';
 
 @Component({
   selector: 'app-mobile-directory-import', standalone: true, imports: [FormsModule, RouterLink], styleUrl: './directory-import.scss',
@@ -23,12 +23,23 @@ import { DirectoryDraft, DirectoryImportApiService, DirectorySummary, directoryS
           @if (item.sheets.length > 1) { <details open><summary>Fogli da includere</summary>@for (sheet of item.sheets; track sheet) {
             <label class="check"><input type="checkbox" [checked]="sheetIncluded(sheet)" (change)="selectSheet(sheet, $any($event.target).checked)" [disabled]="busy" />{{ sheet }}</label>
           }</details> }
-          <ul class="rows" aria-label="Persone importate">@for (row of item.rows; track row.id) {
-            <li><a class="row-link" [routerLink]="['/mobile/community/import', item.id, 'row', row.id]">
+          <ul class="rows" aria-label="Persone importate">@for (group of groups; track group[0].id) {
+            <li [class.couple]="group.length === 2">
+            @if (group.length === 2) { <h2>Possibile coppia</h2> }
+            @for (row of group; track row.id) {
+            <a class="row-link" [routerLink]="['/mobile/community/import', item.id, 'row', row.id]">
               <span class="row-copy"><strong>{{ row.firstName }} {{ row.lastName }}@if (!row.firstName && !row.lastName) { Nome da riconoscere }</strong>
-                @if (row.phone) { <small>{{ row.phone }}</small> }<small>{{ row.sourceLocator }}</small><span [class]="'badge ' + row.state">{{ stateLabel(row.state) }}</span>
+                @if (row.phone) { <small>{{ row.phone }}</small> }@if (row.email) { <small>{{ row.email }}</small> }
+                @for (field of row.evidence?.fields ?? []; track $index) { @if (field.confidence !== 'RICONOSCIUTO') { <small class="warning">{{ field.confidence === 'INFERITO' ? 'Inferito' : 'Da verificare' }}: {{ field.origin }}@if (field.value) { · {{ field.value }} }</small> } }
+                <small>{{ row.sourceLocator }}</small><span [class]="'badge ' + row.state">{{ stateLabel(row.state) }}</span>
               </span><i class="pi pi-chevron-right" aria-hidden="true"></i>
-            </a></li>
+            </a> }
+            @if (group.length === 2) {
+              <p>Possibile matrimonio · {{ group[0].firstName }} ↔ {{ group[1].firstName }}</p>
+              @if (coupleConfirmed(group)) { <span class="badge">Coppia confermata nella bozza</span> }
+              @else { <button type="button" (click)="confirmCouple(group)" [disabled]="busy || group[0].action === 'IGNORE' || group[1].action === 'IGNORE'">Conferma coppia</button> }
+            }
+            </li>
           }</ul>
           <label class="check"><input type="checkbox" [(ngModel)]="reviewed" [disabled]="busy" />Ho verificato l'elenco, i dati e le persone selezionate</label>
           <button class="primary full" type="button" (click)="confirm()" [disabled]="busy || !reviewed || unresolved || !included">Conferma importazione</button>
@@ -58,6 +69,24 @@ export class MobileDirectoryImport implements OnInit {
   protected get canImport(): boolean { const actor = this.current.context(); return !!actor?.permissions.includes('EDIT_MEMBRI') && ['RESPONSIBLE', 'CO_RESPONSIBLE'].includes(actor.role ?? ''); }
   protected get unresolved(): boolean { return this.draft?.rows.some(x => x.sourceSelected && x.action !== 'IGNORE' && x.state !== 'PRONTO') ?? true; }
   protected get included(): number { return this.draft?.rows.filter(x => x.sourceSelected && x.action !== 'IGNORE').length ?? 0; }
+  protected get groups(): DirectoryRow[][] {
+    const groups: DirectoryRow[][] = []; const couples = new Map<string, DirectoryRow[]>();
+    for (const row of this.draft?.rows ?? []) {
+      if (!row.evidence?.isCouple) { groups.push([row]); continue; }
+      const key = row.sourceSheet + ':' + row.evidence.blockId;
+      let group = couples.get(key);
+      if (!group) { group = []; couples.set(key, group); groups.push(group); }
+      group.push(row);
+    }
+    return groups;
+  }
+  protected coupleConfirmed(group: DirectoryRow[]): boolean { return group.length === 2 && group[0].applySpouse && group[1].applySpouse && group[0].spouseRowId === group[1].id && group[1].spouseRowId === group[0].id; }
+  protected async confirmCouple(group: DirectoryRow[]): Promise<void> {
+    if (!this.draft || group.length !== 2 || this.busy) return;
+    this.busy = true; this.error = ''; this.reviewed = false;
+    try { this.draft = await this.api.couple(this.draft, group[0].id, group[1].id); }
+    catch (error) { this.error = this.message(error); } finally { this.busy = false; }
+  }
   protected count(state: string): number { return this.draft?.rows.filter(x => x.sourceSelected && x.state === state).length ?? 0; }
   protected sheetIncluded(sheet: string): boolean { return this.draft?.rows.some(x => x.sourceSheet === sheet && x.sourceSelected) ?? false; }
   ngOnInit(): void { if (this.canImport) void this.load(); }

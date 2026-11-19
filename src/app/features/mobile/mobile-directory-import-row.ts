@@ -18,6 +18,13 @@ import { TAPPE_CAMMINO } from '../gestionaleCN/data/tappe-cammino.mock';
       @if (draft.status === 'CONFIRMED') { <p role="status">Importazione già confermata.</p>@if (row.resultPersonId) { <a class="primary full" [routerLink]="['/mobile/community/member', row.resultPersonId]">Apri scheda membro</a> } }
       @else {
         @if (row.issues.length) { <section class="warning"><h2>Dati da verificare</h2>@for (issue of row.issues; track $index) { <p>{{ issue }}</p> }</section> }
+        @if (row.evidence; as evidence) {
+          <details open><summary>Origine dei dati</summary>
+            @for (field of evidence.fields; track $index) { <p><strong>{{ fieldLabel(field.field) }}: {{ field.value || 'Non indicato' }}</strong><br><span [class.warning]="field.confidence !== 'RICONOSCIUTO'">{{ field.confidence === 'RICONOSCIUTO' ? 'Riconosciuto' : field.confidence === 'INFERITO' ? 'Inferito · da confermare' : 'Da verificare' }}</span><br>{{ field.origin }}</p> }
+            @for (address of evidence.addresses; track $index) { <p>Indirizzo sorgente: {{ address }}</p> }
+            @for (contact of evidence.additionalContacts; track $index) { <p>{{ contact.value }} · {{ contact.origin }}</p> }
+          </details>
+        }
         @if (row.candidates.length || row.batchDuplicates.length) { <section class="warning"><h2>Possibile duplicato</h2>@for (candidate of row.candidates; track candidate.id) { <p>{{ candidate.firstName }} {{ candidate.lastName }}@if (!candidate.active) { · Non attivo }</p> }@if (row.batchDuplicates.length) { <p>Altre righe dell'elenco condividono nome o contatti. Unisci i dati e ignora eventuali copie.</p> }</section> }
         <fieldset><legend>Decisione</legend>
           <label class="check"><input type="radio" name="decision" value="NEW" [(ngModel)]="row.action" [disabled]="busy" />Crea nuova persona</label>
@@ -56,7 +63,8 @@ import { TAPPE_CAMMINO } from '../gestionaleCN/data/tappe-cammino.mock';
           </fieldset>
           @if (row.candidates.length || row.batchDuplicates.length) { <label class="check"><input type="checkbox" [(ngModel)]="row.duplicateConfirmed" [disabled]="busy" />Ho verificato che i contatti condivisi appartengano a persone distinte</label> }
         }
-        <button type="button" class="primary full" (click)="save()" [disabled]="busy || row.action === 'REVIEW'">{{ busy ? 'Salvataggio...' : 'Salva verifica' }}</button>
+        @if (hasInferences && row.action !== 'IGNORE') { <label class="check"><input type="checkbox" [(ngModel)]="inferencesReviewed" [disabled]="busy" />Ho verificato o corretto i dati inferiti</label> }
+        <button type="button" class="primary full" (click)="save()" [disabled]="busy || row.action === 'REVIEW' || row.action !== 'IGNORE' && hasInferences && !inferencesReviewed">{{ busy ? 'Salvataggio...' : 'Salva verifica' }}</button>
       }
     }
   `
@@ -71,12 +79,16 @@ export class MobileDirectoryImportRow implements OnInit {
   protected readonly stages = TAPPE_CAMMINO;
   protected draft: DirectoryDraft | null = null; protected row: DirectoryRow | null = null;
   protected loading = true; protected busy = false; protected error = ''; protected spouseChoice = ''; protected ignoreBirthDate = false;
+  protected inferencesReviewed = false;
+  protected get hasInferences(): boolean { return this.row?.evidence?.fields.some(x => x.confidence !== 'RICONOSCIUTO') ?? false; }
+  protected fieldLabel(field: string): string { return ({ firstName: 'Nome', lastName: 'Cognome', phone: 'Telefono', email: 'Email' } as Record<string, string>)[field] ?? field; }
   ngOnInit(): void { void this.load(); }
   protected async load(): Promise<void> {
     this.loading = true; this.error = '';
     try { this.draft = await this.api.get(this.importId); this.row = structuredClone(this.draft.rows.find(x => x.id === this.rowId) ?? null);
       if (!this.row) this.error = 'Riga non disponibile nella tua comunità.';
       this.spouseChoice = this.row?.spousePersonId ? 'p:' + this.row.spousePersonId : this.row?.spouseRowId ? 'r:' + this.row.spouseRowId : '';
+      this.inferencesReviewed = this.row?.reviewed ?? false;
     } catch { this.error = 'Impossibile caricare la riga. Riprova.'; } finally { this.loading = false; }
   }
   protected chooseExisting(): void {
@@ -89,7 +101,7 @@ export class MobileDirectoryImportRow implements OnInit {
     this.row.applySpouse = true;
   }
   protected async save(): Promise<void> {
-    if (!this.draft || !this.row || this.busy) return;
+    if (!this.draft || !this.row || this.busy || this.row.action !== 'IGNORE' && this.hasInferences && !this.inferencesReviewed) return;
     this.busy = true; this.error = '';
     try {
       this.row.spousePersonId = this.row.applySpouse && this.spouseChoice.startsWith('p:') ? Number(this.spouseChoice.slice(2)) : null;

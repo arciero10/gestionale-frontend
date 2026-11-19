@@ -4,7 +4,13 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { getApiConfiguration } from '../auth/api-config';
 
 export interface DirectoryPerson { id: number; firstName: string; lastName: string; phone: string; email: string; role: string; active: boolean; canEditBirthDate: boolean }
+export interface DirectoryEvidence {
+  blockId: string; component: number; isCouple: boolean;
+  fields: { field: string; value: string; confidence: string; origin: string }[];
+  addresses: string[]; additionalContacts: { kind: string; value: string; origin: string }[];
+}
 export interface DirectoryRow {
+  evidence?: DirectoryEvidence | null;
   id: number; sourceSheet: string; sourceLocator: string; sourceText: string; sourceSelected: boolean;
   firstName: string; lastName: string; phone: string; email: string; birthDate: string | null; birthDateRaw: string;
   role: string; roleRaw: string; stage: string; notes: string; spouseRaw: string; needsReview: boolean; reviewed: boolean;
@@ -36,6 +42,9 @@ export class DirectoryImportApiService {
   }
   selection(draft: DirectoryDraft, sheets: string[]): Promise<DirectoryDraft> {
     return firstValueFrom(this.http.put<DirectoryDraft>(`${this.url}/${draft.id}/selection`, { updatedAt: draft.updatedAt, sheets }).pipe(timeout(20000)));
+  }
+  couple(draft: DirectoryDraft, firstRowId: number, secondRowId: number): Promise<DirectoryDraft> {
+    return firstValueFrom(this.http.put<DirectoryDraft>(`${this.url}/${draft.id}/couple`, { updatedAt: draft.updatedAt, firstRowId, secondRowId }).pipe(timeout(20000)));
   }
   row(draft: DirectoryDraft, row: DirectoryRow, ignoreBirthDate: boolean): Promise<DirectoryDraft> {
     return firstValueFrom(this.http.put<DirectoryDraft>(`${this.url}/${draft.id}/rows/${row.id}`, { ...row, reviewed: true, updatedAt: draft.updatedAt, ignoreBirthDate }).pipe(timeout(20000)));

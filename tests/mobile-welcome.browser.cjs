@@ -204,6 +204,10 @@ async function installNative(context, platform, cached = false) {
           spouseRaw:i===0?'Marco Verdi':'',needsReview:false,reviewed:false,action:i===0?'EXISTING':i===1?'REVIEW':'NEW',targetPersonId:i===0?12:null,updateExisting:false,updateRole:false,duplicateConfirmed:false,applySpouse:false,spousePersonId:null,spouseRowId:null,resultPersonId:null,
           state:i<2?'POSSIBILE_DUPLICATO':'PRONTO',classification:i===0?'MATCH_EXISTING':i===1?'POSSIBLE_DUPLICATE':'NEW_PERSON',issues:[],candidates:i<2?[{id:12,firstName:'Anna',lastName:'Rossi',active:true,reasons:[i===0?'NAME':'PHONE']}]:[],batchDuplicates:[],spouseMatches:i===0?[{personId:13,rowId:null,name:'Marco Verdi'}]:[]}))};
       let calendarPublished = false;
+      for (const [index, firstName, lastName, phone, email] of [[3,'Cristiano','Giagnorio','3339474936','cristianogiagnorio@gmail.com'],[4,'Laura','Perrotti','3349950517','lauraperrotti@alice.it']]) {
+        Object.assign(directoryDraft.rows[index], {firstName,lastName,phone,email,needsReview:true,state:'DA_VERIFICARE',
+          evidence:{blockId:'couple-A',component:index-3,isCouple:true,fields:[{field:'lastName',value:lastName,confidence:'INFERITO',origin:"Cognome suggerito dall'email, non verificato"}],addresses:['Via dei Bonsignori, 32'],additionalContacts:[{kind:'FISSO_NUCLEO',value:'0645582581',origin:'Telefono fisso del nucleo'}]}});
+      }
       const calendarEvent = { id: 501, date:'2026-11-20', startTime:'20:30:00', endTime:null, title:'Celebrazione della Parola', eventType:'Parola',
         description:'Incontro della comunità', location:'Sala parrocchiale', sourceLocator:'Testo, riga 1', sourceText:'20 novembre - Parola',
         reviewConfirmed:false, duplicateConfirmed:false, isIgnored:false, isCancelled:false, updatedAt:'2026-11-19T10:00:00Z',
@@ -242,6 +246,10 @@ async function installNative(context, platform, cached = false) {
           } else if (apiPath.endsWith('/text')) {
             assert.ok(route.request().postDataJSON().text.includes('Mario Rossi'));
             await route.fulfill({status:201,headers,json:{id:81,existing:false}});
+          } else if (apiPath.endsWith('/couple')) {
+            const body=route.request().postDataJSON();assert.equal(body.firstRowId,104);assert.equal(body.secondRowId,105);
+            Object.assign(directoryDraft.rows[3],{applySpouse:true,spouseRowId:105});Object.assign(directoryDraft.rows[4],{applySpouse:true,spouseRowId:104});
+            await route.fulfill({headers,json:directoryDraft});
           } else if (/\/rows\/\d+$/.test(apiPath)) {
             const row=directoryDraft.rows.find(x=>x.id===Number(apiPath.split('/').pop()));
             const body=route.request().postDataJSON();assert.equal(body.reviewed,true);assert.equal(body.communityId,undefined);
@@ -251,7 +259,7 @@ async function installNative(context, platform, cached = false) {
             await route.fulfill({headers,json:directoryDraft});
           } else if (apiPath.endsWith('/selection')) {
             const sheets=route.request().postDataJSON().sheets;
-            for(const row of directoryDraft.rows){row.sourceSelected=sheets.includes(row.sourceSheet);if(!row.sourceSelected)row.state='IGNORATA';else row.state=row.action==='IGNORE'?'IGNORATA':row.reviewed||row.id>102?'PRONTO':'POSSIBILE_DUPLICATO';}
+            for(const row of directoryDraft.rows){row.sourceSelected=sheets.includes(row.sourceSheet);if(!row.sourceSelected)row.state='IGNORATA';else row.state=row.action==='IGNORE'?'IGNORATA':row.reviewed?'PRONTO':row.needsReview?'DA_VERIFICARE':row.id>102?'PRONTO':'POSSIBILE_DUPLICATO';}
             await route.fulfill({headers,json:directoryDraft});
           } else if (apiPath.endsWith('/confirm')) {
             assert.equal(route.request().postDataJSON().reviewed,true);directoryConfirmed=true;directoryDraft.status='CONFIRMED';
@@ -468,6 +476,19 @@ async function installNative(context, platform, cached = false) {
           await page.locator('.rows .row-link').filter({hasText:'Nuovo3 Censito'}).click();
           await page.getByRole('radio',{name:'Ignora riga',exact:true}).check();
           await page.getByRole('button',{name:'Salva verifica',exact:true}).click();
+          await page.locator('.rows .couple').waitFor();
+          assert.equal(await page.locator('.rows .couple').count(),1);
+          await page.getByRole('button',{name:'Conferma coppia',exact:true}).click();
+          await page.getByText('Coppia confermata nella bozza',{exact:true}).waitFor();
+          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`directory-couple-${width}.png`),fullPage:true});}
+          for(const name of ['Cristiano Giagnorio','Laura Perrotti']) {
+            await page.locator('.rows .row-link').filter({hasText:name}).click();
+            await page.getByRole('button',{name:'Salva verifica',exact:true}).waitFor();
+            assert.equal(await page.getByRole('button',{name:'Salva verifica',exact:true}).isDisabled(),true);
+            await page.locator('app-mobile-directory-import-row details p').filter({hasText:"Cognome suggerito dall'email, non verificato"}).waitFor();
+            await page.getByLabel('Ho verificato o corretto i dati inferiti',{exact:true}).check();
+            await page.getByRole('button',{name:'Salva verifica',exact:true}).click();
+          }
           await page.getByLabel("Ho verificato l'elenco, i dati e le persone selezionate",{exact:true}).check();
           await page.getByRole('button',{name:'Conferma importazione',exact:true}).click();
           await page.getByRole('heading',{name:'Importazione completata',exact:true}).waitFor();assert.equal(directoryConfirmed,true);
