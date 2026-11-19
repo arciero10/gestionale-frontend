@@ -1,5 +1,10 @@
 # La mia comunita mobile
 
+> Aggiornamento rubrica V1: la lista mostra ora telefono e indicatore account
+> se restituiti dall'API; ricerca anche per telefono e azione Importa elenco
+> per Responsabile/Corresponsabile delegato. Questo supera il precedente
+> requisito di non mostrare contatti nella lista. Dettagli in docs/15-community-directory-import.md.
+
 > Aggiornamento vincolante: telefono/email/coniuge/compleanno sono dati comunitari,
 > anche per membri senza User. ShowPhone/ShowEmail/ShowFamily/ShowBirthday sono
 > legacy e non filtrano piu questi dati. La data completa e le foto restano

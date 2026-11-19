@@ -189,13 +189,20 @@ async function installNative(context, platform, cached = false) {
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member']) {
+    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
-      await installNative(context, 'android');
+      await installNative(context, flow === 'directory-member' ? 'ios' : 'android');
       let meCalls = 0;
       let resubmitted = false;
       let bootstrapApproved = false;
-      let communityManager = flow === 'calendar-manager';
+      let communityManager = flow === 'calendar-manager' || flow === 'directory-manager';
+      let directoryConfirmed = false;
+      const directoryPeople = [{id:12,firstName:'Anna',lastName:'Rossi',phone:'3331234567',email:'anna@example.test',role:'MEMBER',active:true,canEditBirthDate:true},{id:13,firstName:'Marco',lastName:'Verdi',phone:'',email:'',role:'RESPONSIBLE',active:true,canEditBirthDate:false}];
+      const directoryDraft = {id:81,status:'DRAFT',sourceType:'TEXT',updatedAt:'2026-11-19T10:00:00Z',sheets:['Elenco','Da verificare'],roles:['MEMBER','CO_RESPONSIBLE'],people:directoryPeople,newPeopleCount:0,existingPeopleCount:0,ignoredCount:0,
+        rows:Array.from({length:40},(_,i)=>({id:101+i,sourceSheet:i<30?'Elenco':'Da verificare',sourceLocator:`Elenco, riga ${i+2}`,sourceText:`Nome${i+1} Cognome`,sourceSelected:true,
+          firstName:i===0?'Anna':i===1?'Mario':`Nuovo${i+1}`,lastName:i===0?'Rossi':i===1?'Rossi':'Censito',phone:i===0||i===1?'3331234567':'',email:'',birthDate:null,birthDateRaw:'',role:'MEMBER',roleRaw:'',stage:'',notes:'',
+          spouseRaw:i===0?'Marco Verdi':'',needsReview:false,reviewed:false,action:i===0?'EXISTING':i===1?'REVIEW':'NEW',targetPersonId:i===0?12:null,updateExisting:false,updateRole:false,duplicateConfirmed:false,applySpouse:false,spousePersonId:null,spouseRowId:null,resultPersonId:null,
+          state:i<2?'POSSIBILE_DUPLICATO':'PRONTO',classification:i===0?'MATCH_EXISTING':i===1?'POSSIBLE_DUPLICATE':'NEW_PERSON',issues:[],candidates:i<2?[{id:12,firstName:'Anna',lastName:'Rossi',active:true,reasons:[i===0?'NAME':'PHONE']}]:[],batchDuplicates:[],spouseMatches:i===0?[{personId:13,rowId:null,name:'Marco Verdi'}]:[]}))};
       let calendarPublished = false;
       const calendarEvent = { id: 501, date:'2026-11-20', startTime:'20:30:00', endTime:null, title:'Celebrazione della Parola', eventType:'Parola',
         description:'Incontro della comunità', location:'Sala parrocchiale', sourceLocator:'Testo, riga 1', sourceText:'20 novembre - Parola',
@@ -219,13 +226,42 @@ async function installNative(context, platform, cached = false) {
         {personId:16,displayName:'Luca Neri',day:5,month:1,dateLabel:'5 gennaio',isToday:false,daysUntilBirthday:48,section:'later'}
       ];
       const communityMembers = [
-        { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER', phoneNumber:'333 1234567', email:'anna@example.test', birthdayLabel:'6 maggio' },
+        { personId: 12, firstName: 'Anna', lastName: 'Rossi', role: 'MEMBER', phoneNumber:'333 1234567', email:'anna@example.test', birthdayLabel:'6 maggio', accountLinked:false },
         { personId: 13, firstName: 'Marco', lastName: 'Verdi', role: 'RESPONSIBLE', stage: 'Rinnovate Promesse Battesimali', birthDate: '1985-05-03', birthdayLabel:'3 maggio', email: 'shared@example.test', phoneNumber: '+44 20 7946 0018' }
       ];
       await context.route('**/api/**', async route => {
         const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' };
         if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
         const apiPath = new URL(route.request().url()).pathname;
+        if (apiPath.startsWith('/api/me/community/directory-imports')) {
+          assert.equal(communityManager,true);
+          assert.equal(route.request().headers().authorization,'Bearer sdk-api-test-token');
+          if (apiPath.endsWith('/file')) {
+            assert.ok(route.request().headers()['content-type'].includes('multipart/form-data'));
+            await route.fulfill({status:503,headers,json:{message:'Archivio documenti non configurato.'}});
+          } else if (apiPath.endsWith('/text')) {
+            assert.ok(route.request().postDataJSON().text.includes('Mario Rossi'));
+            await route.fulfill({status:201,headers,json:{id:81,existing:false}});
+          } else if (/\/rows\/\d+$/.test(apiPath)) {
+            const row=directoryDraft.rows.find(x=>x.id===Number(apiPath.split('/').pop()));
+            const body=route.request().postDataJSON();assert.equal(body.reviewed,true);assert.equal(body.communityId,undefined);
+            Object.assign(row,body);row.state=row.action==='IGNORE'?'IGNORATA':'PRONTO';
+            if(row.id===101){assert.equal(body.updateExisting,false);assert.equal(body.spousePersonId,13);}
+            if(row.id===102)assert.equal(body.duplicateConfirmed,true);
+            await route.fulfill({headers,json:directoryDraft});
+          } else if (apiPath.endsWith('/selection')) {
+            const sheets=route.request().postDataJSON().sheets;
+            for(const row of directoryDraft.rows){row.sourceSelected=sheets.includes(row.sourceSheet);if(!row.sourceSelected)row.state='IGNORATA';else row.state=row.action==='IGNORE'?'IGNORATA':row.reviewed||row.id>102?'PRONTO':'POSSIBILE_DUPLICATO';}
+            await route.fulfill({headers,json:directoryDraft});
+          } else if (apiPath.endsWith('/confirm')) {
+            assert.equal(route.request().postDataJSON().reviewed,true);directoryConfirmed=true;directoryDraft.status='CONFIRMED';
+            directoryDraft.newPeopleCount=directoryDraft.rows.filter(x=>x.action==='NEW').length;directoryDraft.existingPeopleCount=1;directoryDraft.ignoredCount=1;
+            for(const row of directoryDraft.rows.filter(x=>x.action==='NEW'))communityMembers.push({personId:row.id,firstName:row.firstName,lastName:row.lastName,role:row.role,phoneNumber:row.phone,accountLinked:false});
+            await route.fulfill({headers,json:directoryDraft});
+          } else if (apiPath.endsWith('/81')) await route.fulfill({headers,json:directoryDraft});
+          else await route.fulfill({headers,json:[]});
+          return;
+        }
         if (apiPath.startsWith('/api/mobile/calendar')) {
           if (!flow.startsWith('calendar-')) { await route.fulfill({headers,json:{today:'2026-11-19',canManage:false,events:[]}}); return; }
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
@@ -308,8 +344,8 @@ async function installNative(context, platform, cached = false) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
-          const linked = flow === 'linked' || flow.startsWith('calendar-') || flow === 'pending' && meCalls > 1;
-          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE'] : [],
+          const linked = flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
+          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI']:[])] : [],
             ...(linked ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
         } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : [] }); }
         else if (route.request().url().endsWith('/onboarding/requests/101/approve')) {
@@ -330,9 +366,9 @@ async function installNative(context, platform, cached = false) {
       if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member'].includes(flow)) {
+      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -349,7 +385,7 @@ async function installNative(context, platform, cached = false) {
         await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
         assert.equal(meCalls, 0);
       } else {
-        await page.waitForURL(url => url.pathname === (flow === 'linked' || flow.startsWith('calendar-') ? '/mobile/home' : '/mobile/onboarding'));
+        await page.waitForURL(url => url.pathname === (flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
         assert.equal(meCalls, flow === 'retry' ? 2 : 1);
       }
       if (flow === 'bootstrap') {
@@ -398,6 +434,49 @@ async function installNative(context, platform, cached = false) {
           await page.screenshot({path:path.join(output,`${flow}-${width}.png`),fullPage:true});
         }
         console.log(`PASS ${flow}: Home, incarico, calendario, revisione e permessi`);
+      }
+      if (flow.startsWith('directory-')) {
+        await page.locator('.mobile-bottom').getByRole('link',{name:'Comunità',exact:true}).click();
+        await page.getByRole('searchbox',{name:'Cerca nella comunità'}).fill('333123');
+        assert.equal(await page.locator('.member-row').count(),1);
+        await page.getByRole('button',{name:'Cancella ricerca',exact:true}).click();
+        if (communityManager) {
+          await page.getByRole('link',{name:'Importa elenco',exact:true}).click();
+          for(const format of ['Excel','CSV']) {
+            await page.getByRole('button',{name:format,exact:true}).click();
+            await page.locator('input[type=file]').setInputFiles({name:format==='Excel'?'rubrica.xlsx':'rubrica.csv',mimeType:'application/octet-stream',buffer:Buffer.from('fixture')});
+            await page.getByRole('button',{name:'Analizza e crea bozza',exact:true}).click();
+            await page.getByRole('alert').filter({hasText:'Archivio documenti non configurato'}).waitFor();
+          }
+          await page.getByRole('button',{name:'Testo',exact:true}).click();
+          await page.getByLabel('Elenco da analizzare',{exact:true}).fill('Mario Rossi\nAnna Rossi');
+          await page.getByRole('button',{name:'Analizza e crea bozza',exact:true}).click();
+          await page.getByRole('heading',{name:'Abbiamo trovato 40 persone',exact:true}).waitFor();
+          assert.equal(await page.locator('.rows .row-link').count(),40);
+          assert.equal(await page.locator('app-mobile-directory-import fieldset, app-mobile-directory-import form').count(),0);
+          await page.getByLabel('Da verificare',{exact:true}).uncheck();await page.getByLabel('Da verificare',{exact:true}).check();
+          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`directory-list-${width}.png`)});}
+          await page.locator('.rows .row-link').filter({hasText:'Anna Rossi'}).click();
+          await page.getByRole('radio',{name:'Usa persona esistente',exact:true}).check();
+          await page.getByRole('button',{name:'Usa proposta: Marco Verdi',exact:true}).click();
+          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`directory-row-${width}.png`),fullPage:true});}
+          await page.getByRole('button',{name:'Salva verifica',exact:true}).click();
+          await page.locator('.rows .row-link').filter({hasText:'Mario Rossi'}).click();
+          await page.getByRole('radio',{name:'Crea nuova persona',exact:true}).check();
+          await page.getByLabel('Ho verificato che i contatti condivisi appartengano a persone distinte',{exact:true}).check();
+          await page.getByRole('button',{name:'Salva verifica',exact:true}).click();
+          await page.locator('.rows .row-link').filter({hasText:'Nuovo3 Censito'}).click();
+          await page.getByRole('radio',{name:'Ignora riga',exact:true}).check();
+          await page.getByRole('button',{name:'Salva verifica',exact:true}).click();
+          await page.getByLabel("Ho verificato l'elenco, i dati e le persone selezionate",{exact:true}).check();
+          await page.getByRole('button',{name:'Conferma importazione',exact:true}).click();
+          await page.getByRole('heading',{name:'Importazione completata',exact:true}).waitFor();assert.equal(directoryConfirmed,true);
+          await page.getByRole('link',{name:'Torna alla rubrica',exact:true}).click();
+          await page.getByRole('searchbox').fill('Mario 333123');assert.equal(await page.locator('.member-row').count(),1);
+          await page.getByText('Non ancora registrato',{exact:true}).waitFor();
+        } else assert.equal(await page.getByRole('link',{name:'Importa elenco',exact:true}).count(),0);
+        assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+        console.log(`PASS ${flow}: rubrica telefono, 40 righe, revisione, duplicati e conferma`);
       }
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();
@@ -479,7 +558,7 @@ async function installNative(context, platform, cached = false) {
         assert.equal(await page.locator('app-mobile-community table, app-mobile-community app-member-editor').count(), 0);
         assert.equal(await page.locator('.member-list a[href^="tel:"],.member-list a[href^="mailto:"]').count(), 0);
         assert.ok(!(await page.locator('.member-list').textContent()).includes('shared@example.test'));
-        assert.ok(!(await page.locator('.member-list').textContent()).includes('3331234567'));
+        await page.locator('.member-list').getByText('333 1234567',{exact:true}).waitFor();
         await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('Rinnovate Promesse Battesimali', {exact:true}).waitFor();
         await page.locator('.member-row').filter({hasText:'Marco Verdi'}).getByText('3 maggio', {exact:true}).waitFor();
         assert.equal(await page.getByRole('link', { name: 'Richieste e storico' }).count(), 0);
