@@ -12,12 +12,15 @@ export interface CompleteOnboardingRequest {
     role: string; phone: string; stage: string; privacyConsent: boolean; invitationToken?: string;
 }
 export interface CommunityAccessRequest {
+    email?: string; candidates?: Array<{id: number; name: string; reasons: string[]}>;
     id: number; firstName: string; lastName: string; parishId: number; parishName: string;
     communityNumber: number; requestedRole: string; requestedStage: string; status: string; submittedAt: string;
     existingPeople: Array<{ id: number; name: string }>;
     canApprove: boolean; canReject: boolean;
 }
 export interface OnboardingResult { status: string; requestId: number; context: CurrentUserContext; }
+export interface CommunityInvitation { id: number; publicId: string; personId: number; status: string; expiresAt: string }
+export interface CreatedInvitation extends CommunityInvitation { invitationUrl: string; deliveryStatus: string; mail: { to: string; subject: string; body: string } }
 export interface OwnOnboardingRequest {
     firstName: string; lastName: string; phone: string; parishId: number; communityNumber: number;
     requestedRole: string; requestedStage: string; status: string; parishName?: string;
@@ -56,10 +59,16 @@ export class OnboardingApiService {
     censusMember(payload: { firstName: string; lastName: string; email: string; phone: string }): Promise<unknown> {
         return this.community.createMember(payload);
     }
-    invite(communityId: number, personId: number): Promise<{ invitationToken: string }> {
-        return firstValueFrom(this.http.post<{ invitationToken: string }>(`${this.url}/invitations`, { communityId, personId }).pipe(timeout(15000)));
+    invite(communityId: number, personId: number, email?: string): Promise<CreatedInvitation> {
+        return firstValueFrom(this.http.post<CreatedInvitation>(`${this.url}/invitations`, { communityId, personId, email }).pipe(timeout(15000)));
     }
-    review(id: number, action: 'approve' | 'reject', personId?: number): Promise<unknown> {
-        return firstValueFrom(this.http.post(`${this.url}/requests/${id}/${action}`, personId ? { personId } : {}).pipe(timeout(20000)));
+    invitations(): Promise<CommunityInvitation[]> { return firstValueFrom(this.http.get<CommunityInvitation[]>(`${this.url}/invitations`).pipe(timeout(15000))); }
+    cancelInvitation(id: number): Promise<unknown> { return firstValueFrom(this.http.post(`${this.url}/invitations/${id}/cancel`, {}).pipe(timeout(15000))); }
+    invitation(id: string): Promise<{status: string; communityName: string; parishName: string; firstName: string; lastName: string}> {
+        return firstValueFrom(this.http.get<any>(`${this.url}/invitations/${encodeURIComponent(id)}`).pipe(timeout(15000)));
+    }
+    acceptInvitation(id: string, privacyConsent: boolean): Promise<unknown> { return firstValueFrom(this.http.post(`${this.url}/invitations/${encodeURIComponent(id)}/accept`, {privacyConsent}).pipe(timeout(20000))); }
+    review(id: number, action: 'approve' | 'reject', personId?: number, details: Record<string, unknown> = {}): Promise<unknown> {
+        return firstValueFrom(this.http.post(`${this.url}/requests/${id}/${action}`, { ...details, ...(personId ? { personId } : {}) }).pipe(timeout(20000)));
     }
 }

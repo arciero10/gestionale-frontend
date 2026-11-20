@@ -5,10 +5,11 @@ import { CommunityApiService, CommunityMemberDetail, MemberWrite, SpouseOptions 
 import { memberContactLinks } from './member-contact-links';
 import { communityRoleLabel } from '../../auth/community-roles';
 import { MemberDraft, MemberEditor } from './member-editor';
+import { CommunityMemberInvitation } from './community-member-invitation';
 
 @Component({
   selector: 'app-mobile-community-member', standalone: true,
-  imports: [RouterLink, MemberEditor], styleUrl: './mobile-community.scss',
+  imports: [RouterLink, MemberEditor, CommunityMemberInvitation], styleUrl: './mobile-community.scss',
   styles: [`.contact-actions{display:grid;gap:10px;margin-top:10px}.contact-actions a.secondary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px;width:100%}`],
   template: `
     <a class="back" routerLink="/mobile/community"><i class="pi pi-arrow-left" aria-hidden="true"></i> Comunità</a>
@@ -37,6 +38,8 @@ import { MemberDraft, MemberEditor } from './member-editor';
           <dt>Coniuge</dt><dd>@if (detail.spouse) { <a [routerLink]="'/mobile/community/member/' + detail.spouse.personId">{{ detail.spouse.firstName }} {{ detail.spouse.lastName }}</a> } @else { Non disponibile }</dd>
         </dl>
         @if (detail.canEdit) { <button class="primary" type="button" [disabled]="busy" (click)="edit()">Modifica scheda</button> }
+        @if (detail.canInvite && !detail.accountLinked) { <app-community-member-invitation [personId]="detail.member.personId" [email]="detail.member.email || ''" /> }
+        @if (detail.isSelf) { <a class="back" routerLink="/mobile/complete-profile">Completa il tuo profilo</a> }
         @if (detail.isSelf) { <a class="back" routerLink="/mobile/privacy"><i class="pi pi-bell" aria-hidden="true"></i> Preferenze notifiche</a> }
       }
       @if (feedback) { <p class="feedback" role="status">{{ feedback }}</p> }
@@ -115,7 +118,7 @@ export class MobileCommunityMember implements OnInit, OnDestroy {
   protected cancel(): void { if (this.creating) void this.router.navigateByUrl('/mobile/community'); else this.editing = false; }
   protected async save(): Promise<void> {
     if (this.busy || !(this.creating ? this.allowed : this.detail?.canEdit)) return;
-    if (!this.draft.firstName.trim() || !this.draft.lastName.trim()) { this.error = 'Inserisci nome e cognome.'; return; }
+    if (!this.draft.firstName.trim()) { this.error = 'Inserisci il nome.'; return; }
     this.busy = true; this.error = '';
     const payload: MemberWrite = { firstName: this.draft.firstName.trim(), lastName: this.draft.lastName.trim(), stage: this.draft.stage, role: this.draft.role };
     if (this.creating || this.detail?.canEditEmail) payload.email = this.draft.email.trim();

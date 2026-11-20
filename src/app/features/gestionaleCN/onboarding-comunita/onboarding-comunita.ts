@@ -18,6 +18,8 @@ import { COMMUNITY_ONBOARDING_ROLES, communityRoleLabel } from '../../../auth/co
 import { clearOnboardingInvitation, readOnboardingInvitation } from '../../../auth/onboarding-invitation';
 import { Capacitor } from '@capacitor/core';
 import { postLoginDestination } from '../../../auth/post-login-route';
+import { readAccessInvitation } from '../../../auth/onboarding-invitation';
+import { CommunityInvitationAcceptance } from '../../mobile/community-invitation-acceptance';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
@@ -58,8 +60,10 @@ interface OnboardingPayload {
 @Component({
     selector: 'app-onboarding-comunita',
     standalone: true,
-    imports: [CommonModule, FormsModule, AutoCompleteModule, ButtonModule, InputTextModule, SelectModule],
+    imports: [CommonModule, FormsModule, AutoCompleteModule, ButtonModule, InputTextModule, SelectModule, CommunityInvitationAcceptance],
     template: `
+        @if (accessInvitation) { <app-community-invitation-acceptance (dismissed)="accessInvitation = false" /> }
+        @else {
         <main class="onboarding-page">
             <section class="onboarding-card">
                 <div class="page-intro">
@@ -396,6 +400,7 @@ interface OnboardingPayload {
                 }
             </section>
         </main>
+        }
     `,
     styles: [
         `
@@ -844,6 +849,7 @@ export class OnboardingComunita implements OnInit {
     loadingRequest = true;
     saving = false;
     pendingApproval = false;
+    accessInvitation = !!readAccessInvitation();
     invitationToken = this.route.snapshot.queryParamMap.get('invitationToken') ?? readOnboardingInvitation();
 
     ngOnInit(): void {

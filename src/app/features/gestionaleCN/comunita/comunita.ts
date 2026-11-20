@@ -1343,9 +1343,8 @@ export class Comunita implements OnInit {
         this.invitingBackend = true;
         try {
             const invitation = await this.onboardingApi.invite(this.backendCommunity.context.communityId, personId);
-            const origin = Capacitor.isNativePlatform() ? PUBLIC_INVITE_BASE_URL : window.location.origin;
-            this.backendInviteLink = `${origin}/gestionale-cn/onboarding-comunita?invitationToken=${encodeURIComponent(invitation.invitationToken)}`;
-            this.messaggio = 'Invito personale creato. Condividi il link con il destinatario.';
+            this.backendInviteLink = invitation.invitationUrl;
+            this.messaggio = 'Invito personale creato. Email preparata, non inviata: condividi il link con il destinatario.';
         } catch { this.messaggio = 'Invito non creato. Verifica email, appartenenza e autorizzazioni.'; }
         finally { this.invitingBackend = false; }
     }

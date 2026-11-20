@@ -34,9 +34,12 @@ import { communityRoleLabel } from '../../auth/community-roles';
           <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthdayLabel || member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ member.birthdayLabel || ((member.birthDate + 'T00:00:00Z') | date:'dd/MM':'UTC') }}</small> }@if (member.phoneNumber) { <span class="directory-phone">{{ member.phoneNumber }}</span> }@if (member.accountLinked !== undefined) { <small class="directory-account">{{ member.accountLinked ? 'Account collegato' : 'Non ancora registrato' }}</small> }</span>
           <i class="pi pi-angle-right chevron" aria-hidden="true"></i>
         </a>
+        @if(!member.accountLinked && member.invitationStatus){<small>{{member.invitationStatus==='PENDING'?'Invito inviato · consegna manuale':member.invitationStatus==='EXPIRED'?'Invito scaduto':member.invitationStatus==='CANCELLED'?'Invito annullato':'Invito accettato'}}</small>}
+        @if(!member.accountLinked && !member.email){<small>Senza email</small>}
         </li>
       }</ul>
       <nav class="community-links" aria-label="Altre azioni comunità">
+        @if (canReview) { <a routerLink="/mobile/approvazioni"><i class="pi pi-user-plus" aria-hidden="true"></i><span>Richieste accesso</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
         @if (data.context.personId) { <a [routerLink]="'/mobile/community/member/' + data.context.personId"><i class="pi pi-user" aria-hidden="true"></i><span>La mia scheda</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
         @if (canReview) { <a routerLink="/mobile/approvazioni"><i class="pi pi-history" aria-hidden="true"></i><span>Richieste e storico</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
       </nav>

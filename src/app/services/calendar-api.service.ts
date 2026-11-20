@@ -6,6 +6,7 @@ import { getApiConfiguration } from '../auth/api-config';
 export const CALENDAR_TYPES = ['Parola', 'Eucaristia', 'Penitenziale', 'Convivenza', 'Celebrazione', 'Servizio', 'Comunità riunite', 'Altro'];
 export interface CalendarPerson { id: number; firstName: string; lastName: string }
 export interface CalendarAssignment {
+  accountLinked?: boolean | null; notificationStatus?: string | null;
   personId: number | null; rawName: string; displayName?: string; matchStatus?: string;
   label: string; notes?: string; reminderDaysBefore: number | null; isMine?: boolean;
 }

@@ -17,7 +17,7 @@ import { CalendarEventEditor } from './calendar-event-editor';
         @if (item.startTime) { <p>{{ item.startTime.slice(0,5) }}@if (item.endTime) { – {{ item.endTime.slice(0,5) }} }</p> }
         @if (item.location) { <p>{{ item.location }}</p> }<p class="description">{{ item.description }}</p>
         @for (assignment of item.assignments; track $index) { @if (assignment.isMine) { <div class="mine"><h2>Il tuo incarico</h2><p>{{ assignment.label }}</p></div> } }
-        <h2>Incaricati</h2>@for (assignment of item.assignments; track $index) { <p><strong>{{ assignment.displayName }}</strong><br />{{ assignment.label }}</p> } @empty { <p>Nessun incarico assegnato</p> }
+        <h2>Incaricati</h2>@for (assignment of item.assignments; track $index) { <p><strong>{{ assignment.displayName }}</strong><br />{{ assignment.label }}@if(canManage && assignment.notificationStatus){<br>{{assignment.accountLinked?'Account collegato · push non ancora attive':'Senza account · incarico valido'}} }</p> } @empty { <p>Nessun incarico assegnato</p> }
       </section>
       @if (canManage) {
         <button (click)="beginEdit()" [disabled]="loading || busy">Modifica evento e incarichi</button>

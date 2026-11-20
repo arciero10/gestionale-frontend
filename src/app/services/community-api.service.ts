@@ -5,6 +5,7 @@ import { getApiConfiguration } from '../auth/api-config';
 import { CurrentUserContext } from '../auth/current-user-context';
 
 export interface CommunityMemberView {
+  invitationStatus?: string | null;
   personId: number; firstName: string; lastName: string; role: string;
   phoneNumber?: string; email?: string; birthDate?: string; birthdayLabel?: string; photoUrl?: string; stage?: string; accountLinked?: boolean;
 }
@@ -14,6 +15,7 @@ export interface SpouseOptions {
   candidates: { personId: number; firstName: string; lastName: string }[];
 }
 export interface CommunityMemberDetail {
+  canInvite?: boolean;
   member: CommunityMemberView; stage: string; isSelf: boolean; canEdit: boolean; canManageRole: boolean;
   canEditPhone: boolean; canEditEmail: boolean; canEditBirthDate: boolean; assignableRoles: string[];
   spouse?: { personId: number; firstName: string; lastName: string };
@@ -29,6 +31,7 @@ export interface MemberPrivacy {
   showPhone: boolean; showEmail: boolean; showBirthDate: boolean; showPhoto: boolean; showFamily: boolean;
   receiveBirthdayNotifications: boolean; receiveCommunityNotifications: boolean; photoUrl?: string | null;
 }
+export interface OwnCommunityProfile { firstName: string; lastName: string; phone: string; email: string; birthDate: string | null; photoUrl: string | null; photoUploadAvailable: boolean }
 
 @Injectable({ providedIn: 'root' })
 export class CommunityApiService {
@@ -42,5 +45,7 @@ export class CommunityApiService {
   createMember(payload: MemberWrite): Promise<{ personId: number }> { return firstValueFrom(this.http.post<{ personId: number }>(`${this.url}/members`, payload).pipe(timeout(20000))); }
   updateMember(id: number, payload: MemberWrite): Promise<unknown> { return firstValueFrom(this.http.put(`${this.url}/members/${id}`, payload).pipe(timeout(20000))); }
   getPrivacy(): Promise<MemberPrivacy> { return firstValueFrom(this.http.get<MemberPrivacy>(`${this.url}/privacy`).pipe(timeout(20000))); }
+  getProfile(): Promise<OwnCommunityProfile> { return firstValueFrom(this.http.get<OwnCommunityProfile>(`${this.url}/profile`).pipe(timeout(20000))); }
+  saveProfile(profile: OwnCommunityProfile, removePhoto: boolean): Promise<unknown> { return firstValueFrom(this.http.put(`${this.url}/profile`, {phone:profile.phone,email:profile.email,birthDate:profile.birthDate || null,removePhoto}).pipe(timeout(20000))); }
   savePrivacy(payload: MemberPrivacy): Promise<unknown> { return firstValueFrom(this.http.put(`${this.url}/privacy`, payload).pipe(timeout(20000))); }
 }

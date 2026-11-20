@@ -4,12 +4,16 @@ import { CalendarApiService, CalendarEvent, calendarDate } from '../../services/
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../auth/current-user.service';
 import { AuthService } from '../../auth/auth.service';
+import { OnboardingApiService } from '../../auth/onboarding-api.service';
+import { dismissProfilePrompt } from './mobile-personal-profile';
 
 @Component({
   selector: 'app-mobile-home', standalone: true, imports: [RouterLink],
   template: `
     @if (section === 'home') {
       <div class="greeting"><p>La vita della comunità</p><h1>{{ current.context()?.displayName ? 'Benvenuto, ' + current.context()?.displayName : 'Benvenuto' }}</h1><span>{{ current.context()?.parishName }}</span></div>
+      @if (pendingRequests) { <a class="back" routerLink="/mobile/approvazioni"><i class="pi pi-user-plus" aria-hidden="true"></i>Nuova richiesta di accesso · {{pendingRequests}}</a> }
+      @if (profilePrompt) { <section class="profile-prompt"><h2>Completa il tuo profilo</h2><a class="back" routerLink="/mobile/complete-profile">Completa profilo</a><button type="button" class="back" (click)="later()">Completa più tardi</button></section> }
       <a class="community-card" routerLink="/mobile/community">
         <img src="assets/images/login-bg.jpg" alt="" />
         <div><span class="eyebrow">INSIEME, OGNI GIORNO</span><h2>La mia comunità</h2><p>{{ current.context()?.communityName }}@if (current.context()?.memberCount !== undefined) { · {{ current.context()?.memberCount }} membri }</p><i class="pi pi-arrow-right" aria-hidden="true"></i></div>
@@ -27,6 +31,7 @@ import { AuthService } from '../../auth/auth.service';
       <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a>
       <h1>{{ title }}</h1>
       @if (section === 'profilo') {
+        <a class="back" routerLink="/mobile/complete-profile">Completa il tuo profilo</a>
         <a class="back" routerLink="/mobile/privacy"><i class="pi pi-bell" aria-hidden="true"></i> Preferenze notifiche</a>
         <dl><dt>Nome</dt><dd>{{ current.context()?.displayName || 'Non disponibile' }}</dd><dt>Comunità</dt><dd>{{ current.context()?.communityName || 'Non associata' }}</dd><dt>Numero comunità</dt><dd>{{ current.context()?.communityNumber ?? 'Non disponibile' }}</dd><dt>Parrocchia</dt><dd>{{ current.context()?.parishName || 'Non disponibile' }}</dd><dt>Ruolo</dt><dd>{{ current.context()?.role || 'Non disponibile' }}</dd></dl>
         @if (profileFeedback) { <p role="status">{{ profileFeedback }}</p> }
@@ -43,6 +48,7 @@ import { AuthService } from '../../auth/auth.service';
   `,
   styles: [`
     .birthday-summary{margin-top:8px;color:#475569;font-size:12px;line-height:1.4;overflow-wrap:anywhere}.calendar-preview{margin:12px 0}
+    .profile-prompt{padding:12px 0;margin-bottom:20px;border-bottom:1px solid #cbd5e1}.profile-prompt h2{font-size:18px;margin:0}.profile-prompt button{border:0;background:transparent;font:inherit}.profile-prompt .back{padding:8px;margin-right:8px}
     :host{display:block;color:#0f172a}h1{font-size:25px;line-height:1.25;margin:8px 0;letter-spacing:0;overflow-wrap:anywhere}.greeting{margin:4px 4px 24px}.greeting>p{color:#1d4ed8;font-size:13px;font-weight:650;margin:0}.greeting>span{font-size:14px;color:#475569}
     .community-card{display:block;background:white;border:1px solid #dbe3ee;border-radius:8px;overflow:hidden;color:#0f172a;text-decoration:none}.community-card img{display:block;width:100%;height:134px;object-fit:cover;object-position:center 45%}.community-card>div{padding:18px;position:relative}.eyebrow{font-size:10px;font-weight:700;color:#166534}.community-card h2{font-size:20px;margin:8px 0}.community-card p{font-size:13px;color:#475569;margin:0;padding-right:24px}.community-card .pi{position:absolute;right:18px;bottom:20px;color:#1d4ed8}
     .section-label{font-size:16px;margin:24px 2px 12px}.app-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.app-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:140px;position:relative;padding:18px 14px;border:1px solid #e2e8f0;border-radius:8px;background:white;color:#0f172a;text-decoration:none}.tile-icon{width:42px;height:42px;border-radius:8px;display:grid;place-items:center;font-size:21px}.places{background:#f1f5f9;color:#334155}.app-tile h2{font-size:15px;line-height:1.4;margin:14px 0 0;overflow-wrap:anywhere;padding-right:12px}.arrow{position:absolute;top:18px;right:14px;color:#64748b;font-size:12px}
@@ -50,6 +56,10 @@ import { AuthService } from '../../auth/auth.service';
   `]
 })
 export class MobileHome implements OnInit {
+  private readonly onboarding=inject(OnboardingApiService);
+  protected pendingRequests=0;protected profilePrompt=false;
+  protected later():void{dismissProfilePrompt(this.current.context()?.userId);this.profilePrompt=false;}
+  private async loadRequests():Promise<void>{try{this.pendingRequests=(await this.onboarding.getRequests()).filter(x=>x.status==='IN_ATTESA_APPROVAZIONE').length;}catch{this.pendingRequests=0;}}
   private readonly birthdays = inject(BirthdayApiService);
   private readonly calendar = inject(CalendarApiService);
   protected readonly calendarDate = calendarDate;
@@ -58,7 +68,9 @@ export class MobileHome implements OnInit {
   protected calendarSummary = 'Caricamento...';
   protected assignmentLabel(event: CalendarEvent): string { return event.assignments.filter(x => x.isMine).map(x => x.label).join(', '); }
   protected birthdaySummary = 'Caricamento...';
-  ngOnInit(): void { if (this.section === 'home') { void this.loadBirthdays(); void this.loadCalendar(); } }
+  ngOnInit(): void { if (this.section === 'home') { void this.loadBirthdays(); void this.loadCalendar();if(this.canApprove())void this.loadRequests();
+    try{this.profilePrompt=!!this.current.context()?.userId&&!localStorage.getItem('community.profile-prompted:'+this.current.context()?.userId);}catch{this.profilePrompt=true;}
+  } }
   private async loadCalendar(): Promise<void> {
     try {
       const result = await this.calendar.get();

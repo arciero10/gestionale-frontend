@@ -60,7 +60,7 @@ async function installNative(context, platform, cached = false) {
         if (plugin === 'CapacitorHttp' && options.url.includes('/api/')) {
           const response = await fetch(options.url, { method: options.method, headers: options.headers,
             ...(options.data === undefined ? {} : { body: JSON.stringify(options.data) }) });
-          return { status: response.status, data: await response.json(), headers: {} };
+          return { status: response.status, data: response.status===204?null:await response.json(), headers: {} };
         }
         if (plugin === 'CapacitorHttp') return { status: 200, data: {
           authorization_endpoint: 'https://eventidicomunita.ciamlogin.com/069bb457-b363-4340-8086-d7dd3b60a2b5/oauth2/v2.0/authorize',
@@ -189,7 +189,7 @@ async function installNative(context, platform, cached = false) {
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member']) {
+    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
       await installNative(context, flow === 'directory-member' ? 'ios' : 'android');
       let meCalls = 0;
@@ -197,6 +197,9 @@ async function installNative(context, platform, cached = false) {
       let bootstrapApproved = false;
       let communityManager = flow === 'calendar-manager' || flow === 'directory-manager';
       let directoryConfirmed = false;
+      const inviteId='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa';let invitationAccepted=false;
+      const preparedInvites=[];const accessRequests=[{id:202,firstName:'Emmanuel',lastName:'Baciarlini',email:'emmanuel@example.test',parishId:11,parishName:'Parrocchia di test',communityNumber:3,requestedRole:'MEMBER',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',existingPeople:[{id:15,name:'Emmanuel Baciarini'}],candidates:[{id:15,name:'Emmanuel Baciarini',reasons:['FUZZY_NAME']}],canApprove:true,canReject:true},{id:203,firstName:'Nuova',lastName:'Persona',email:'new@example.test',parishId:11,parishName:'Parrocchia di test',communityNumber:3,requestedRole:'MEMBER',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',existingPeople:[],candidates:[],canApprove:true,canReject:true}];
+      const personalProfile={firstName:'Test',lastName:'Member',phone:'',email:'user@example.test',birthDate:null,photoUrl:null,photoUploadAvailable:false};
       const directoryPeople = [{id:12,firstName:'Anna',lastName:'Rossi',phone:'3331234567',email:'anna@example.test',role:'MEMBER',active:true,canEditBirthDate:true},{id:13,firstName:'Marco',lastName:'Verdi',phone:'',email:'',role:'RESPONSIBLE',active:true,canEditBirthDate:false}];
       const directoryDraft = {id:81,status:'DRAFT',sourceType:'TEXT',updatedAt:'2026-11-19T10:00:00Z',sheets:['Elenco','Da verificare'],roles:['MEMBER','CO_RESPONSIBLE'],people:directoryPeople,newPeopleCount:0,existingPeopleCount:0,ignoredCount:0,
         rows:Array.from({length:40},(_,i)=>({id:101+i,sourceSheet:i<30?'Elenco':'Da verificare',sourceLocator:`Elenco, riga ${i+2}`,sourceText:`Nome${i+1} Cognome`,sourceSelected:true,
@@ -264,7 +267,7 @@ async function installNative(context, platform, cached = false) {
           } else if (apiPath.endsWith('/confirm')) {
             assert.equal(route.request().postDataJSON().reviewed,true);directoryConfirmed=true;directoryDraft.status='CONFIRMED';
             directoryDraft.newPeopleCount=directoryDraft.rows.filter(x=>x.action==='NEW').length;directoryDraft.existingPeopleCount=1;directoryDraft.ignoredCount=1;
-            for(const row of directoryDraft.rows.filter(x=>x.action==='NEW'))communityMembers.push({personId:row.id,firstName:row.firstName,lastName:row.lastName,role:row.role,phoneNumber:row.phone,accountLinked:false});
+            for(const row of directoryDraft.rows.filter(x=>x.action==='NEW'))communityMembers.push({personId:row.id,firstName:row.firstName,lastName:row.lastName,role:row.role,phoneNumber:row.phone,email:row.email,accountLinked:false});
             await route.fulfill({headers,json:directoryDraft});
           } else if (apiPath.endsWith('/81')) await route.fulfill({headers,json:directoryDraft});
           else await route.fulfill({headers,json:[]});
@@ -301,6 +304,21 @@ async function installNative(context, platform, cached = false) {
           await route.fulfill({headers,json:{communityName:'3ª Comunità',parishName:'Parrocchia Martiri Canadesi',today:'2026-11-18',
             birthdays:birthdayState === 'empty' ? [] : birthdayItems}});
           return;
+        }
+        if(apiPath.startsWith('/api/onboarding/invitations')){
+          assert.equal(route.request().headers().authorization,'Bearer sdk-api-test-token');
+          if(apiPath.endsWith('/accept')){assert.equal(route.request().postDataJSON().privacyConsent,true);invitationAccepted=true;await route.fulfill({headers,json:{linkedToCommunity:true}});}
+          else if(apiPath.endsWith(inviteId)){await route.fulfill({headers,json:{status:'PENDING',communityName:'3ª Comunità',parishName:'Parrocchia Martiri Canadesi',firstName:'Test',lastName:'Member'}});}
+          else if(apiPath.endsWith('/cancel')){await route.fulfill({headers,json:{status:'CANCELLED'}});}
+          else if(route.request().method()==='POST'){
+            const body=route.request().postDataJSON();assert.equal(body.communityId,91);assert.ok(body.email.includes('@'));
+            preparedInvites.push(body);const member=communityMembers.find(x=>x.personId===body.personId);if(member)member.invitationStatus='PENDING';
+            await route.fulfill({headers,json:{id:501,publicId:inviteId,personId:body.personId,status:'PENDING',invitationUrl:`https://test.eventidicomunita.it/?inviteId=${inviteId}`,deliveryStatus:'PREPARED_NOT_SENT',mail:{to:body.email,subject:'Invito a Eventi di Comunità',body:'Accedi con Microsoft alla tua comunità.'}}});
+          }else await route.fulfill({headers,json:[]});return;
+        }
+        if(apiPath==='/api/me/community/profile'){
+          if(route.request().method()==='PUT'){const body=route.request().postDataJSON();assert.equal(body.personId,undefined);assert.equal(body.role,undefined);Object.assign(personalProfile,body);await route.fulfill({status:204,headers});}
+          else await route.fulfill({headers,json:personalProfile});return;
         }
         if (apiPath.startsWith('/api/me/community')) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
@@ -339,7 +357,7 @@ async function installNative(context, platform, cached = false) {
             }
             await route.fulfill({ headers, json: { member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
               canEditPhone: communityManager, canEditEmail: communityManager, canEditBirthDate: false, canManageRole: communityManager,
-              accountLinked: ![14,15].includes(member.personId), canManageMarriage: communityManager,
+              accountLinked: member.personId>=101?false:![14,15].includes(member.personId), canManageMarriage: communityManager, canInvite:communityManager && (member.personId>=101 || [14,15].includes(member.personId)),
               ...(member.personId === 13 ? {spouse:{personId:12,firstName:'Anna',lastName:'Rossi'}} : {}),
               assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
           } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
@@ -352,10 +370,13 @@ async function installNative(context, platform, cached = false) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
-          const linked = flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
-          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI']:[])] : [],
-            ...(linked ? { communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
-        } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : [] }); }
+          const linked = invitationAccepted || flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
+          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI','APPROVE_REQUESTS']:[])] : [],
+            ...(linked ? { userId:1,personId:12,communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
+        } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : flow==='directory-manager'?accessRequests:[] }); }
+        else if (/\/onboarding\/requests\/20[23]\/approve$/.test(apiPath)){
+          const id=Number(apiPath.split('/').at(-2));const body=route.request().postDataJSON();if(id===202)assert.equal(body.personId,15);else {assert.equal(body.firstName,'Nuova');assert.equal(body.role,'MEMBER');}accessRequests.find(x=>x.id===id).status='APPROVATA';await route.fulfill({headers,json:{status:'APPROVATA'}});
+        }
         else if (route.request().url().endsWith('/onboarding/requests/101/approve')) {
           assert.equal(route.request().method(), 'POST'); bootstrapApproved = true;
           await route.fulfill({ headers, json: { status: 'APPROVATA' } });
@@ -369,14 +390,14 @@ async function installNative(context, platform, cached = false) {
       });
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.goto(base);
+      await page.goto(flow==='invitation'?base+'?inviteId='+inviteId:base);
       await page.getByRole('button', { name: flow === 'signup' ? 'Registrati' : 'Accedi', exact: true }).click();
       if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) {
+      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].includes(flow)) {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -399,11 +420,27 @@ async function installNative(context, platform, cached = false) {
       if (flow === 'bootstrap') {
         await page.getByRole('link', { name: 'Appartenenze e approvazioni', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/mobile/approvazioni');
-        await page.getByRole('button', { name: 'Approva', exact: true }).click();
+        await page.getByRole('button', { name: 'Approva accesso', exact: true }).click();
         await page.getByText('Appartenenza approvata.', { exact: true }).waitFor();
         assert.equal(bootstrapApproved, true);
         assert.equal(await page.locator('.layout-container').count(), 0);
         await page.screenshot({path:path.join(output,'bootstrap-admin.png'),fullPage:true});
+      }
+      if(flow==='invitation'){
+        await page.getByRole('heading',{name:'Invito nella comunità',exact:true}).waitFor();
+        await page.getByLabel("Ho letto l'informativa privacy per l'accesso alla comunità",{exact:true}).check();
+        await page.getByRole('button',{name:'Accetta invito',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/complete-profile');
+        await page.getByRole('heading',{name:'Completa il tuo profilo',exact:true}).waitFor();
+        assert.equal(await page.locator('.avatar').count()>0,true);assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
+        await page.getByLabel('Carica foto',{exact:true}).setInputFiles({name:'foto.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
+        await page.getByText(/Anteprima locale: caricamento foto non ancora disponibile/).waitFor();
+        for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`personal-profile-${width}.png`),fullPage:true});}
+        await page.getByLabel('Telefono opzionale',{exact:true}).fill('3331234567');await page.getByRole('button',{name:'Salva profilo',exact:true}).click();
+        try{await page.waitForURL(url=>url.pathname==='/mobile/home');}catch(error){await page.screenshot({path:path.join(output,'invitation-profile-error.png'),fullPage:true});console.log(await page.locator('app-mobile-personal-profile').innerText());throw error;}
+        assert.equal(personalProfile.phone,'3331234567');assert.equal(invitationAccepted,true);
+        await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
+        await page.getByRole('button',{name:'Completa più tardi',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/home');
+        assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
       }
       if (flow.startsWith('calendar-')) {
         await page.getByText('Prossimo appuntamento',{exact:true}).waitFor();
@@ -495,6 +532,26 @@ async function installNative(context, platform, cached = false) {
           await page.getByRole('link',{name:'Torna alla rubrica',exact:true}).click();
           await page.getByRole('searchbox').fill('Mario 333123');assert.equal(await page.locator('.member-row').count(),1);
           await page.getByText('Non ancora registrato',{exact:true}).waitFor();
+          await page.getByRole('button',{name:'Cancella ricerca',exact:true}).click();
+          for(const [name,email,button] of [['Cristiano Giagnorio','cristianogiagnorio@gmail.com',"Invita nell'app"],['Nuovo6 Censito','nuovo@example.test','Aggiungi email e invita']]){
+            await page.locator('.member-row').filter({hasText:name}).click();
+            await page.getByRole('button',{name:button,exact:true}).click();
+            await page.getByLabel("Email per l'invito",{exact:true}).fill(email);
+            await page.getByRole('button',{name:'Crea invito',exact:true}).click();
+            await page.getByRole('status').filter({hasText:'Email preparata, non inviata'}).waitFor();
+            assert.ok((await page.getByLabel('Link invito',{exact:true}).inputValue()).includes('?inviteId='));
+            for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`community-invite-${width}.png`),fullPage:true});}
+            await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
+          }
+          assert.equal(preparedInvites.length,2);await page.getByText('Invito inviato · consegna manuale',{exact:true}).first().waitFor();
+          await page.getByRole('link',{name:'Richieste accesso',exact:true}).click();
+          const existing=page.locator('.access-approvals article').filter({hasText:'Emmanuel Baciarlini'});
+          await existing.getByRole('combobox').click();await page.getByRole('option',{name:'Emmanuel Baciarini',exact:true}).click();
+          await existing.getByRole('button',{name:'Approva accesso',exact:true}).click();await page.getByText('Appartenenza approvata.',{exact:true}).waitFor();
+          const fresh=page.locator('.access-approvals article').filter({hasText:'Nuova Persona'});
+          await fresh.getByRole('button',{name:'Crea nuova persona',exact:true}).click();await fresh.getByRole('button',{name:'Approva accesso',exact:true}).click();
+          await page.getByText('Appartenenza approvata.',{exact:true}).waitFor();
+          assert.ok(accessRequests.every(x=>x.status==='APPROVATA'));
         } else assert.equal(await page.getByRole('link',{name:'Importa elenco',exact:true}).count(),0);
         assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
         console.log(`PASS ${flow}: rubrica telefono, 40 righe, revisione, duplicati e conferma`);

@@ -10,7 +10,7 @@ export interface MemberDraft { firstName: string; lastName: string; email: strin
   template: `
     <form class="member-form" #form="ngForm" (ngSubmit)="submit(form)">
       <label>Nome<input name="firstName" [(ngModel)]="draft.firstName" required maxlength="100" autocomplete="given-name" [disabled]="busy" /></label>
-      <label>Cognome<input name="lastName" [(ngModel)]="draft.lastName" required maxlength="100" autocomplete="family-name" [disabled]="busy" /></label>
+      <label>Cognome<input name="lastName" [(ngModel)]="draft.lastName" maxlength="100" autocomplete="family-name" [disabled]="busy" /></label><small>Il cognome è consigliato. L'email serve solo per un eventuale invito.</small>
       @if (editBirth) {
         <label>Data di nascita opzionale<input type="date" lang="it-IT" name="birthDate" [(ngModel)]="draft.birthDate" (ngModelChange)="validationError = ''" min="1900-01-01" [max]="today" [disabled]="busy" aria-describedby="birth-summary" /></label>
         <small id="birth-summary">{{ draft.birthDate ? ((draft.birthDate + 'T00:00:00Z') | date:'dd/MM/yyyy':'UTC') : 'Non indicata' }}</small>

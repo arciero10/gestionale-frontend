@@ -28,6 +28,7 @@ export default [{ path: '', component: MobileShell, children: [
   { path: 'compleanni', redirectTo: 'birthdays', pathMatch: 'full' },
   { path: 'birthdays', loadComponent: () => import('./mobile-birthdays').then(c => c.MobileBirthdays), canMatch: [linkedGuard] },
   { path: 'privacy', loadComponent: () => import('./mobile-privacy').then(c => c.MobilePrivacy), canMatch: [linkedGuard] },
+  { path: 'complete-profile', loadComponent: () => import('./mobile-personal-profile').then(c => c.MobilePersonalProfile), canMatch: [linkedGuard] },
   section('gruppi', 'Gruppi'), section('avvisi', 'Avvisi'), section('profilo', 'Profilo'), section('altro', 'Altro'),
   { path: 'approvazioni', loadComponent: () => import('./mobile-approvals').then(c => c.MobileApprovals), canMatch: [approvalGuard] },
   { path: 'onboarding', loadComponent: () => import('../gestionaleCN/onboarding-comunita/onboarding-comunita').then(c => c.OnboardingComunita) },
