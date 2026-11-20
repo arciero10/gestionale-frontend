@@ -8,6 +8,7 @@
     "build:ios": "npm run build && cap sync ios",
     "build:android": "npm run build && cap sync android",
     "cap:sync": "cap sync",
+    "android:verify-assets": "node scripts/verify-android-assets.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:auth-mobile": "node scripts/test-mobile-auth.mjs",

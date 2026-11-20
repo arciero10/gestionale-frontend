@@ -27,10 +27,10 @@ function harness(invite:()=>Promise<CreatedInvitation>) {
 test('changing to Emmanuel clears previous invitation and recipient',async()=>{
   const {component,injector}=harness(async()=>result);
   component.begin();await component.submit();assert.ok(component.result);
-  component.personId=15;component.email='emmanuel@example.test';
+  component.personId=15;component.email='embak85@gmail.com';
   (component as any).ngOnChanges?.({personId:{previousValue:1,currentValue:15,firstChange:false}});
   assert.equal(component.result,null,'Previous member invitation must not hide Emmanuel invite button');
-  component.begin();assert.equal(component.inviteEmail,'emmanuel@example.test');injector.destroy();
+  component.begin();assert.equal(component.inviteEmail,'embak85@gmail.com');injector.destroy();
 });
 test('late invitation result cannot belong to another member',async()=>{
   let resolve!:(value:CreatedInvitation)=>void;
@@ -41,7 +41,8 @@ test('late invitation result cannot belong to another member',async()=>{
 });
 test('Emmanuel invitation visibility follows account, permission, pending and email',()=>{
   const actor={authenticated:true,linkedToCommunity:true,communityId:91,role:'RESPONSIBLE',permissions:['EDIT_MEMBRI']} as CurrentUserContext;
-  const detail={member:{personId:15,firstName:'Emmanuel',lastName:'Baciarini',role:'MEMBER',email:'emmanuel@example.test'},accountLinked:false,canEdit:true} as CommunityMemberDetail;
+  const detail={member:{personId:15,firstName:'Emmanuel',lastName:'Baciarini',role:'MEMBER',email:'embak85@gmail.com',invitationStatus:null},accountLinked:false,canEdit:true,canInvite:true} as CommunityMemberDetail;
+  console.log('INVITE VISIBILITY TEST',JSON.stringify({email:detail.member.email,accountLinked:detail.accountLinked,canInvite:detail.canInvite,invitationStatus:detail.member.invitationStatus,role:actor.role,permissions:actor.permissions}));
   assert.equal(memberInvitationAction(detail,actor),'INVITE');
   assert.equal(memberInvitationAction({...detail,canInvite:true},actor),'INVITE');
   assert.equal(memberInvitationAction({...detail,canInvite:false},actor),'FORBIDDEN');
@@ -49,6 +50,8 @@ test('Emmanuel invitation visibility follows account, permission, pending and em
   assert.equal(memberInvitationAction({...detail,member:{...detail.member,invitationStatus:'PENDING'}},actor),'PENDING');
   assert.equal(memberInvitationAction({...detail,member:{...detail.member,accountLinked:true}},actor),'ACCOUNT_LINKED');
   assert.equal(memberInvitationAction({...detail,accountLinked:true},actor),'ACCOUNT_LINKED');
-  assert.equal(memberInvitationAction(detail,null),'FORBIDDEN');
-  assert.equal(memberInvitationAction(detail,{...actor,role:'MEMBER'}),'FORBIDDEN');
+  assert.equal(memberInvitationAction({...detail,canInvite:undefined},null),'FORBIDDEN');
+  assert.equal(memberInvitationAction({...detail,canInvite:undefined},{...actor,role:'MEMBER'}),'FORBIDDEN');
+  assert.equal(memberInvitationAction({...detail,canInvite:undefined},actor),'INVITE');
+  for(const status of ['EXPIRED','CANCELLED'])assert.equal(memberInvitationAction({...detail,member:{...detail.member,invitationStatus:status}},actor),'INVITE');
 });

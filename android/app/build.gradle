@@ -52,6 +52,12 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+tasks.register('verifyAngularWebAssets', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine(System.getenv('NODE_BINARY') ?: 'node', 'scripts/verify-android-assets.mjs')
+}
+tasks.named('preBuild').configure { dependsOn 'verifyAngularWebAssets' }
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
