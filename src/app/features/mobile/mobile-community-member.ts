@@ -1,7 +1,8 @@
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { CommunityApiService, CommunityMemberDetail, MemberWrite, SpouseOptions } from '../../services/community-api.service';
+import { CommunityApiService, CommunityMemberDetail, MemberWrite, SpouseOptions, MemberInvitationAction, memberInvitationAction } from '../../services/community-api.service';
+import { CurrentUserService } from '../../auth/current-user.service';
 import { memberContactLinks } from './member-contact-links';
 import { communityRoleLabel } from '../../auth/community-roles';
 import { MemberDraft, MemberEditor } from './member-editor';
@@ -34,11 +35,12 @@ import { CommunityMemberInvitation } from './community-member-invitation';
           <dt>Email</dt><dd>@if (detail.member.email) { <span>{{ detail.member.email }}</span><div class="contact-actions"><a class="secondary" [href]="'mailto:' + detail.member.email"><i class="pi pi-envelope" aria-hidden="true"></i> Email</a></div> } @else { Non disponibile }</dd>
           <dt>Tappa del Cammino</dt><dd>{{ detail.stage || 'Non indicata' }}</dd>
           <dt>Ruolo nella comunità</dt><dd>{{ roleLabel(detail.member.role) }}</dd>
-          <dt>Account</dt><dd>{{ detail.accountLinked ? 'Account collegato' : 'Non ancora registrato' }}</dd>
+          <dt>Account</dt><dd>{{ invitationAction === 'ACCOUNT_LINKED' ? 'Account collegato' : 'Non ancora registrato' }}</dd>
           <dt>Coniuge</dt><dd>@if (detail.spouse) { <a [routerLink]="'/mobile/community/member/' + detail.spouse.personId">{{ detail.spouse.firstName }} {{ detail.spouse.lastName }}</a> } @else { Non disponibile }</dd>
         </dl>
         @if (detail.canEdit) { <button class="primary" type="button" [disabled]="busy" (click)="edit()">Modifica scheda</button> }
-        @if (detail.canInvite && !detail.accountLinked) { <app-community-member-invitation [personId]="detail.member.personId" [email]="detail.member.email || ''" /> }
+        @if (invitationAction === 'PENDING') { <p class="feedback" role="status">Invito inviato</p> }
+        @if (invitationAction === 'INVITE' || invitationAction === 'ADD_EMAIL') { <app-community-member-invitation [personId]="detail.member.personId" [email]="detail.member.email?.trim() || ''" /> }
         @if (detail.isSelf) { <a class="back" routerLink="/mobile/complete-profile">Completa il tuo profilo</a> }
         @if (detail.isSelf) { <a class="back" routerLink="/mobile/privacy"><i class="pi pi-bell" aria-hidden="true"></i> Preferenze notifiche</a> }
       }
@@ -48,6 +50,8 @@ import { CommunityMemberInvitation } from './community-member-invitation';
 })
 export class MobileCommunityMember implements OnInit, OnDestroy {
   private readonly api = inject(CommunityApiService);
+  private readonly current = inject(CurrentUserService);
+  protected get invitationAction(): MemberInvitationAction { return this.detail ? memberInvitationAction(this.detail, this.current.context()) : 'FORBIDDEN'; }
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private subscription?: Subscription;

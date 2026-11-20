@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { OnboardingApiService, CreatedInvitation } from '../../auth/onboarding-api.service';
 import { CurrentUserService } from '../../auth/current-user.service';
@@ -15,19 +15,26 @@ import { CurrentUserService } from '../../auth/current-user.service';
     }
     @if (feedback) { <p role="status">{{ feedback }}</p> }@if (error) { <p class="error feedback" role="alert">{{ error }}</p> }
   </section>`})
-export class CommunityMemberInvitation {
+export class CommunityMemberInvitation implements OnChanges, OnDestroy {
   @Input({required:true}) personId!:number;
   @Input() email = '';
   private readonly api=inject(OnboardingApiService); private readonly current=inject(CurrentUserService);
   protected opened=false; protected busy=false; protected recipient=''; protected error=''; protected feedback=''; protected created:CreatedInvitation|null=null;
+  private generation=0;
+  ngOnChanges(changes:SimpleChanges):void {
+    if (!changes['personId']) return;
+    this.generation++;this.opened=false;this.busy=false;this.recipient='';this.error='';this.feedback='';this.created=null;
+  }
+  ngOnDestroy():void { this.generation++; }
   protected open():void { this.recipient=this.recipient||this.email; this.opened=true; }
   protected get mailLink():string { const mail=this.created?.mail; return mail ? `mailto:${encodeURIComponent(mail.to)}?subject=${encodeURIComponent(mail.subject)}&body=${encodeURIComponent(mail.body)}` : ''; }
   protected async create():Promise<void> {
     const communityId=this.current.context()?.communityId;if(this.busy||!communityId||!this.recipient.trim())return;
+    const generation=this.generation;
     this.busy=true;this.error='';this.feedback='';
-    try { this.created=await this.api.invite(communityId,this.personId,this.recipient.trim());this.opened=false; }
-    catch(error:any){this.error=error?.error?.message??'Invito non creato. Verifica email e autorizzazioni.';}finally{this.busy=false;}
+    try { const created=await this.api.invite(communityId,this.personId,this.recipient.trim());if(generation!==this.generation)return;this.created=created;this.opened=false; }
+    catch(error:any){if(generation===this.generation)this.error=error?.error?.message??'Invito non creato. Verifica email e autorizzazioni.';}finally{if(generation===this.generation)this.busy=false;}
   }
-  protected async copy():Promise<void>{try{await navigator.clipboard.writeText(this.created!.invitationUrl);this.feedback='Link copiato.';}catch{this.feedback='Copia il link dal campo visibile.';}}
-  protected async cancel():Promise<void>{if(!this.created||this.busy)return;this.busy=true;try{await this.api.cancelInvitation(this.created.id);this.created=null;this.feedback='Invito annullato.';}catch{this.error='Impossibile annullare. Riprova.';}finally{this.busy=false;}}
+  protected async copy():Promise<void>{if(!this.created)return;const generation=this.generation;try{await navigator.clipboard.writeText(this.created.invitationUrl);if(generation===this.generation)this.feedback='Link copiato.';}catch{if(generation===this.generation)this.feedback='Copia il link dal campo visibile.';}}
+  protected async cancel():Promise<void>{if(!this.created||this.busy)return;const generation=this.generation;this.busy=true;try{await this.api.cancelInvitation(this.created.id);if(generation!==this.generation)return;this.created=null;this.feedback='Invito annullato.';}catch{if(generation===this.generation)this.error='Impossibile annullare. Riprova.';}finally{if(generation===this.generation)this.busy=false;}}
 }

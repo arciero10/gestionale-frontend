@@ -26,6 +26,16 @@ export interface MemberWrite {
   clearBirthDate?: boolean; stage?: string; role?: string;
   updateSpouse?: boolean; spouseId?: number | null; expectedMarriageId?: number | null;
 }
+export type MemberInvitationAction = 'ACCOUNT_LINKED' | 'PENDING' | 'INVITE' | 'ADD_EMAIL' | 'FORBIDDEN';
+export function memberInvitationAction(detail: CommunityMemberDetail, actor: CurrentUserContext | null): MemberInvitationAction {
+  if (detail.accountLinked === true || detail.member.accountLinked === true) return 'ACCOUNT_LINKED';
+  // Older detail responses omit this optional capability. Explicit denial still wins.
+  const authorized = detail.canInvite ?? (!!actor?.authenticated && actor.linkedToCommunity && !!actor.communityId && detail.canEdit &&
+    (actor.role === 'RESPONSIBLE' && actor.permissions.includes('EDIT_MEMBRI') || actor.role === 'CO_RESPONSIBLE' && detail.member.role === 'MEMBER' && actor.permissions.includes('EDIT_MEMBRI') && actor.permissions.includes('APPROVE_MEMBERS')));
+  if (!authorized) return 'FORBIDDEN';
+  if (detail.member.invitationStatus === 'PENDING') return 'PENDING';
+  return detail.member.email?.trim() ? 'INVITE' : 'ADD_EMAIL';
+}
 export interface MemberPrivacy {
   showBirthday?: boolean;
   showPhone: boolean; showEmail: boolean; showBirthDate: boolean; showPhoto: boolean; showFamily: boolean;

@@ -200,6 +200,7 @@ async function installNative(context, platform, cached = false) {
       const inviteId='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa';let invitationAccepted=false;
       const preparedInvites=[];const accessRequests=[{id:202,firstName:'Emmanuel',lastName:'Baciarlini',email:'emmanuel@example.test',parishId:11,parishName:'Parrocchia di test',communityNumber:3,requestedRole:'MEMBER',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',existingPeople:[{id:15,name:'Emmanuel Baciarini'}],candidates:[{id:15,name:'Emmanuel Baciarini',reasons:['FUZZY_NAME']}],canApprove:true,canReject:true},{id:203,firstName:'Nuova',lastName:'Persona',email:'new@example.test',parishId:11,parishName:'Parrocchia di test',communityNumber:3,requestedRole:'MEMBER',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',existingPeople:[],candidates:[],canApprove:true,canReject:true}];
       const personalProfile={firstName:'Test',lastName:'Member',phone:'',email:'user@example.test',birthDate:null,photoUrl:null,photoUploadAvailable:false};
+      let emmanuelCapability=true,emmanuelPending=null,emmanuelLinked=false,emmanuelEmail='emmanuel@example.test';
       const directoryPeople = [{id:12,firstName:'Anna',lastName:'Rossi',phone:'3331234567',email:'anna@example.test',role:'MEMBER',active:true,canEditBirthDate:true},{id:13,firstName:'Marco',lastName:'Verdi',phone:'',email:'',role:'RESPONSIBLE',active:true,canEditBirthDate:false}];
       const directoryDraft = {id:81,status:'DRAFT',sourceType:'TEXT',updatedAt:'2026-11-19T10:00:00Z',sheets:['Elenco','Da verificare'],roles:['MEMBER','CO_RESPONSIBLE'],people:directoryPeople,newPeopleCount:0,existingPeopleCount:0,ignoredCount:0,
         rows:Array.from({length:40},(_,i)=>({id:101+i,sourceSheet:i<30?'Elenco':'Da verificare',sourceLocator:`Elenco, riga ${i+2}`,sourceText:`Nome${i+1} Cognome`,sourceSelected:true,
@@ -355,9 +356,10 @@ async function installNative(context, platform, cached = false) {
               else { assert.equal(payload.spouseId, null); assert.equal(payload.expectedMarriageId, 51); spouseId = null; }
               await route.fulfill({ headers, json: {} }); return;
             }
-            await route.fulfill({ headers, json: { member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
+            const checkEmmanuel=flow==='directory-manager'&&member.personId===15;
+            await route.fulfill({ headers, json: { member:checkEmmanuel?{...member,email:emmanuelEmail,accountLinked:emmanuelLinked,invitationStatus:emmanuelPending}:member, stage: 'Precatecumenato', isSelf: member.personId === 12, canEdit: communityManager,
               canEditPhone: communityManager, canEditEmail: communityManager, canEditBirthDate: false, canManageRole: communityManager,
-              accountLinked: member.personId>=101?false:![14,15].includes(member.personId), canManageMarriage: communityManager, canInvite:communityManager && (member.personId>=101 || [14,15].includes(member.personId)),
+              accountLinked:checkEmmanuel?emmanuelLinked:member.personId>=101?false:![14,15].includes(member.personId), canManageMarriage: communityManager, canInvite:checkEmmanuel?emmanuelCapability:communityManager && (member.personId>=101 || [14,15].includes(member.personId)),
               ...(member.personId === 13 ? {spouse:{personId:12,firstName:'Anna',lastName:'Rossi'}} : {}),
               assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
           } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
@@ -552,6 +554,18 @@ async function installNative(context, platform, cached = false) {
           await fresh.getByRole('button',{name:'Crea nuova persona',exact:true}).click();await fresh.getByRole('button',{name:'Approva accesso',exact:true}).click();
           await page.getByText('Appartenenza approvata.',{exact:true}).waitFor();
           assert.ok(accessRequests.every(x=>x.status==='APPROVATA'));
+          communityMembers.push({personId:15,firstName:'Emmanuel',lastName:'Baciarini',email:'emmanuel@example.test',role:'MEMBER',accountLinked:false});
+          await page.locator('.mobile-bottom').getByRole('link',{name:'Comunità',exact:true}).click();
+          for(const scenario of ['email','missing-capability','no-email','pending','linked','denied']){
+            emmanuelCapability=scenario==='missing-capability'?undefined:scenario!=='denied';emmanuelEmail=scenario==='no-email'?'':'emmanuel@example.test';emmanuelPending=scenario==='pending'?'PENDING':null;emmanuelLinked=scenario==='linked';
+            await page.locator('.member-row').filter({hasText:'Emmanuel Baciarini'}).click();
+            await page.getByRole('heading',{name:'Emmanuel Baciarini',exact:true}).waitFor();
+            if(['email','missing-capability'].includes(scenario))await page.getByRole('button',{name:"Invita nell'app",exact:true}).waitFor();
+            else if(scenario==='no-email')await page.getByRole('button',{name:'Aggiungi email e invita',exact:true}).waitFor();
+            else {assert.equal(await page.locator('app-community-member-invitation').count(),0);if(scenario==='pending')await page.getByText('Invito inviato',{exact:true}).waitFor();if(scenario==='linked')await page.getByText('Account collegato',{exact:true}).waitFor();}
+            await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
+          }
+          console.log('PASS Emmanuel invite visibility: email, missing capability, missing email, pending, linked and explicit denial');
         } else assert.equal(await page.getByRole('link',{name:'Importa elenco',exact:true}).count(),0);
         assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
         console.log(`PASS ${flow}: rubrica telefono, 40 righe, revisione, duplicati e conferma`);
