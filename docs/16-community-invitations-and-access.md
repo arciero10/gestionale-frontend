@@ -1,5 +1,12 @@
 # Inviti e richieste accesso alla comunita
 
+## Delivery email: verifica infrastruttura
+
+Vedere [17-email-delivery.md](17-email-delivery.md): nessuna risorsa ACS Email
+visibile nella sottoscrizione attiva e nessuna configurazione Email__ nella
+Container App. Sono predisposti contratto e template; l'invio reale resta
+disabilitato, senza modifiche al flusso mobile o al lifecycle degli inviti.
+
 ## Modello e confini
 
 Person e l'anagrafica reale; CommunityMember conserva comunita, ruolo, tappa e
