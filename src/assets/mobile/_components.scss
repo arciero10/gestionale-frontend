@@ -1,0 +1,63 @@
+app-mobile-shell .mobile-shell {
+  background: var(--color-background);
+  *, *::before, *::after { box-sizing: border-box; }
+  h1, h2, h3, p, a, button, label, dd { overflow-wrap: anywhere; letter-spacing: 0; }
+  .mobile-content :is(h1, h2, h3) { font-family: var(--font-ui); }
+  button, input, select, textarea { font-family: var(--font-ui); }
+  input:not([type=checkbox]):not([type=radio]), select, textarea {
+    border-color: var(--color-border); border-radius: var(--radius-md); font-size: 16px;
+    max-width: 100%; color: var(--color-text-primary); background-color: var(--color-surface);
+  }
+  input[type=checkbox], input[type=radio] { accent-color: var(--color-primary); }
+  :is(a, button, input, select, textarea, summary):focus-visible {
+    outline: 3px solid var(--color-focus); outline-offset: 3px;
+  }
+  button, .primary, .secondary, summary { min-height: 48px; white-space: normal; }
+  .primary { background: var(--color-primary); color: var(--color-on-primary); border-radius: var(--radius-md); }
+  .secondary { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-surface); }
+  :is(.member-row, .row-link, .event, .app-tile, .community-card, .state, .member-form, dl) {
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  }
+  .avatar { background: var(--color-tint); color: var(--color-primary); border: 1px solid var(--color-divider); }
+  .member-copy strong { color: var(--color-text-primary); font-weight: 650; }
+  .directory-account { color: var(--color-text-secondary); }
+  .profile-head { padding: var(--spacing-md) 0; border-bottom: 2px solid var(--color-gold); }
+  .profile-head h1 { font-family: var(--font-ui); font-size: 24px; }
+  .event:has(.mine) { border-left: 3px solid var(--color-gold); }
+  .event .event-type { display: inline-block; padding: 4px 8px; border-radius: var(--radius-sm); background: var(--color-tint); color: var(--color-primary); font-size: 13px; }
+  .mine { background: var(--color-gold-tint); color: var(--color-gold-text); }
+  app-mobile-calendar > h1, app-mobile-birthdays h1 { font-family: var(--font-display); }
+  app-mobile-birthdays .member-row:has(.today) { border-left: 3px solid var(--color-gold); }
+  app-community-member-invitation section { border-top: 3px solid var(--color-gold); }
+  .import-steps { display: flex; list-style: none; gap: var(--spacing-sm); padding: 0; margin: var(--spacing-lg) 0; }
+  .import-steps li { flex: 1; min-width: 0; padding: 10px 4px; border-bottom: 2px solid var(--color-divider); color: var(--color-text-secondary); font-size: 13px; }
+  .import-steps .current { border-color: var(--color-gold); color: var(--color-primary); font-weight: 700; }
+  .couple { border-left: 3px solid var(--color-gold); }
+  .independence-note { margin-top: var(--spacing-xl); padding-top: var(--spacing-md); border-top: 1px solid var(--color-divider); color: var(--color-text-secondary); font-size: 13px; line-height: 1.65; }
+  .home-overview { display: grid; gap: var(--spacing-sm); margin: var(--spacing-lg) 0; }
+  .home-overview > a, .home-overview > section { min-width: 0; padding: var(--spacing-md); background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-md); text-decoration: none; color: var(--color-text-primary); }
+  .home-overview h2 { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); margin: 0 0 var(--spacing-sm); }
+  .home-overview strong { display: block; font-size: 17px; line-height: 1.5; }
+  .home-overview p { margin: var(--spacing-xs) 0 0; font-size: 14px; color: var(--color-text-secondary); }
+  .home-overview .next-event { border-left: 3px solid var(--color-gold); }
+  .home-overview .next-assignment { border-left: 3px solid var(--color-primary); }
+  .greeting h1 { font-family: var(--font-display); font-size: 26px; }
+  .greeting > p { color: var(--color-text-secondary); }
+  .greeting > span { display: block; line-height: 1.6; }
+  .tile-icon { color: var(--color-primary); background: var(--color-tint); }
+  .app-tile { min-height: 124px; }
+  .mobile-content { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  app-mobile-shell *, app-mobile-welcome * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+app-native-auth-panel {
+  background: var(--color-background);
+  .native-auth-page { background: var(--color-background); color: var(--color-text-primary); }
+  .native-auth-page .brand { font-family: var(--font-display); color: var(--color-primary); }
+  .native-auth-page input { border-color: var(--color-border); border-radius: var(--radius-md); font-family: var(--font-ui); font-size: 16px; }
+  .native-auth-page .primary { background: var(--color-primary); color: var(--color-on-primary); }
+  .native-auth-page .secondary { background: var(--color-surface); border: 1px solid var(--color-primary); color: var(--color-primary); }
+  .native-auth-page :is(.back, .text-button) { color: var(--color-primary); }
+  .native-auth-page :is(button, input):focus-visible { outline-color: var(--color-focus); }
+}

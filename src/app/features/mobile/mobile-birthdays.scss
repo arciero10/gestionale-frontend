@@ -1,3 +1,3 @@
 @use './mobile-community-list';
 h2{font-size:17px;margin:24px 0 12px;letter-spacing:0}
-.birthday-tag{font-weight:600;color:#475569}.member-copy .today{color:#166534}
+.birthday-tag{font-weight:600;color:var(--color-text-secondary)}.member-copy .today{color:var(--color-success)}

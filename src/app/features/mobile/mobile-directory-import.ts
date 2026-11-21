@@ -10,6 +10,7 @@ import { DirectoryDraft, DirectoryRow, DirectoryImportApiService, DirectorySumma
   template: `
     <a class="back" routerLink="/mobile/community"><i class="pi pi-arrow-left" aria-hidden="true"></i> Rubrica comunità</a>
     <h1>{{ draft ? 'Verifica elenco' : 'Importa elenco' }}</h1>
+    <ol class="import-steps" aria-label="Fasi importazione"><li [class.current]="!draft" [attr.aria-current]="!draft ? 'step' : null">1 Carica</li><li [class.current]="draft && draft.status !== 'CONFIRMED'" [attr.aria-current]="draft && draft.status !== 'CONFIRMED' ? 'step' : null">2 Verifica</li><li [class.current]="draft?.status === 'CONFIRMED'" [attr.aria-current]="draft?.status === 'CONFIRMED' ? 'step' : null">3 Conferma</li></ol>
     @if (!canImport) { <p role="alert">Non hai il permesso di importare membri.</p> }
     @else {
       @if (error) { <p class="feedback error" role="alert">{{ error }}</p>@if (id) { <button type="button" (click)="load()" [disabled]="busy">Ricarica bozza</button> } }

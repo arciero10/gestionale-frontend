@@ -25,7 +25,7 @@ import { ApprovazioniAppartenenza } from '../gestionaleCN/onboarding-comunita/ap
       </section>
     }
   `,
-  styles: [`h1{font-size:24px;letter-spacing:0}h2{font-size:19px}h3{font-size:16px}.delegations{margin-top:28px;color:#0f172a}.delegations p{color:#475569;line-height:1.5}article{border-top:1px solid #cbd5e1;padding:16px 0}label{display:flex;align-items:center;gap:12px;min-height:48px}input{width:20px;height:20px}button{min-height:48px;padding:12px 20px;border:0;border-radius:8px;background:#1d4ed8;color:white;font:inherit;font-weight:600}button:disabled{opacity:.6}`]
+  styles: [`h1{font-size:24px;letter-spacing:0}h2{font-size:19px}h3{font-size:16px}.delegations{margin-top:28px;color:var(--color-text-primary)}.delegations p{color:var(--color-text-secondary);line-height:1.5}article{border-top:1px solid var(--color-border);padding:16px 0}label{display:flex;align-items:center;gap:12px;min-height:48px}input{width:20px;height:20px}button{min-height:48px;padding:12px 20px;border:0;border-radius:8px;background:var(--color-primary);color:white;font:inherit;font-weight:600}button:disabled{opacity:.6}`]
 })
 export class MobileApprovals implements OnInit {
   private readonly api = inject(OnboardingApiService);

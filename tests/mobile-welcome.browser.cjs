@@ -18,6 +18,35 @@ const server = createServer((req, res) => {
   fs.createReadStream(target).pipe(res);
 });
 
+async function verifyMobileDesign(page) {
+  if (!(await page.locator('app-mobile-shell').count())) return;
+  assert.equal(await page.locator('.mobile-topbar').evaluate(n => getComputedStyle(n).backgroundColor), 'rgb(31, 38, 75)');
+  assert.equal(await page.locator('.mobile-topbar .brand').evaluate(n => getComputedStyle(n).color), 'rgb(255, 255, 255)');
+  const contrasts = await page.locator('app-mobile-shell').evaluate(n => {
+    const style=getComputedStyle(n), value=key=>style.getPropertyValue(key).trim();
+    const luminance=hex=>{const c=hex.replace('#','');const v=(c.length===3?[...c].map(x=>x+x).join(''):c).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return v[0]*.2126+v[1]*.7152+v[2]*.0722;};
+    return [['--color-primary','--color-on-primary'],['--color-text-primary','--color-surface'],['--color-text-secondary','--color-background'],['--color-gold-text','--color-gold-tint']].map(([a,b])=>{const x=luminance(value(a)),y=luminance(value(b));return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);});
+  });
+  assert.ok(contrasts.every(ratio=>ratio>=4.5), 'Theme text contrast >=4.5:1');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile theme must not overflow');
+  assert.ok(await page.locator('.mobile-topbar .icon,.mobile-bottom a').evaluateAll(nodes => nodes.every(n => n.getBoundingClientRect().height >= 44)), 'Touch targets >=44px');
+  if (await page.locator('.mobile-bottom').count()) {
+    assert.equal(await page.locator('.mobile-bottom a').count(), 4);
+    const active = page.locator('.mobile-bottom a.active,.mobile-bottom a.calendar-active').first();
+    if (await active.count()) {
+      assert.equal(await active.evaluate(n => getComputedStyle(n).color), 'rgb(31, 38, 75)');
+      assert.equal(await active.evaluate(n => getComputedStyle(n, '::before').backgroundColor), 'rgb(183, 154, 70)');
+    }
+  }
+  const primary = page.locator('.mobile-content .primary:visible').first();
+  const memberName = page.locator('.member-copy strong').first();
+  if (await memberName.count()) assert.match(await memberName.evaluate(n=>getComputedStyle(n).fontFamily), /Segoe UI/, 'Member names use UI font, never display serif');
+  if (await primary.count()) {
+    assert.equal(await primary.evaluate(n => getComputedStyle(n).backgroundColor), 'rgb(31, 38, 75)');
+    assert.ok((await primary.boundingBox()).height >= 44);
+  }
+}
+
 async function installNative(context, platform, cached = false) {
   await context.addInitScript(({ platform, cached }) => {
     window.CapacitorCustomPlatform = { name: platform };
@@ -148,7 +177,7 @@ async function installNative(context, platform, cached = false) {
         assert.ok(metrics.scroll <= height + 1, `${name}: unnecessary scroll (${metrics.scroll})`);
         assert.ok(metrics.footer.bottom <= height - bottom, `${name}: bottom safe area`);
       }
-      await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
+      await verifyMobileDesign(page); await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
       await page.getByRole('button', { name: 'Accedi', exact: true }).focus();
       assert.notEqual(await page.getByRole('button', { name: 'Accedi', exact: true }).evaluate(e => getComputedStyle(e).outlineStyle), 'none');
       assert.deepEqual(errors, [], `${name}: runtime errors`);
@@ -164,7 +193,7 @@ async function installNative(context, platform, cached = false) {
       assert.equal(await page.locator('app-mobile-welcome').count(), 0);
       assert.ok(!(await page.locator('meta[name="viewport"]').getAttribute('content')).includes('viewport-fit'));
       assert.ok(!(await page.locator('meta[name="viewport"]').getAttribute('content')).includes('viewport-fit'));
-      await page.screenshot({ path: path.join(output, `web-${width}.png`), fullPage: true });
+      await verifyMobileDesign(page); await page.screenshot({ path: path.join(output, `web-${width}.png`), fullPage: true });
       console.log(`PASS browser ${width}: landing web preservata`);
       await context.close();
     }
@@ -185,7 +214,7 @@ async function installNative(context, platform, cached = false) {
       await page.locator('app-native-auth-panel h1').waitFor();
       assert.equal(await page.locator('app-native-auth-panel h1').textContent(), label);
       assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
-      await page.screenshot({ path: path.join(output, `native-${label}.png`), fullPage: true });
+      await verifyMobileDesign(page); await page.screenshot({ path: path.join(output, `native-${label}.png`), fullPage: true });
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
@@ -426,7 +455,7 @@ async function installNative(context, platform, cached = false) {
         await page.getByText('Appartenenza approvata.', { exact: true }).waitFor();
         assert.equal(bootstrapApproved, true);
         assert.equal(await page.locator('.layout-container').count(), 0);
-        await page.screenshot({path:path.join(output,'bootstrap-admin.png'),fullPage:true});
+        await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'bootstrap-admin.png'),fullPage:true});
       }
       if(flow==='invitation'){
         await page.getByRole('heading',{name:'Invito nella comunità',exact:true}).waitFor();
@@ -436,9 +465,9 @@ async function installNative(context, platform, cached = false) {
         assert.equal(await page.locator('.avatar').count()>0,true);assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
         await page.getByLabel('Carica foto',{exact:true}).setInputFiles({name:'foto.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
         await page.getByText(/Anteprima locale: caricamento foto non ancora disponibile/).waitFor();
-        for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`personal-profile-${width}.png`),fullPage:true});}
+        for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`personal-profile-${width}.png`),fullPage:true});}
         await page.getByLabel('Telefono opzionale',{exact:true}).fill('3331234567');await page.getByRole('button',{name:'Salva profilo',exact:true}).click();
-        try{await page.waitForURL(url=>url.pathname==='/mobile/home');}catch(error){await page.screenshot({path:path.join(output,'invitation-profile-error.png'),fullPage:true});console.log(await page.locator('app-mobile-personal-profile').innerText());throw error;}
+        try{await page.waitForURL(url=>url.pathname==='/mobile/home');}catch(error){await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'invitation-profile-error.png'),fullPage:true});console.log(await page.locator('app-mobile-personal-profile').innerText());throw error;}
         assert.equal(personalProfile.phone,'3331234567');assert.equal(invitationAccepted,true);
         await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
         await page.getByRole('button',{name:'Completa più tardi',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/home');
@@ -467,7 +496,7 @@ async function installNative(context, platform, cached = false) {
           for (const width of [320,390,412]) {
             await page.setViewportSize({width,height:844});
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-            await page.screenshot({path:path.join(output,`calendar-editor-${width}.png`),fullPage:true});
+            await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`calendar-editor-${width}.png`),fullPage:true});
           }
           await page.getByLabel('Ho verificato data, titolo e incarichi',{exact:true}).check();
           await page.getByRole('button',{name:'Approva e pubblica',exact:true}).click();
@@ -478,7 +507,7 @@ async function installNative(context, platform, cached = false) {
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
-          await page.screenshot({path:path.join(output,`${flow}-${width}.png`),fullPage:true});
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`${flow}-${width}.png`),fullPage:true});
         }
         console.log(`PASS ${flow}: Home, incarico, calendario, revisione e permessi`);
       }
@@ -502,11 +531,11 @@ async function installNative(context, platform, cached = false) {
           assert.equal(await page.locator('.rows .row-link').count(),40);
           assert.equal(await page.locator('app-mobile-directory-import fieldset, app-mobile-directory-import form').count(),0);
           await page.getByLabel('Da verificare',{exact:true}).uncheck();await page.getByLabel('Da verificare',{exact:true}).check();
-          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`directory-list-${width}.png`)});}
+          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`directory-list-${width}.png`)});}
           await page.locator('.rows .row-link').filter({hasText:'Anna Rossi'}).click();
           await page.getByRole('radio',{name:'Usa persona esistente',exact:true}).check();
           await page.getByRole('button',{name:'Usa proposta: Marco Verdi',exact:true}).click();
-          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`directory-row-${width}.png`),fullPage:true});}
+          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`directory-row-${width}.png`),fullPage:true});}
           await page.getByRole('button',{name:'Salva verifica',exact:true}).click();
           await page.locator('.rows .row-link').filter({hasText:'Mario Rossi'}).click();
           await page.getByRole('radio',{name:'Crea nuova persona',exact:true}).check();
@@ -519,7 +548,7 @@ async function installNative(context, platform, cached = false) {
           assert.equal(await page.locator('.rows .couple').count(),1);
           await page.getByRole('button',{name:'Conferma coppia',exact:true}).click();
           await page.getByText('Coppia confermata nella bozza',{exact:true}).waitFor();
-          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`directory-couple-${width}.png`),fullPage:true});}
+          for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`directory-couple-${width}.png`),fullPage:true});}
           for(const name of ['Cristiano Giagnorio','Laura Perrotti']) {
             await page.locator('.rows .row-link').filter({hasText:name}).click();
             await page.getByRole('button',{name:'Salva verifica',exact:true}).waitFor();
@@ -542,7 +571,7 @@ async function installNative(context, platform, cached = false) {
             await page.getByRole('button',{name:'Crea invito',exact:true}).click();
             await page.getByRole('status').filter({hasText:'Email preparata, non inviata'}).waitFor();
             assert.ok((await page.getByLabel('Link invito',{exact:true}).inputValue()).includes('?inviteId='));
-            for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`community-invite-${width}.png`),fullPage:true});}
+            for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`community-invite-${width}.png`),fullPage:true});}
             await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
           }
           assert.equal(preparedInvites.length,2);await page.getByText('Invito inviato · consegna manuale',{exact:true}).first().waitFor();
@@ -573,7 +602,7 @@ async function installNative(context, platform, cached = false) {
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();
         await page.getByText('2 nei prossimi 7 giorni', {exact:true}).waitFor();
-        await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
+        await page.locator('.app-grid').getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
         await page.waitForURL(url => url.pathname === '/mobile/birthdays');
         for (const title of ['Oggi','Prossimi 7 giorni','Questo mese','Prossimamente'])
           await page.getByRole('heading',{name:title,exact:true}).waitFor();
@@ -585,7 +614,7 @@ async function installNative(context, platform, cached = false) {
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
           assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
-          await page.screenshot({path:path.join(output,`birthdays-${width}.png`),fullPage:true});
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`birthdays-${width}.png`),fullPage:true});
         }
         await page.locator('app-mobile-birthdays .member-row').filter({hasText:'Emmanuel Baciarini'}).click();
         await page.getByRole('heading',{name:'Emmanuel Baciarini',exact:true}).waitFor();
@@ -595,7 +624,7 @@ async function installNative(context, platform, cached = false) {
         assert.equal(await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href'),'https://wa.me/390212345678');
         assert.equal(await page.getByRole('link',{name:'Email',exact:true}).getAttribute('href'),'mailto:emmanuel@example.test');
         await page.getByRole('link',{name:'Home',exact:true}).click();
-        await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
+        await page.locator('.app-grid').getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
         birthdayState = 'loading';
         await page.getByRole('button',{name:'Aggiorna compleanni'}).click();
         await page.getByRole('status',{name:'Caricamento compleanni'}).waitFor();
@@ -621,11 +650,11 @@ async function installNative(context, platform, cached = false) {
         await page.getByRole('button',{name:'Salva preferenze',exact:true}).click();
         await page.getByText('Preferenze salvate.',{exact:true}).waitFor();
         assert.equal(preferences.receiveBirthdayNotifications,false);
-        await page.screenshot({path:path.join(output,'birthday-privacy.png'),fullPage:true});
+        await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'birthday-privacy.png'),fullPage:true});
         birthdayState = 'ready';
         await page.getByRole('link',{name:'Home',exact:true}).click();
         await page.getByText('2 nei prossimi 7 giorni',{exact:true}).waitFor();
-        await page.getByRole('link').filter({has:page.getByRole('heading',{name:'Avvisi',exact:true})}).click();
+        await page.locator('.app-grid').getByRole('link').filter({has:page.getByRole('heading',{name:'Avvisi',exact:true})}).click();
         await page.waitForURL(url => url.pathname === '/mobile/avvisi');
         await page.locator('app-mobile-home h1').filter({hasText:'Avvisi'}).waitFor();
         assert.equal(preferences.receiveCommunityNotifications,false);
@@ -635,12 +664,16 @@ async function installNative(context, platform, cached = false) {
         assert.equal(await page.locator('.mobile-bottom a').count(), 4);
         assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Posti di convivenza', exact: true }).count(), 0);
-        for (const [width, height, name] of [[412,915,'pixel'],[390,844,'iphone'],[393,852,'island']]) {
+        for (const [width, height, name] of [[412,915,'pixel'],[390,844,'iphone'],[393,852,'island'],[320,568,'small']]) {
           await page.setViewportSize({width,height});
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           assert.ok(await page.locator('.mobile-bottom a').evaluateAll(nodes => nodes.every(n => n.getBoundingClientRect().height >= 48)));
-          await page.screenshot({path:path.join(output,`home-${name}.png`),fullPage:true});
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`home-${name}.png`),fullPage:true});
         }
+        await page.evaluate(()=>document.body.style.fontSize='18px');
+        await verifyMobileDesign(page);
+        await page.screenshot({path:path.join(output,'home-scaled-text.png'),fullPage:true});
+        await page.evaluate(()=>document.body.style.fontSize='');
         await page.locator('.community-card').click();
         await page.waitForURL(url => url.pathname === '/mobile/community');
         await page.locator('.member-row').first().waitFor();
@@ -670,7 +703,7 @@ async function installNative(context, platform, cached = false) {
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           assert.ok(await page.locator('.member-copy').evaluateAll(nodes => nodes.every(n => n.scrollWidth <= n.clientWidth)));
           assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(), ['Home','Calendario','Comunità','Altro']);
-          await page.screenshot({path:path.join(output,`community-${width}.png`),fullPage:true});
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`community-${width}.png`),fullPage:true});
         }
         await page.setViewportSize({width:390,height:844});
         await page.locator('.member-row').filter({hasText:'Marco Verdi'}).click();
@@ -690,7 +723,7 @@ async function installNative(context, platform, cached = false) {
         assert.ok(await page.locator('.contact-actions a').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height >= 48 && n.scrollWidth <= n.clientWidth)));
         assert.equal(await page.locator('app-mobile-community-member input[type=checkbox]').count(),0);
         assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
-        await page.screenshot({path:path.join(output,'community-detail.png'),fullPage:true});
+        await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'community-detail.png'),fullPage:true});
         communityManager = true;
         await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
         await page.getByRole('link', {name:'Richieste e storico'}).waitFor();
@@ -719,11 +752,11 @@ async function installNative(context, platform, cached = false) {
         try { await page.locator('#birth-summary').filter({hasText:'29/02/1984'}).waitFor({timeout:5000}); }
         catch (error) {
           console.log('Birth UI diagnostic:', await birth.inputValue(), await page.locator('#birth-summary').textContent());
-          await page.screenshot({path:path.join(output,'birth-error.png'),fullPage:true}); throw error;
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'birth-error.png'),fullPage:true}); throw error;
         }
         await page.getByLabel('Coniuge opzionale').selectOption({label:'Marco Verdi'});
         assert.deepEqual(await page.getByLabel('Coniuge opzionale').locator('option').allTextContents(), ['Nessun collegamento','Anna Rossi','Marco Verdi']);
-        await page.screenshot({path:path.join(output,'community-add.png'),fullPage:true});
+        await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'community-add.png'),fullPage:true});
         await page.getByRole('button', { name: 'Salva fratello', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/mobile/community');
         await page.locator('.member-row').filter({hasText:'Nuovo Fratello'}).click();
@@ -736,7 +769,7 @@ async function installNative(context, platform, cached = false) {
         for (const width of [320,390,393,412]) {
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-          await page.screenshot({path:path.join(output,`member-edit-${width}.png`),fullPage:true});
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`member-edit-${width}.png`),fullPage:true});
         }
         await page.getByRole('button', {name:'Salva fratello',exact:true}).click();
         await page.getByText('Scheda aggiornata.', {exact:true}).waitFor();
@@ -756,7 +789,7 @@ async function installNative(context, platform, cached = false) {
         communityState = 'ready';
         await page.getByRole('button', { name: 'Aggiorna membri' }).click();
         await page.locator('.member-row').filter({hasText:'Nuovo Fratello'}).waitFor();
-        await page.screenshot({path:path.join(output,'community-created.png'),fullPage:true});
+        await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'community-created.png'),fullPage:true});
         communityState = 'single';
         await page.getByRole('button', { name: 'Aggiorna membri' }).click();
         await page.getByText('1 fratello', {exact:true}).waitFor();
@@ -765,7 +798,7 @@ async function installNative(context, platform, cached = false) {
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           const add = page.getByRole('link', {name:'Aggiungi fratello',exact:true});
           assert.ok(await add.evaluate(n => n.getBoundingClientRect().height >= 48 && n.scrollWidth <= n.clientWidth));
-          await page.screenshot({path:path.join(output,`community-manager-${width}.png`),fullPage:true});
+          await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`community-manager-${width}.png`),fullPage:true});
         }
         console.log('PASS mobile community: scoped API, ricerca, privacy personale, creazione, route e viewport');
       }

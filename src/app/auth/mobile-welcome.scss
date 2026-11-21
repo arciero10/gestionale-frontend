@@ -11,31 +11,31 @@
   flex-direction: column;
   align-items: center;
   padding: calc(28px + var(--safe-top)) max(22px, env(safe-area-inset-right, 0px)) calc(16px + var(--safe-bottom)) max(22px, env(safe-area-inset-left, 0px));
-  background: #101c29;
-  color: #fff;
+  background: var(--color-primary-dark);
+  color: var(--color-surface);
   text-align: center;
 }
 .welcome-photo, .welcome-shade { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 .welcome-photo { object-fit: cover; object-position: 17% center; }
-.welcome-shade { background: linear-gradient(180deg, rgba(8, 18, 34, .76), rgba(8, 18, 34, .08) 28%, rgba(8, 18, 34, .04) 46%, rgba(8, 18, 34, .66) 78%, rgba(8, 18, 34, .88)); }
+.welcome-shade { background: linear-gradient(180deg, rgba(31,38,75,.8), rgba(31,38,75,.12) 28%, rgba(31,38,75,.08) 46%, rgba(31,38,75,.72) 78%, rgba(31,38,75,.92)); }
 .welcome-brand { width: 100%; max-width: 420px; }
 .welcome-mark { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid #ffffff75; border-radius: 50%; font-size: 23px; }
-.welcome-brand h1 { color: #fff; font-size: 34px; line-height: 1.15; font-weight: 750; margin: 16px 0 10px; text-shadow: 0 2px 16px #0008; }
-.welcome-brand p { margin: 0; font-size: 16px; line-height: 1.5; color: #f1f5f9; text-shadow: 0 1px 8px #000b; }
+.welcome-brand h1 { color: var(--color-surface); font-family:var(--font-display); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 16px 0 10px; text-shadow: 0 2px 16px #0008; }
+.welcome-brand p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--color-background); text-shadow: 0 1px 8px #000b; }
 .welcome-breathing-room { flex: 1; min-height: 160px; }
-.welcome-access { box-sizing: border-box; width: 100%; max-width: 420px; padding: 24px; border: 1px solid #ffffff61; border-radius: 24px; background: rgba(16, 31, 49, .66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 24px #0002; }
-.welcome-access h2 { color: #fff; font-size: 19px; line-height: 1.4; font-weight: 650; margin: 0 0 20px; }
+.welcome-access { box-sizing: border-box; width: 100%; max-width: 420px; padding: 24px; border: 1px solid var(--color-gold); border-radius: var(--radius-md); background: var(--color-overlay); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: var(--shadow-card); }
+.welcome-access h2 { color: var(--color-surface); font-size: 19px; line-height: 1.4; font-weight: 650; margin: 0 0 20px; }
 .welcome-button { display: block; width: 100%; min-height: 52px; border: 1px solid transparent; border-radius: 12px; padding: 12px 16px; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
-.welcome-primary { background: #1d4ed8; color: #fff; }
-.welcome-secondary { margin-top: 12px; background: #f8fafc; color: #183a61; }
-.welcome-primary:active { background: #1e40af; }
-.welcome-secondary:active { background: #e2e8f0; }
+.welcome-primary { background: var(--color-gold-light); color: var(--color-primary-dark); }
+.welcome-secondary { margin-top: 12px; background: var(--color-background); color: var(--color-primary); }
+.welcome-primary:active { background: var(--color-gold); }
+.welcome-secondary:active { background: var(--color-divider); }
 .welcome-links { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
-.welcome-links a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 4px 2px; color: #fff; font-size: 14px; line-height: 1.4; text-decoration: none; }
+.welcome-links a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 4px 2px; color: var(--color-surface); font-size: 14px; line-height: 1.4; text-decoration: none; }
 .welcome-links a:hover { text-decoration: underline; }
-.welcome-button:focus-visible, .welcome-links a:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
-.welcome-footer { margin-top: 20px; color: #e2e8f0; font-size: 11px; line-height: 1.6; }
-@supports not (backdrop-filter: blur(10px)) { .welcome-access { background: rgba(16, 31, 49, .9); } }
+.welcome-button:focus-visible, .welcome-links a:focus-visible { outline: 3px solid var(--color-surface); outline-offset: 4px; }
+.welcome-footer { margin-top: 20px; color: var(--color-divider); font-size: 11px; line-height: 1.6; }
+@supports not (backdrop-filter: blur(10px)) { .welcome-access { background: var(--color-primary-dark); } }
 @media (max-width: 360px) {
   .mobile-welcome { padding-right: 18px; padding-left: 18px; }
   .welcome-brand h1 { font-size: 30px; }

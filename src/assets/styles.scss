@@ -3,6 +3,8 @@
 @use './layout/layout.scss';
 @use 'primeicons/primeicons.css';
 @use './demo/demo.scss';
+@use './mobile/tokens';
+@use './mobile/components';
 
 @font-face {
       font-family: 'Neocat';
