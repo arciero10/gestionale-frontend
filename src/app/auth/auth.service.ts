@@ -67,10 +67,23 @@ export class AuthService {
     this._state.set(this.buildStateFromToken());
   }
 
-  async loginNative(): Promise<void> {
+  private nativeCompletion: { key: string; promise: Promise<void> } | null = null;
+  loginNative(): Promise<void> {
+    const key = this.mobile.sessionKey;
+    if (this.nativeCompletion?.key === key) return this.nativeCompletion.promise;
+    const promise = this.completeNativeSession(key).finally(() => {
+      if (this.nativeCompletion?.promise === promise) this.nativeCompletion = null;
+    });
+    this.nativeCompletion = { key, promise };
+    return promise;
+  }
+
+  private async completeNativeSession(key: string): Promise<void> {
+    const startedAt = performance.now();
     if (!this.mobile.signedIn()) throw new Error('Completa l\'accesso o sblocca la sessione.');
     const currentUser = this.injector.get(CurrentUserService);
-    await currentUser.load(this.mobile.sessionKey);
+    await currentUser.load(key);
+    if (!this.mobile.signedIn() || this.mobile.sessionKey !== key) throw new Error('Sessione cambiata. Accedi o sblocca nuovamente.');
     if (currentUser.state() !== 'ready' || !currentUser.context()?.authenticated) {
       // A transient API/transport failure is not a failed Entra login.
       // The interceptor still signs out on an actual HTTP 401.
@@ -81,6 +94,7 @@ export class AuthService {
     console.info('[AUTH native] route selected', target);
     if (!await this.injector.get(Router).navigateByUrl(target, { replaceUrl: true }))
       throw new Error('Impossibile aprire il profilo. Riprova.');
+    console.info('[AUTH timing] native login completed', { elapsedMs: Math.round(performance.now()-startedAt) });
   }
 
   getToken(): string | undefined {

@@ -34,9 +34,12 @@ export class PlatformAuthInterceptor implements HttpInterceptor {
     request.headers.keys().forEach(key => headers[key] = request.headers.get(key)!);
     if (request.body !== null && !request.headers.has('Content-Type')) headers['Content-Type'] = 'application/json';
     // Native HTTPS avoids WebView CORS. Server JWT validation is unchanged.
+    const profile = request.method === 'GET' && new URL(request.url).pathname.endsWith('/api/me');
     return from(CapacitorHttp.request({ url: request.urlWithParams, method: request.method, headers,
       ...(request.body === null ? {} : { data: request.body }), responseType: 'json',
-      disableRedirects: true, connectTimeout: 15000, readTimeout: 15000 })).pipe(switchMap(result => {
+      disableRedirects: true, connectTimeout: profile ? 4000 : 15000, readTimeout: profile ? 8000 : 15000 })).pipe(
+      catchError(() => throwError(() => new HttpErrorResponse({ status: 0, statusText: 'Network failure', url: request.url }))),
+      switchMap(result => {
         if (result.status < 200 || result.status >= 300) return throwError(() => new HttpErrorResponse({ status: result.status, url: request.url, error: result.data }));
         return from([new HttpResponse({ status: result.status, body: result.data, headers: new HttpHeaders(result.headers), url: request.url })]);
       }));

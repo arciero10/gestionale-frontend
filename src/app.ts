@@ -14,7 +14,7 @@ import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
 import { getAppUserStatus, hasAppUserProfile } from './app/features/gestionaleCN/data/app-user-profile.storage';
 import { isPlatformAdminEmail } from './app/features/gestionaleCN/admin/platform-admin.mock';
-import { catchError, filter, firstValueFrom, of, timeout } from 'rxjs';
+import { filter, firstValueFrom, timeout } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
 const ONBOARDING_URL = '/gestionale-cn/onboarding-comunita';
@@ -399,6 +399,7 @@ export class App {
   protected readonly authErrorMessage = signal<string | null>(null);
   private readonly startedFromAuthCallback = this.isAuthCallbackUrl();
   private msalInitPromise: Promise<void> | null = null;
+  private redirectResultPromise: Promise<AuthenticationResult | null> | null = null;
   private postLoginRouteResolved = false;
 
   constructor() {
@@ -419,7 +420,6 @@ export class App {
     } else {
       this.clearInvalidLegacyToken();
       void this.initMsalSafe();
-      window.setTimeout(() => void this.resolveStalledPostLoginRoute(), 6000);
     }
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
@@ -432,7 +432,7 @@ export class App {
       await this.ensureMsalInitialized();
       await this.handleMicrosoftRedirect();
     } catch (error) {
-      console.error('[MSAL] init error', error);
+      console.error('[AUTH] MSAL initialization failed');
       this.clearAuthState();
       this.authenticated.set(false);
       this.authErrorMessage.set('Non e stato possibile completare l\'inizializzazione dell\'accesso. Puoi riprovare.');
@@ -449,7 +449,7 @@ export class App {
 
       if (result?.account) {
         this.msalService.instance.setActiveAccount(result.account);
-        console.log('[AUTH] active account set', result.account.username ?? result.account.homeAccountId);
+        console.log('[AUTH] active account set');
 
         if (result.idToken && this.isValidToken(result.idToken)) {
           localStorage.setItem('id_token', result.idToken);
@@ -463,8 +463,9 @@ export class App {
         return;
       }
     } catch (error) {
-      console.error('[MSAL] redirect observable error', error);
-      await this.resolveRouteFromMsalAccount('redirect-error');
+      console.error('[AUTH] redirect/profile completion failed');
+      this.authenticated.set(false);
+      this.authErrorMessage.set('Impossibile completare la verifica dell’accesso o del profilo. Controlla la connessione e riprova.');
     }
   }
 
@@ -639,6 +640,7 @@ export class App {
   private async resolvePostLoginRoute(): Promise<void> {
     const account = this.msalService.instance.getActiveAccount();
     if (account) await this.currentUser.load(account.homeAccountId);
+    if (getApiConfiguration().apiScope && this.currentUser.state() !== 'ready') throw new Error('Profilo non disponibile.');
     const invitationRoute = pendingInvitationRoute();
     if (invitationRoute) {
       this.authenticated.set(true); this.msalReady.set(true); this.forceShowOutlet.set(true);
@@ -783,67 +785,18 @@ export class App {
     }
   }
 
-  private async resolveStalledPostLoginRoute(): Promise<void> {
-    if (this.postLoginRouteResolved) {
-      return;
-    }
-
-    const browserPath = this.getBrowserPath();
-
-    if (
-      browserPath === '/admin-strutture-test' ||
-      browserPath === '/gestionale-cn/strutture-admin-test'
-    ) {
-      console.log('[AUTH] watchdog preserves admin structures test route', browserPath);
-      this.authenticated.set(true);
-      this.msalReady.set(true);
-      this.forceShowOutlet.set(true);
-      this.authErrorMessage.set(null);
-      this.postLoginRouteResolved = true;
-      return;
-    }
-
-    try {
-      await this.ensureMsalInitialized();
-      const routed = await this.resolveRouteFromMsalAccount('watchdog');
-
-      if (this.postLoginRouteResolved) {
-        return;
-      }
-
-      if (!routed && this.startedFromAuthCallback) {
-        console.warn('[AUTH] watchdog fallback: callback rilevato senza route, forzo onboarding');
-        this.authenticated.set(true);
-        this.msalReady.set(true);
-        await this.router.navigateByUrl(ONBOARDING_URL, { replaceUrl: true });
-        this.postLoginRouteResolved = true;
-      }
-    } catch (error) {
-      console.warn('[AUTH] watchdog fallback non riuscito', error);
-      this.msalReady.set(true);
-    }
-  }
 
   private async resolveRouteFromMsalAccount(source: 'redirect' | 'redirect-error' | 'watchdog'): Promise<boolean> {
+    await this.ensureMsalInitialized();
+    const result = await this.readRedirectResult();
+    if (result?.account) this.msalService.instance.setActiveAccount(result.account);
     const activeAccount = this.getOrSetActiveAccount(source);
 
     if (!activeAccount) {
-      if (this.startedFromAuthCallback) {
-        // aspetta e riprova una volta
-        await new Promise(r => setTimeout(r, 2000));
-        const retryAccount = this.getOrSetActiveAccount(source + '-retry' as any);
-        if (retryAccount) {
-          this.authErrorMessage.set(null);
-          this.authenticated.set(true);
-          this.msalReady.set(true);
-          await this.resolvePostLoginRoute();
-          return true;
-        }
-      }
       this.clearAuthState();
       this.authenticated.set(false);
       this.msalReady.set(true);
-      this.authErrorMessage.set(null);
+      this.authErrorMessage.set(this.startedFromAuthCallback ? 'Microsoft non ha restituito una sessione valida. Riprova accesso.' : null);
 
       if (this.isPublicRoute()) {
         return false;
@@ -885,13 +838,13 @@ export class App {
     const activeAccount = this.msalService.instance.getActiveAccount();
 
     if (activeAccount) {
-      console.log('[AUTH] active account set', activeAccount.username ?? activeAccount.homeAccountId, source);
+    console.log('[AUTH] active account set', source);
       return activeAccount;
     }
 
     if (accounts.length > 0) {
       this.msalService.instance.setActiveAccount(accounts[0]);
-      console.log('[AUTH] active account set', accounts[0].username ?? accounts[0].homeAccountId, source);
+      console.log('[AUTH] active account set', source);
       return accounts[0];
     }
 
@@ -916,26 +869,16 @@ export class App {
     return candidates.some((email) => isPlatformAdminEmail(email));
   }
 
-  private wait(milliseconds: number): Promise<void> {
-    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-  }
-
-  private async readRedirectResult(): Promise<AuthenticationResult | null> {
-    const redirectResult = firstValueFrom(
-      this.msalService.handleRedirectObservable().pipe(
-        timeout({ first: 4000 }),
-        catchError((error) => {
-          console.warn('[MSAL] redirect callback timeout/error', error);
-          return of(null as AuthenticationResult | null);
-        })
-      )
-    );
-
-    const hardTimeout = new Promise<AuthenticationResult | null>((resolve) => {
-      window.setTimeout(() => resolve(null), 4000);
-    });
-
-    return Promise.race([redirectResult, hardTimeout]);
+  private readRedirectResult(): Promise<AuthenticationResult | null> {
+    if (!this.redirectResultPromise) {
+      const startedAt = performance.now();
+      this.redirectResultPromise = firstValueFrom(this.msalService.handleRedirectObservable().pipe(timeout({ first: 15000 })))
+        .then(result => {
+          console.info('[AUTH timing] web redirect completed', { elapsedMs: Math.round(performance.now()-startedAt), account: !!result?.account });
+          return result;
+        });
+    }
+    return this.redirectResultPromise;
   }
 
   private ensureMsalInitialized(): Promise<void> {

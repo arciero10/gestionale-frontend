@@ -71,9 +71,11 @@ export class MobileAuthService {
     this.applyOutcome(await this.sdkSession.start(options));
   }
   async submitNative(options: NativeSubmission): Promise<void> {
+    const startedAt = performance.now();
     const outcome = await this.sdkSession.submit(options);
     if (options.code) console.info('[AUTH native] OTP completed', ['authenticated', 'password', 'attributes', 'complete', 'unlock'].includes(outcome.step));
     this.applyOutcome(outcome);
+    console.info('[AUTH timing] native challenge completed', { elapsedMs: Math.round(performance.now()-startedAt), authenticated: outcome.step === 'authenticated' });
   }
   async resendNative(): Promise<void> { this.applyOutcome(await this.sdkSession.resend()); }
   async unlockNative(): Promise<void> {
@@ -141,8 +143,9 @@ export class MobileAuthService {
   }
 
   accessToken(): Promise<string> {
+    const startedAt = performance.now();
     if (!this.browserMode) return this.tokenPromise ??= this.sdkSession.accessToken().then(token => {
-      console.info('[AUTH native] API access token obtained', { obtained: Boolean(token), scope: getApiConfiguration().apiScope });
+      console.info('[AUTH timing] API token ready', { elapsedMs: Math.round(performance.now()-startedAt), obtained: Boolean(token) });
       return token;
     }).catch(async error => {
       console.info('[AUTH native] API access token obtained', false);

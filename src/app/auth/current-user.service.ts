@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Capacitor } from '@capacitor/core';
 import { Injectable, inject, signal } from '@angular/core';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom, timeout, retry, timer, throwError, mergeMap, of } from 'rxjs';
 import { getApiConfiguration } from './api-config';
 import { backendUserContext, CurrentUserContext } from './current-user-context';
 
@@ -17,12 +17,23 @@ export class CurrentUserService {
     load(accountKey: string): Promise<void> {
         const api = getApiConfiguration();
         if (!api.apiScope) return Promise.resolve();
-        if (this.accountKey === accountKey) return this.pending ?? Promise.resolve();
+        if (this.accountKey === accountKey && this.state() !== 'error') return this.pending ?? Promise.resolve();
         this.reset();
         const generation = this.generation;
         this.accountKey = accountKey;
         this.state.set('loading');
-        this.pending = firstValueFrom(this.http.get<CurrentUserContext>(`${api.apiBaseUrl}/me`, { observe: 'response' }).pipe(timeout(20000)))
+        const startedAt = performance.now();
+        const native = Capacitor.isNativePlatform();
+        this.pending = firstValueFrom(this.http.get<CurrentUserContext>(`${api.apiBaseUrl}/me`, { observe: 'response' }).pipe(
+            timeout(native ? 14000 : 20000),
+            retry({ count: native ? 1 : 0, delay: error => {
+                // Retry only completed, recoverable GET failures. Never replay an invalid token,
+                // malformed profile or timed-out native request that may still be in flight.
+                if (this.generation !== generation || !(error instanceof HttpErrorResponse) || ![0,502,503,504].includes(error.status)) return throwError(() => error);
+                console.info('[AUTH timing] profile retry', { attempt: 2, httpStatus: error.status, elapsedMs: Math.round(performance.now()-startedAt) });
+                return timer(200).pipe(mergeMap(() => this.generation === generation ? of(0) : throwError(() => error)));
+            } })
+        ))
             .then(response => {
                 const context = response.body;
                 if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me', { httpStatus: response.status, linkedToCommunity: context?.linkedToCommunity === true,
@@ -33,11 +44,13 @@ export class CurrentUserService {
                     throw new Error('Contesto backend non valido.');
                 backendUserContext.set(context);
                 this.state.set('ready');
+                console.info('[AUTH timing] profile ready', { elapsedMs: Math.round(performance.now()-startedAt) });
             }).catch((error: unknown) => {
                 if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me failed', { httpStatus: error instanceof HttpErrorResponse ? error.status : null });
                 if (this.accountKey !== accountKey || this.generation !== generation) return;
                 backendUserContext.set(null);
                 this.state.set('error');
+                console.info('[AUTH timing] profile failed', { elapsedMs: Math.round(performance.now()-startedAt), httpStatus: error instanceof HttpErrorResponse ? error.status : null });
                 console.warn('[API] Impossibile recuperare /api/me. Nessuna associazione locale usata come contesto DB.');
             });
         return this.pending;

@@ -232,7 +232,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
+    for (const flow of ['password', 'otp', 'reset', 'linked', 'retry', 'profile-slow', 'profile-down', 'profile-denied', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
       await installNative(context, flow === 'directory-member' ? 'ios' : 'android');
       let meCalls = 0;
@@ -422,8 +422,10 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         if (new URL(route.request().url()).pathname.endsWith('/me')) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
+          if(flow === 'profile-down' || flow === 'profile-denied') { await route.fulfill({status:flow==='profile-down'?503:403,headers,json:{}});return; }
+          if(flow === 'profile-slow')await new Promise(r=>setTimeout(r,1200));
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
-          const linked = invitationAccepted || flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
+          const linked = invitationAccepted || ['linked','retry','profile-slow'].includes(flow) || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
           await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI','APPROVE_REQUESTS','CREATE_CONVIVENZA']:[])] : [],
             ...(linked ? { userId:1,personId:12,communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
         } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : flow==='directory-manager'?accessRequests:[] }); }
@@ -450,8 +452,11 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
       if (flow === 'password') await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
+      let loginStartedAt = performance.now();
+      await page.evaluate(()=>{window.__authErrorShown=false;new MutationObserver(()=>{if(document.querySelector('.auth-loading-card.error'))window.__authErrorShown=true;}).observe(document.body,{childList:true,subtree:true});});
       if (flow !== 'password') {
         await page.getByLabel('Codice di verifica').fill('000000');
+        loginStartedAt = performance.now();
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
       if (flow === 'signup' || flow === 'reset') {
@@ -462,13 +467,25 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.getByLabel('Nome', { exact: true }).fill('Test');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
-      if (flow === 'retry') await page.getByRole('button', { name: 'Riprova accesso', exact: true }).click();
+      if (flow === 'profile-down' || flow === 'profile-denied') {
+        await page.getByRole('button',{name:'Riprova accesso',exact:true}).waitFor();
+        assert.equal(meCalls,flow==='profile-down'?2:1);
+        assert.equal(new URL(page.url()).pathname,'/');
+        assert.equal(await page.locator('app-mobile-home').count(),0);
+        assert.equal(await page.evaluate(()=>window.__nativeCalls.filter(x=>x==='EntraNativeAuth.start').length),1);
+        console.log(`PASS ${flow}: bounded requests, real error visible, no dashboard or repeated login`);
+        await context.close();continue;
+      }
       if (flow === 'reset') {
         await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
         assert.equal(meCalls, 0);
       } else {
-        await page.waitForURL(url => url.pathname === (flow==='invitation'?'/invite/'+inviteId:flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
+        await page.waitForURL(url => url.pathname === (flow==='invitation'?'/invite/'+inviteId:['linked','retry','profile-slow'].includes(flow) || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
         assert.equal(meCalls, flow === 'retry' ? 2 : 1);
+        if(['retry','otp','profile-slow'].includes(flow)){
+          console.log('[AUTH benchmark] OTP submit to route ms:',Math.round(performance.now()-loginStartedAt),'scenario:',flow);
+          assert.equal(await page.evaluate(()=>window.__authErrorShown),false,'No transient error screen');
+        }
       }
       if (flow === 'bootstrap') {
         await page.getByRole('link', { name: 'Appartenenze e approvazioni', exact: true }).click();

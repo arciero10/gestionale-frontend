@@ -1,5 +1,53 @@
 # Native Authentication mobile
 
+## Post-OTP completion and diagnostics (22 November 2026)
+
+Android/iOS Native Authentication does not use the SPA getAllAccounts cache or
+handleRedirectObservable. SDK submit returns an authenticated outcome after the
+native account is assigned; then the API interceptor acquires an access token,
+GET /api/me resolves the authoritative context and the existing route is opened.
+
+Previously a completed transient /api/me error went directly to the root error
+screen. The regression test explicitly required pressing Riprova accesso even
+though the SDK session remained valid. The context GET now retries once, only
+for completed HTTP/network failures 0/502/503/504, with 200ms bounded backoff.
+401/403, invalid profile/token and Rx timeouts do not retry. Native /api/me uses
+4s connect / 8s read transport limits and a 14s observable deadline (including
+token acquisition). No writes or other module requests are replayed. A timeout
+that might leave an underlying native request in flight is not retried.
+Generation checks cancel scheduled retries and ignore results after logout.
+Concurrent completion events share the same session-keyed completion promise;
+session identity is checked again before navigation. No local profile is used
+to grant access. Real profile failures still show the explicit retry action.
+
+Web callback is now a single memoized promise after initialization, bounded by
+a 15s error deadline rather than a 4s race returning a fake null result. The
+parallel 6s watchdog, 2s account sleep and unauthenticated onboarding fallback
+are removed. Account lookup follows callback completion. Backend context errors
+cannot be interpreted as a successful onboarding/dashboard decision.
+
+Run node scripts/test-auth-completion.mjs and the existing auth/deep-link/browser
+suites. Coverage includes a 4.2s delayed web callback, single-flight load,
+slow profile, bounded transient recovery, real 400/401/403/500 errors, malformed
+context and logout while requests/retry are pending. Browser scenarios require
+automatic Home for linked users after the first 503, with one SDK sign-in and
+no intermediate error screen, and preserve explicit errors on permanent failure.
+
+New [AUTH timing] logs contain only phase, elapsed milliseconds, status codes
+and booleans, never tokens, OTP, account IDs or profile fields. Capacitor keeps
+loggingBehavior none; the debug WebView console retains these timing messages.
+
+Measured after installing the verified APK on emulator-5554 (data preserved),
+the user confirmed a real OTP login reached Home on the first attempt. Debug
+console timings: challenge 787ms, API token 323ms, profile stage 1021ms (includes
+token acquisition), complete post-account phase 1051ms. Console timestamp delta
+from authenticated challenge to completed navigation is 1052ms; total OTP-submit
+to Home is approximately 1839ms. No retry/error appeared in that real run.
+No instrumented production timing exists before the fix, so a real before/after
+speedup is not claimed. Controlled 503 baseline required a manual retry; after
+the fix the linked-user regression reached Home automatically in 335ms. Slow
+API fixture (1200ms injected latency) completed automatically in about 1281ms.
+
 ## Contratto e confini
 
 Repository: `C:\Dev\Gestionale`. Backend non modificato in questa fase.
