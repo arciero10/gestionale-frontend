@@ -80,6 +80,10 @@ link handling. Account for Apple CDN caching; follow Apple's debugging guide.
 Angular explicitly copies public/.well-known to output .well-known. SWA excludes
 /.well-known/* from SPA fallback and serves the two association files anonymously
 with application/json, no redirects. Extensionless AASA is intentional.
+Live SWA ignored a Content-Type override on the extensionless file, so its route
+internally rewrites to apple-app-site-association.json. The public Apple URL
+remains extensionless and returns 200, not a redirect. The iOS configuration
+script generates both identical copies; do not edit only one of them manually.
 Check live HTTPS status, MIME and content after Actions deploy; static local
 tests alone do not prove domain verification on Android/iOS.
 

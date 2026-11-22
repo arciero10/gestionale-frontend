@@ -1,6 +1,7 @@
 import '@angular/compiler';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createEnvironmentInjector,runInInjectionContext,NgZone} from '@angular/core';
 import {Router} from '@angular/router';
 import {InvitationDeepLinkService,INVITATION_LINK_PLATFORM} from '../src/app/auth/invitation-deep-link.service';
@@ -8,6 +9,12 @@ import {parseInvitationDeepLink,invitationIdFromLocation,invitationPath} from '.
 import {rememberAccessInvitation,readAccessInvitation,clearSessionPreservingInvitation,pendingInvitationRoute} from '../src/app/auth/onboarding-invitation';
 
 const id='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa', second='bbbbbbbb-1234-4321-8123-bbbbbbbbbbbb';
+test('SWA AASA MIME rewrite has matching extensionless and JSON assets',()=>{
+  const config=JSON.parse(readFileSync('staticwebapp.config.json','utf8'));
+  const route=config.routes.find((r:any)=>r.route==='/.well-known/apple-app-site-association');
+  assert.equal(route.rewrite,'/.well-known/apple-app-site-association.json');
+  assert.deepEqual(JSON.parse(readFileSync('public'+route.route,'utf8')),JSON.parse(readFileSync('public'+route.rewrite,'utf8')));
+});
 function storage(){const map=new Map<string,string>();Object.defineProperty(globalThis,'sessionStorage',{configurable:true,value:{getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>map.set(k,v),removeItem:(k:string)=>map.delete(k),clear:()=>map.clear()}});return map;}
 test('only trusted HTTPS host and canonical or unambiguous legacy IDs are accepted',()=>{
   assert.equal(parseInvitationDeepLink(`https://test.eventidicomunita.it/invite/${id}`),id);
