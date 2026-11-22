@@ -12,6 +12,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:auth-mobile": "node scripts/test-mobile-auth.mjs",
+    "test:invitation-links": "node scripts/test-invitation-links.mjs",
     "test:mobile-welcome": "node tests/mobile-welcome.browser.cjs",
     "lint": "ng lint"
   },

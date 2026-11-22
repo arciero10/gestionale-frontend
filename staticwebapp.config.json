@@ -1,7 +1,12 @@
 {
+  "routes": [
+    {"route":"/.well-known/assetlinks.json","allowedRoles":["anonymous"],"headers":{"Content-Type":"application/json","Cache-Control":"public, max-age=300"}},
+    {"route":"/.well-known/apple-app-site-association","allowedRoles":["anonymous"],"headers":{"Content-Type":"application/json","Cache-Control":"public, max-age=300"}}
+  ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
+      "/.well-known/*",
       "/assets/*",
       "/*.{css,scss,js,png,gif,ico,jpg,svg,json,webp,woff,woff2,ttf,eot}"
     ]

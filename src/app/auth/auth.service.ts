@@ -5,6 +5,7 @@ import { MobileAuthService } from './mobile-auth.service';
 import { CurrentUserService } from './current-user.service';
 import { backendUserContext } from './current-user-context';
 import { postLoginDestination } from './post-login-route';
+import { pendingInvitationRoute } from './onboarding-invitation';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -76,7 +77,7 @@ export class AuthService {
       currentUser.reset();
       throw new Error('Impossibile verificare il profilo. Controlla la connessione e riprova.');
     }
-    const target = postLoginDestination(true, currentUser.context()?.linkedToCommunity === true);
+    const target = pendingInvitationRoute() || postLoginDestination(true, currentUser.context()?.linkedToCommunity === true);
     console.info('[AUTH native] route selected', target);
     if (!await this.injector.get(Router).navigateByUrl(target, { replaceUrl: true }))
       throw new Error('Impossibile aprire il profilo. Riprova.');

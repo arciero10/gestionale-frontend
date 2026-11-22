@@ -8,6 +8,7 @@ import { authPlatform, MSAL_CLIENT_ID, MSAL_EXTERNAL_TENANT_NAME, MSAL_AUTHORITY
 import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, NativeSubmission } from './entra-native-core';
 import { loadNativeAuthRedirect, NativeAuthConfigError } from './native-auth-config';
 import { MobileAuthError, MobileAuthSession } from './mobile-auth-core';
+import { parseInvitationDeepLink } from './invitation-link';
 
 export const MOBILE_AUTH_MESSAGES = {
   cancelled: 'Accesso annullato. Puoi riprovare.',
@@ -115,7 +116,7 @@ export class MobileAuthService {
       },
       changed: () => this.signedIn.set(this.session?.signedIn ?? false)
     }, redirect, getApiConfiguration().apiScope);
-    await App.addListener('appUrlOpen', ({ url }) => { void this.session?.callback(url); });
+    await App.addListener('appUrlOpen', ({ url }) => { if(!parseInvitationDeepLink(url))void this.session?.callback(url); });
     await Browser.addListener('browserFinished', () => this.session?.cancel());
     await App.addListener('appStateChange', ({ isActive }) => {
       if (isActive && platform === 'android') setTimeout(() => this.session?.cancel(), 2000);

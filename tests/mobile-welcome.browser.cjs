@@ -14,7 +14,7 @@ const server = createServer((req, res) => {
   const file = path.resolve(root, '.' + new URL(req.url, 'http://localhost').pathname);
   if (!file.startsWith(root + path.sep) && file !== root) { res.writeHead(403).end(); return; }
   const target = fs.existsSync(file) && fs.statSync(file).isFile() ? file : path.join(root, 'index.html');
-  res.writeHead(200, { 'Content-Type': mime[path.extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
+  res.writeHead(200, { 'Content-Type': path.basename(target)==='apple-app-site-association'?'application/json':mime[path.extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
   fs.createReadStream(target).pipe(res);
 });
 
@@ -47,8 +47,8 @@ async function verifyMobileDesign(page) {
   }
 }
 
-async function installNative(context, platform, cached = false) {
-  await context.addInitScript(({ platform, cached }) => {
+async function installNative(context, platform, cached = false, launchUrl = '') {
+  await context.addInitScript(({ platform, cached, launchUrl }) => {
     window.CapacitorCustomPlatform = { name: platform };
     window.__nativeCalls = [];
     const methods = {
@@ -59,7 +59,7 @@ async function installNative(context, platform, cached = false) {
     };
     window.Capacitor = {
       PluginHeaders: Object.entries(methods).map(([name, names]) => ({ name, methods: names.map(name => ({ name, rtype: name === 'addListener' ? 'callback' : 'promise' })) })),
-      nativeCallback: () => 'listener',
+      nativeCallback: (plugin,method,options,callback) => { if(plugin==='App'&&method==='addListener'&&options.eventName==='appUrlOpen')window.__appUrlOpen=callback;return 'listener'; },
       nativePromise: async (plugin, method, options) => {
         window.__nativeCalls.push(`${plugin}.${method}`);
         if (plugin === 'EntraNativeAuth') {
@@ -85,7 +85,7 @@ async function installNative(context, platform, cached = false) {
           }
           return { step: method === 'resend' ? 'code' : 'login' };
         }
-        if (plugin === 'App' && method === 'getLaunchUrl') return undefined;
+        if (plugin === 'App' && method === 'getLaunchUrl') return launchUrl ? {url:launchUrl} : undefined;
         if (plugin === 'CapacitorHttp' && options.url.includes('/api/')) {
           const response = await fetch(options.url, { method: options.method, headers: options.headers,
             ...(options.data === undefined ? {} : { body: JSON.stringify(options.data) }) });
@@ -98,7 +98,7 @@ async function installNative(context, platform, cached = false) {
         return {};
       }
     };
-  }, { platform, cached });
+  }, { platform, cached, launchUrl });
 }
 
 (async () => {
@@ -434,9 +434,9 @@ async function installNative(context, platform, cached = false) {
       if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].includes(flow)) {
+      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -453,7 +453,7 @@ async function installNative(context, platform, cached = false) {
         await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
         assert.equal(meCalls, 0);
       } else {
-        await page.waitForURL(url => url.pathname === (flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
+        await page.waitForURL(url => url.pathname === (flow==='invitation'?'/invite/'+inviteId:flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
         assert.equal(meCalls, flow === 'retry' ? 2 : 1);
       }
       if (flow === 'bootstrap') {
@@ -468,7 +468,8 @@ async function installNative(context, platform, cached = false) {
       if(flow==='invitation'){
         await page.getByRole('heading',{name:'Invito nella comunità',exact:true}).waitFor();
         await page.getByLabel("Ho letto l'informativa privacy per l'accesso alla comunità",{exact:true}).check();
-        await page.getByRole('button',{name:'Accetta invito',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/complete-profile');
+        await page.getByRole('button',{name:'Accetta invito',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/community');
+        await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
         await page.getByRole('heading',{name:'Completa il tuo profilo',exact:true}).waitFor();
         assert.equal(await page.locator('.avatar').count()>0,true);assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
         await page.getByLabel('Carica foto',{exact:true}).setInputFiles({name:'foto.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
@@ -855,6 +856,50 @@ async function installNative(context, platform, cached = false) {
       assert.deepEqual(errors, []);
       console.log(`PASS native ${flow}: SDK mock, bearer /api/me e routing`);
       await context.close();
+    }
+    if(!process.env.MOBILE_TEST_FLOW||process.env.MOBILE_TEST_FLOW==='deep-links'){
+      const first='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa',next='bbbbbbbb-1234-4321-8123-bbbbbbbbbbbb';
+      for(const platform of ['android','ios']){
+        const context=await browser.newContext({viewport:{width:390,height:844}});
+        await installNative(context,platform,false,`https://test.eventidicomunita.it/invite/${first}`);
+        let linked=false,state='PENDING',reads=0,accepts=0;
+        await context.route('**/api/**',async route=>{
+          const api=new URL(route.request().url()).pathname;
+          if(api==='/api/me'){await route.fulfill({json:{authenticated:true,linkedToCommunity:linked,status:linked?'LINKED':'UNLINKED',userId:1,personId:linked?12:null,communityId:linked?91:null,communityName:'3ª Comunità',permissions:[],role:'MEMBER'}});return;}
+          if(api.includes('/api/onboarding/invitations/')){
+            assert.equal(route.request().headers().authorization,'Bearer sdk-api-test-token');
+            if(api.endsWith('/accept')){assert.equal(route.request().postDataJSON().privacyConsent,true);accepts++;linked=true;await route.fulfill({json:{authenticated:true,linkedToCommunity:true}});return;}
+            reads++;if(state==='MISMATCH'){await route.fulfill({status:403,json:{message:'not for this account'}});return;}
+            await route.fulfill({json:{status:state,communityName:'3ª Comunità',parishName:'Parrocchia test',firstName:'Invitato',lastName:'Test'}});return;
+          }
+          if(api.endsWith('/community')){await route.fulfill({json:{context:{communityName:'3ª Comunità',parishName:'Parrocchia test',role:'MEMBER'},members:[],canAddMember:false}});return;}
+          await route.fulfill({json:[]});
+        });
+        const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+        await page.goto(base);await page.locator('#native-email').waitFor();
+        assert.equal(reads,0,'No Person metadata before authentication');assert.equal(await page.locator('#native-password').count(),0,'Invite selects existing OTP UI');
+        await page.locator('#native-email').fill('invite-test@example.test');await page.locator('app-native-auth-panel button[type=submit]').click();
+        await page.locator('#native-code').fill('000000');await page.locator('app-native-auth-panel button[type=submit]').click();
+        await page.waitForURL(url=>url.pathname===`/invite/${first}`);await page.getByRole('button',{name:'Accetta invito',exact:true}).waitFor();
+        assert.equal(await page.locator('app-mobile-home').count(),0,'No Home flash before acceptance');
+        await page.getByLabel("Ho letto l'informativa privacy per l'accesso alla comunità",{exact:true}).check();await page.getByRole('button',{name:'Accetta invito',exact:true}).click();
+        await page.waitForURL(url=>url.pathname==='/mobile/community');assert.equal(accepts,1);assert.equal(await page.evaluate(()=>sessionStorage.getItem('community.access-invite')),null);
+        for(const [status,label] of [['EXPIRED','Invito scaduto'],['CANCELLED','Invito annullato'],['ACCEPTED','Invito già utilizzato'],['MISMATCH','Email non corrispondente. Accedi con l’email che ha ricevuto l’invito.']]){
+          state=status;
+          if(new URL(page.url()).pathname.startsWith('/invite/'))await page.getByRole('button',{name:'Continua senza invito',exact:true}).click();
+          await page.evaluate(url=>window.__appUrlOpen({url}),`https://test.eventidicomunita.it/invite/${next}`);
+          await page.getByText(status==='MISMATCH'?label:'Stato: '+label,{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Accetta invito',exact:true}).count(),0);
+          await page.screenshot({path:path.join(output,`deep-link-${platform}-${status}.png`),fullPage:true});
+        }
+        const before=page.url();await page.evaluate(url=>window.__appUrlOpen({url}),`https://evil.example/invite/${next}`);assert.equal(page.url(),before);assert.deepEqual(errors,[]);
+        console.log(`PASS deep links ${platform}: cold start, OTP, resume, accept, warm events, expired/cancelled/used/mismatch`);await context.close();
+      }
+      const web=await browser.newContext({viewport:{width:390,height:844}}),page=await web.newPage();let apiReads=0;
+      await web.route('**/api/**',r=>{apiReads++;return r.fulfill({status:401,json:{}});});
+      await page.goto(`${base}/invite/${first}`);await page.getByRole('heading',{name:'Invito a Eventi di Comunità',exact:true}).waitFor();
+      await page.getByRole('button',{name:'Accedi a Eventi di Comunità',exact:true}).waitFor();assert.equal(apiReads,0);assert.equal(new URL(page.url()).pathname,`/invite/${first}`);
+      for(const path of ['/.well-known/assetlinks.json','/.well-known/apple-app-site-association']){const response=await page.request.get(base+path);assert.equal(response.status(),200);assert.match(response.headers()['content-type'],/application\/json/);await response.json();}
+      await page.screenshot({path:path.join(output,'deep-link-web-fallback.png'),fullPage:true});await web.close();console.log('PASS invite fallback web: public route, no Person metadata before login, association files JSON');
     }
   } finally {
     if (browser) await browser.close();

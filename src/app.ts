@@ -7,6 +7,8 @@ import { CurrentUserService } from './app/auth/current-user.service';
 import { MobileAuthService } from './app/auth/mobile-auth.service';
 import { MobileWelcome } from './app/auth/mobile-welcome';
 import { NativeAuthPanel } from './app/auth/native-auth-panel';
+import { InvitationDeepLinkService } from './app/auth/invitation-deep-link.service';
+import { pendingInvitationRoute, clearSessionPreservingInvitation } from './app/auth/onboarding-invitation';
 import { getApiConfiguration } from './app/auth/api-config';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
@@ -44,7 +46,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
     @if (!showLoading() && showLogin()) {
       @if (isNativeWelcome()) {
         @if (mobileAuth.requestedFlow() || mobileAuth.nativeOutcome().step === 'unlock') {
-          <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
+          <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" [invitationLogin]="!!invitationLinks.pendingId()" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
         } @else {
           <app-mobile-welcome (access)="login()" (registration)="register()"></app-mobile-welcome>
         }
@@ -388,6 +390,7 @@ export class App {
   private readonly currentUser = inject(CurrentUserService);
   private readonly injector = inject(Injector);
   protected readonly mobileAuth = inject(MobileAuthService);
+  protected readonly invitationLinks = inject(InvitationDeepLinkService);
   private get msalService(): MsalService { return this.injector.get(MsalService); }
   private readonly currentPath = signal(window.location.pathname);
   private readonly authenticated = signal(false);
@@ -399,6 +402,7 @@ export class App {
   private postLoginRouteResolved = false;
 
   constructor() {
+    void this.invitationLinks.initialize().catch(()=>{ /* Normal login remains usable. */ });
     if (this.mobileAuth.native) {
       this.msalReady.set(true);
       void this.mobileAuth.initialize().catch(() => { /* Welcome remains available for retry. */ });
@@ -504,6 +508,7 @@ export class App {
       path.startsWith('/demo/') ||
       path === '/faq' ||
       path === '/privacy' ||
+      path.startsWith('/invite/') ||
       path === '/completa-profilo' ||
       path === '/registrazione-fratello' ||
       path === '/admin-strutture-test' ||
@@ -626,7 +631,7 @@ export class App {
   private clearAuthState(): void {
     this.currentUser.reset();
     localStorage.removeItem('id_token');
-    sessionStorage.clear();
+    clearSessionPreservingInvitation();
     this.authService.refreshState();
     this.authenticated.set(false);
   }
@@ -634,6 +639,12 @@ export class App {
   private async resolvePostLoginRoute(): Promise<void> {
     const account = this.msalService.instance.getActiveAccount();
     if (account) await this.currentUser.load(account.homeAccountId);
+    const invitationRoute = pendingInvitationRoute();
+    if (invitationRoute) {
+      this.authenticated.set(true); this.msalReady.set(true); this.forceShowOutlet.set(true);
+      this.authErrorMessage.set(null); this.postLoginRouteResolved = true;
+      await this.router.navigateByUrl(invitationRoute, {replaceUrl:true}); return;
+    }
     const browserPath = this.getBrowserPath();
 
     if (
@@ -664,6 +675,7 @@ export class App {
       current.startsWith('/demo/') ||
       current === '/faq' ||
       current === '/privacy' ||
+      current.startsWith('/invite/') ||
       current === '/completa-profilo' ||
       current === '/registrazione-fratello' ||
       current.startsWith('/completa-anagrafica/') ||

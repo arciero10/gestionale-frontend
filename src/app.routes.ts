@@ -7,6 +7,7 @@ import { gestionaleAuthGuard } from '@/auth/gestionale-auth.guard';
 import { mobileAccessGuard } from '@/features/mobile/mobile.routes';
 
 export const routes: Routes = [
+  { path: 'invite/:inviteId', loadComponent: () => import('@/features/mobile/invitation-page').then(c => c.InvitationPage), data: {visibilita:'pubblica'} },
   { path: 'mobile', canMatch: [mobileAccessGuard], loadChildren: () => import('@/features/mobile/mobile.routes') },
   {
     path: 'demo',

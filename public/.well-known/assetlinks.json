@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "it.panteleia.eventidicomunita",
+      "sha256_cert_fingerprints": ["7F:69:D3:1F:D6:8C:85:D5:A2:2C:E2:02:A0:5E:EC:9D:C4:7F:17:4F:E5:7B:72:49:A8:D6:D7:FF:C0:C9:AA:B5"]
+    }
+  }
+]

@@ -50,6 +50,7 @@
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
+              { "glob": "**/*", "input": "public/.well-known", "output": ".well-known" },
               {
                 "glob": "**/*",
                 "input": "public",

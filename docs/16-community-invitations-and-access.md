@@ -57,12 +57,15 @@ legacy resta compatibile con backend non ancora aggiornati. Nessuna password
 SMTP, segreto o access token e stato aggiunto al repository. Dettagli in
 17-email-delivery.md, inclusi migration gate e invio reale ancora da collaudare.
 
-V1: il sito ricorda il publicId per un'ora in sessionStorage prima del login e
-mostra accettazione nell'onboarding web/mobile. Non e fonte di autorizzazione.
-Android App Links/iOS Universal Links richiedono assetlinks.json, AASA, domini
-associati e consegna del publicId dal link handler; non sono abilitati in questa
-fase. Il passaggio sito -> app installata va collaudato con tale configurazione.
-La Native Authentication e il login web non sono modificati.
+URL canonica: https://test.eventidicomunita.it/invite/PUBLIC_ID. Il sito mantiene
+compatibili i vecchi link root ?inviteId=GUID. InvitationDeepLinkService gestisce
+cold start/appUrlOpen; PublicId temporaneo, non fonte di autorizzazione, ripreso
+dopo il login e cancellato dopo completamento/stato terminale/uscita esplicita.
+Android App Links usa il fingerprint debug TEST reale. Universal Links iOS e
+predisposto ma non attivabile senza Team ID Apple: AASA details resta vuoto.
+Dettagli e procedure di verifica in 19-invitation-deep-links.md.
+SDK, configurazioni Entra e protocolli auth sono invariati; il routing da invito
+seleziona l'OTP esistente e la conferma invito prima della Home.
 
 ## Richieste spontanee e revisione
 

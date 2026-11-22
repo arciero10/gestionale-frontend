@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MobileAuthService } from './mobile-auth.service';
 import { NativeFlow } from './entra-native-core';
@@ -71,6 +71,8 @@ import { NativeFlow } from './entra-native-core';
 })
 export class NativeAuthPanel {
   readonly flow = input<'signin' | 'signup'>('signin');
+  readonly invitationLogin = input(false);
+  constructor(){effect(()=>{if(this.invitationLogin())this.method='otp';});}
   readonly authenticated = output<void>();
   readonly closed = output<void>();
   protected readonly mobile = inject(MobileAuthService);
