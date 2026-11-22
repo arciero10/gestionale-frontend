@@ -12,6 +12,16 @@ function files(root, directory = root) {
     return entry.isDirectory() ? files(root, path) : [relative(root, path)];
   });
 }
+export function compareAndroidAssetDirectories(source, target) {
+  // Association documents are served by the website, not consumed by the WebView.
+  const webFiles = files(source).filter(file => {
+    const segments = file.replace(/\\/g, '/').split('/');
+    return !segments.includes('.well-known') &&
+      !['apple-app-site-association', 'apple-app-site-association.json', 'assetlinks.json'].includes(segments.at(-1));
+  });
+  const mismatches = webFiles.filter(file => !existsSync(join(target, file)) || hash(join(source, file)) !== hash(join(target, file)));
+  return { webFiles, mismatches };
+}
 export function verifyAndroidWebAssets(root) {
   const configFile = join(root, 'android/app/src/main/assets/capacitor.config.json');
   if (!existsSync(configFile)) throw new Error('Capacitor assets missing: run npm run build and npx cap sync android.');
@@ -19,8 +29,7 @@ export function verifyAndroidWebAssets(root) {
   if (!config.webDir || !config.appId) throw new Error('Capacitor webDir/appId missing. Run npx cap sync android.');
   const source = resolve(root, config.webDir), target = join(root, 'android/app/src/main/assets/public');
   if (!existsSync(join(source, 'index.html'))) throw new Error('Angular production build missing: run npm run build.');
-  const webFiles = files(source);
-  const mismatches = webFiles.filter(file => !existsSync(join(target, file)) || hash(join(source, file)) !== hash(join(target, file)));
+  const { webFiles, mismatches } = compareAndroidAssetDirectories(source, target);
   if (mismatches.length) throw new Error(`Android web assets differ from the Angular build (${mismatches.slice(0, 5).join(', ')}). Run npx cap sync android before assembleDebug.`);
   return { appId: config.appId, files: webFiles.length, mainBundles: webFiles.filter(file => /^main-[^/\\]+\.js$/.test(file)), indexHash: hash(join(source, 'index.html')) };
 }
@@ -35,7 +44,7 @@ export function verifyInstalledApk(root, appId, serial) {
   const temporary = mkdtempSync(join(tmpdir(), 'eventi-apk-assets-'));
   try {
     execFileSync(jar, ['xf', apk, 'assets/public'], { cwd: temporary, stdio: 'pipe' });
-    const mismatches = files(source).filter(file => !existsSync(join(temporary, 'assets/public', file)) || hash(join(source, file)) !== hash(join(temporary, 'assets/public', file)));
+    const { mismatches } = compareAndroidAssetDirectories(source, join(temporary, 'assets/public'));
     if (mismatches.length) throw new Error(`Debug APK does not contain the current Angular build (${mismatches.slice(0, 5).join(', ')}). Run assembleDebug.`);
   } finally {
     if (dirname(temporary) === resolve(tmpdir())) rmSync(temporary, { recursive: true, force: true });
