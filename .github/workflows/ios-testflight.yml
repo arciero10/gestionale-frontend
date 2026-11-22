@@ -1,10 +1,21 @@
 name: iOS - build e TestFlight manuale
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ios-testflight.yml'
+      - 'ios/**'
+      - 'native/entra-native-auth/**'
+      - 'package*.json'
   workflow_dispatch:
     inputs:
       publish_testflight:
-        description: Firma e carica su TestFlight (richiede tutti i Secrets Apple)
+        description: Genera archivio e IPA firmati (richiede Secrets Apple)
+        type: boolean
+        default: false
+      upload_testflight:
+        description: Carica IPA solo dopo verifica Apple e prima build riuscita
         type: boolean
         default: false
       build_number:
@@ -22,10 +33,11 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 60
     env:
-      BUILD_NUMBER: ${{ inputs.build_number }}
+      BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
+      CI: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,16 +67,37 @@ jobs:
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
           xcodebuild -version
       - run: npm ci
+      - name: Test auth, inviti e navigazione mobile
+        run: |
+          npm run test:auth-mobile
+          npm run test:invitation-links
+          node scripts/test-auth-completion.mjs
+          node scripts/test-member-invitation.mjs
+          node scripts/test-mobile-v5.mjs
       - run: npm run build
       - run: npx cap sync ios
       - name: Risolvi Swift Package Manager
-        run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/ios-logs"
+          xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App 2>&1 | tee "$RUNNER_TEMP/ios-logs/packages.log"
       - name: Verifica build simulatore senza firma
-        if: ${{ !inputs.publish_testflight }}
-        run: >-
-          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release
-          -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/ios-build"
-          CURRENT_PROJECT_VERSION="$BUILD_NUMBER" CODE_SIGNING_ALLOWED=NO build
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/ios-build" \
+            -resultBundlePath "$RUNNER_TEMP/ios-logs/Build.xcresult" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee "$RUNNER_TEMP/ios-logs/build.log"
+      - name: Conserva log e app simulatore
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ios-logs
+            ${{ runner.temp }}/ios-build/Build/Products/Release-iphonesimulator/*.app
+          retention-days: 14
       - name: Configura firma e archivio App Store
         if: ${{ inputs.publish_testflight }}
         shell: bash
@@ -113,6 +146,25 @@ jobs:
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/ipa"
           IPA_PATH=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' -print -quit)
           [[ -n "$IPA_PATH" ]] || { echo 'IPA non generata'; exit 1; }
+      - name: Conserva IPA e archivio firmati
+        if: ${{ inputs.publish_testflight }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-signed-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ipa/*.ipa
+            ${{ runner.temp }}/App.xcarchive
+          retention-days: 7
+      - name: Upload TestFlight autorizzato separatamente
+        if: ${{ inputs.publish_testflight && inputs.upload_testflight }}
+        env:
+          UPLOAD_ENABLED: ${{ vars.IOS_TESTFLIGHT_UPLOAD_ENABLED }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          [[ "$UPLOAD_ENABLED" == 'true' ]] || { echo 'Upload non autorizzato: completare prima verifica Apple e build'; exit 1; }
+          IPA_PATH=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' -print -quit)
           xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
       - name: Rimuovi credenziali temporanee
         if: ${{ always() && inputs.publish_testflight }}

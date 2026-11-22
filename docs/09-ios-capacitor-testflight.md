@@ -1,5 +1,39 @@
 # Eventi di Comunita: iOS, Android e TestFlight
 
+## Prima build Xcode CI - 22 novembre 2026
+
+Questa sezione aggiorna le note storiche sotto. Il target attuale e iOS 17.0,
+Angular 20.1 e Capacitor 8.6.0. Bundle ID invariato:
+`it.panteleia.eventidicomunita`; Team Apple confermato: `K39JD89VPJ`.
+AppIcon universale 1024 e presente. Associated Domains include
+`applinks:test.eventidicomunita.it`; AASA usa lo stesso Team/Bundle e `/invite/*`.
+SceneDelegate inoltra URL e Universal Links a Capacitor. MSAL Native Auth 2.17.0
+e un package SPM locale con dipendenza Microsoft; auth non viene modificata.
+
+Il workflow esistente ora parte sui push che modificano configurazione iOS,
+package o il workflow, e resta avviabile manualmente. Runner `macos-26`, Node 22,
+selezione della Xcode stabile piu recente installata >=26, `npm ci`, test auth,
+inviti/navigazione, build Angular, sync e risoluzione SPM. Non usa CocoaPods.
+La build Release simulatore e sempre senza firma, con pipefail, log e xcresult.
+Artifact `ios-unsigned-<sha>` contiene log e app simulatore (non una IPA iPhone).
+Il suo successo non certifica OTP, Keychain, Face ID o Universal Links reali:
+questi richiedono test su iPhone firmato.
+
+La firma resta manuale: `publish_testflight=true` genera archivio e IPA senza
+caricare. `upload_testflight` resta false. Un upload futuro richiede anche la
+variabile repository `IOS_TESTFLIGHT_UPLOAD_ENABLED=true`, da abilitare soltanto
+dopo prima build riuscita e verifica Apple. Nessun upload in questa attivita.
+
+Nel portale Apple verificare App ID esplicito e Associated Domains per il Team,
+scheda App Store Connect, certificato Apple Distribution con relativa chiave
+privata e profilo App Store Connect corrispondente. Configurare i sette Secrets
+elencati sotto nelle impostazioni GitHub, mai in chat o nel repository.
+La API key deve avere ruolo adeguato all'upload della app. Usare numero build
+crescente; non vengono generate/revocate credenziali automaticamente.
+
+Fonti: https://capacitorjs.com/docs/getting-started/environment-setup e
+https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md
+
 Aggiornamento autenticazione: vedere [10-auth-mobile-entra](10-auth-mobile-entra.md).
 Il layer mobile e ora implementato; le note sul login non implementato in questa
 pagina descrivono la fase iniziale. Restano necessari configurazione Entra e test
