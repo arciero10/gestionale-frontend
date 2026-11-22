@@ -676,10 +676,12 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();
         await page.getByText('2 nei prossimi 7 giorni', {exact:true}).waitFor();
-        await page.locator('.life-card').click();
+        await page.locator('.community-card').click();
+        await page.getByRole('heading',{name:'La mia comunità',exact:true}).waitFor();
         await page.locator('.area-link').first().waitFor();
-        assert.equal(await page.locator('.area-link').count(),4);
-        assert.deepEqual(await page.locator('.area-link strong').allTextContents(),['Calendario','Gruppi','Compleanni','Avvisi']);
+        assert.equal(await page.locator('.area-link').count(),5);
+        assert.equal(await page.locator('.home-scene').count(),0,'Home background is scoped');
+        assert.deepEqual(await page.locator('.area-link strong').allTextContents(),['Fratelli','Calendario','Gruppi','Compleanni','Avvisi']);
         for(const width of [320,390,412]) { await page.setViewportSize({width,height:844});await verifyMobileDesign(page);assert.ok(await page.locator('.area-link').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=44)));await page.screenshot({path:path.join(output,`community-life-${width}.png`),fullPage:true}); }
         await page.locator('.area-link').filter({hasText:'Compleanni'}).click();
         await page.waitForURL(url => url.pathname === '/mobile/birthdays');
@@ -703,7 +705,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         assert.equal(await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href'),'https://wa.me/390212345678');
         assert.equal(await page.getByRole('link',{name:'Email',exact:true}).getAttribute('href'),'mailto:emmanuel@example.test');
         await page.getByRole('link',{name:'Home',exact:true}).click();
-        await page.locator('.life-card').click();await page.locator('.area-link').filter({hasText:'Compleanni'}).click();
+        await page.locator('.community-card').click();await page.locator('.area-link').filter({hasText:'Compleanni'}).click();
         birthdayState = 'loading';
         await page.getByRole('button',{name:'Aggiorna compleanni'}).click();
         await page.getByRole('status',{name:'Caricamento compleanni'}).waitFor();
@@ -734,7 +736,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         birthdayState = 'ready';
         await page.getByRole('link',{name:'Home',exact:true}).click();
         await page.getByText('2 nei prossimi 7 giorni',{exact:true}).waitFor();
-        await page.locator('.life-card').click();await page.locator('.area-link').filter({hasText:'Avvisi'}).click();
+        await page.locator('.community-card').click();await page.locator('.area-link').filter({hasText:'Avvisi'}).click();
         await page.waitForURL(url => url.pathname === '/mobile/avvisi');
         await page.locator('app-mobile-home h1').filter({hasText:'Avvisi'}).waitFor();
         assert.equal(preferences.receiveCommunityNotifications,false);
@@ -743,10 +745,14 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /3ª Comunità/);
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /Parrocchia di test/);
         await page.getByRole('heading',{name:'Cosa riguarda me',exact:true}).waitFor();
-        assert.equal(await page.locator('.macro-areas>a').count(),3);
+        assert.equal(await page.locator('.macro-areas>a').count(),2);
         assert.equal(await page.locator('.app-grid,.app-tile,.home-photo').count(),0);
-        assert.equal(await page.locator('.macro-areas img').count(),1);
-        assert.equal(await page.locator('.community-card').getAttribute('href'),'/mobile/community');
+        assert.equal(await page.locator('.macro-areas img').count(),2);
+        await page.waitForFunction(()=>Array.from(document.querySelectorAll('.macro-areas img')).every(img=>img.complete&&img.naturalWidth>0));
+        assert.match(await page.locator('.mobile-shell').evaluate(n=>getComputedStyle(n).backgroundImage),/Camino_Neocatecumenal_virgen_maria/);
+        assert.equal(await page.getByText('La vita della comunità',{exact:true}).count(),0);
+        assert.equal(await page.locator('.life-card').count(),0);
+        assert.equal(await page.locator('.community-card').getAttribute('href'),'/mobile/community-life');
         await page.locator('.retreat-card').click();
         await page.getByRole('heading',{name:'Convivenze',exact:true}).waitFor();
         await page.locator('.area-link').first().waitFor();
@@ -775,6 +781,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.screenshot({path:path.join(output,'home-scaled-text.png'),fullPage:true});
         await page.evaluate(()=>document.body.style.fontSize='');
         await page.locator('.community-card').click();
+        await page.locator('.area-link').filter({hasText:'Fratelli'}).click();
         await page.waitForURL(url => url.pathname === '/mobile/community');
         await page.getByRole('heading',{name:'Responsabili',exact:true}).waitFor();
         await page.getByRole('heading',{name:'Fratelli',exact:true}).waitFor();

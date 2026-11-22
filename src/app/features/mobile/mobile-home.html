@@ -1,7 +1,6 @@
 @if (section === 'home') {
-  <header class="greeting"><p>La vita della comunità</p><h1>{{ current.context()?.displayName ? 'Ciao ' + current.context()?.displayName?.split(' ')?.[0] : 'Benvenuto' }}</h1></header>
+  <header class="greeting"><p>Benvenuto in comunità</p><h1>{{ current.context()?.displayName ? 'Ciao ' + current.context()?.displayName?.split(' ')?.[0] : 'Benvenuto' }}</h1></header>
   @if (pendingRequests) { <a class="back" routerLink="/mobile/approvazioni"><i class="pi pi-user-plus" aria-hidden="true"></i>Nuova richiesta di accesso · {{pendingRequests}}</a> }
-  @if (profilePrompt) { <section class="profile-prompt"><h2>Completa il tuo profilo</h2><a class="back" routerLink="/mobile/complete-profile">Completa profilo</a><button type="button" class="back" (click)="later()">Completa più tardi</button></section> }
   @if (nextEvent || nextAssignment || hasUpcomingBirthday) {
     <section aria-labelledby="personal-summary"><h2 class="section-label" id="personal-summary">Cosa riguarda me</h2><div class="home-overview">
       @if (nextEvent; as event) { <a class="next-event" [routerLink]="['/mobile/calendar', event.id]"><span>Prossimo appuntamento</span><strong>{{ event.title }}</strong><small>{{ calendarDate(event.date) }} · {{ event.startTime?.slice(0,5) }}</small></a> }
@@ -10,10 +9,10 @@
     </div></section>
   }
   <nav class="macro-areas" aria-label="Aree principali">
-    <a class="community-card" routerLink="/mobile/community"><i class="pi pi-users" aria-hidden="true"></i><span><strong>La mia comunità</strong>@if (current.context()?.memberCount !== undefined) { <small>{{ current.context()?.memberCount === 1 ? '1 fratello' : current.context()?.memberCount + ' fratelli' }}</small> }</span><i class="pi pi-angle-right" aria-hidden="true"></i></a>
-    <a class="life-card" routerLink="/mobile/community-life"><span class="macro-icon"><i class="pi pi-calendar" aria-hidden="true"></i></span><span><strong>Vita della comunità</strong><small>Calendario · Gruppi · Compleanni · Avvisi</small></span><i class="pi pi-angle-right" aria-hidden="true"></i></a>
-    <a class="retreat-card" routerLink="/mobile/retreats"><img src="assets/images/dashboard/convivenze.jpg" alt="" /><span class="retreat-caption"><strong>Convivenze</strong><small>{{ canOrganize() ? 'Convivenze · Posti di convivenza' : 'Le convivenze della comunità' }}</small><i class="pi pi-arrow-right" aria-hidden="true"></i></span></a>
+    <a class="community-card" routerLink="/mobile/community-life"><picture><source srcset="images/backgrounds/mobile/censimento-comunita-bg.webp" type="image/webp" /><img src="images/backgrounds/censimento-comunita-bg.jpg" alt="" fetchpriority="high" /></picture><span class="photo-caption"><strong>La mia comunità</strong>@if (current.context()?.memberCount !== undefined) { <small>{{ current.context()?.memberCount === 1 ? '1 fratello' : current.context()?.memberCount + ' fratelli' }}</small> }<i class="pi pi-angle-right" aria-hidden="true"></i></span></a>
+    <a class="retreat-card" routerLink="/mobile/retreats"><picture><source srcset="images/backgrounds/mobile/convivenze-bg.webp" type="image/webp" /><img src="images/backgrounds/convivenze-bg.jpg" alt="" loading="lazy" /></picture><span class="photo-caption"><strong>Convivenze</strong><small>{{ canOrganize() ? 'Convivenze · Posti di convivenza' : 'Le convivenze della comunità' }}</small><i class="pi pi-angle-right" aria-hidden="true"></i></span></a>
   </nav>
+  @if (profilePrompt) { <section class="profile-prompt"><h2>Completa il tuo profilo</h2><a class="back" routerLink="/mobile/complete-profile">Completa profilo</a><button type="button" class="back" (click)="later()">Completa più tardi</button></section> }
 } @else {
   <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a><h1>{{ title }}</h1>
   @if (section === 'profilo') {

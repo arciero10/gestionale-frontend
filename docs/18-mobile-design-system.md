@@ -1,5 +1,32 @@
 # Mobile navy and gold
 
+## Home V4
+
+Home has exactly two primary cards: La mia comunita -> /mobile/community-life
+and Convivenze -> /mobile/retreats. The greeting now says Benvenuto in comunita.
+The profile reminder remains functional below the primary navigation.
+The community hub is titled La mia comunita and contains horizontal links to
+Fratelli (/mobile/community, preserving its compact dashboard/full directory),
+Calendario, Gruppi, Compleanni and Avvisi. Retreats keeps the existing module
+URLs and CREATE_CONVIVENZA check for places, with Gestione convivenze as label.
+
+Actual source directory is public/images/backgrounds, not public/layout/images.
+Camino_Neocatecumenal_virgen_maria.jpg is the cover background on the Home shell
+only; a pale overlay and readable content surfaces protect text contrast.
+The two Home photos are censimento-comunita-bg.jpg and convivenze-bg.jpg,
+with dark caption overlays. Internal rows use a thumbnail on a white text
+surface: census for brothers, jubilee for calendar, assembly for retreats and
+places for accommodation. Groups/birthdays/notices use neutral icon tiles:
+no unrelated or random photos. Original files are never overwritten.
+
+scripts/prepare-mobile-backgrounds.mjs uses development-only sharp to generate
+960px WebP renditions under public/images/backgrounds/mobile. Combined output
+is about 380KB versus about 4.6MB of source photos; Home picture elements also
+retain the original JPEG fallback. The Virgin source is already small (252KB).
+Bottom tabs remain Home/Calendario/Comunita/Profilo as stable shortcuts: the
+community tab still opens the existing dashboard directly, without removing
+member management or changing routes/permissions. Auth and API are untouched.
+
 ## Macro areas V3 and native icons
 
 Home keeps the real personal summary above three primary links: community,

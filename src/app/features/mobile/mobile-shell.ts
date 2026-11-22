@@ -7,7 +7,7 @@ import { AuthService } from '../../auth/auth.service';
 @Component({
   selector: 'app-mobile-shell', standalone: true, imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
-    <div class="mobile-shell">
+    <div class="mobile-shell" [class.home-scene]="router.url.split('?')[0] === '/mobile/home'">
       <header class="mobile-topbar">
         <a class="brand" routerLink="/mobile/home">Eventi di Comunità@if (current.context()?.parishName) { <span>{{ current.context()?.parishName }}</span> }<span>{{ current.context()?.communityName || 'La tua comunità' }}</span></a>
         @if (current.context()?.linkedToCommunity) {
@@ -33,6 +33,7 @@ import { AuthService } from '../../auth/auth.service';
   styles: [`
     :host{display:block;min-height:100dvh;background:var(--color-background);color:var(--color-text-primary);isolation:isolate;position:relative}
     .mobile-shell{max-width:760px;margin:auto;min-height:100dvh;background:var(--color-background);padding-top:env(safe-area-inset-top)}
+    .home-scene{background:linear-gradient(rgba(245,246,250,.78),rgba(245,246,250,.86)),url('/images/backgrounds/Camino_Neocatecumenal_virgen_maria.jpg') center 35%/cover no-repeat}
     .mobile-topbar{display:flex;align-items:center;gap:8px;padding:16px 20px;background:var(--color-primary);border-bottom:2px solid var(--color-gold)}.brand{flex:1;font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--color-on-primary);text-decoration:none;min-width:0}.brand span{display:block;font-family:var(--font-ui);color:var(--color-on-primary);font-size:12px;font-weight:500;margin-top:4px;overflow-wrap:anywhere}
     .icon{display:grid;place-items:center;width:48px;height:48px;flex-shrink:0;color:var(--color-on-primary);border:0;background:transparent;border-radius:8px}.mobile-topbar .avatar{background:var(--color-primary-dark);color:var(--color-gold-light);border:1px solid var(--color-gold);border-radius:50%;font-weight:700}.mobile-content{padding:20px 16px calc(104px + env(safe-area-inset-bottom));min-width:0}
     .admin-access{display:flex;align-items:center;gap:10px;min-height:48px;padding:12px 20px;background:var(--color-tint);color:var(--color-primary);font-weight:600;text-decoration:none}
