@@ -19,7 +19,7 @@ export interface CommunityAccessRequest {
     canApprove: boolean; canReject: boolean;
 }
 export interface OnboardingResult { status: string; requestId: number; context: CurrentUserContext; }
-export interface CommunityInvitation { id: number; publicId: string; personId: number; status: string; expiresAt: string }
+export interface CommunityInvitation { id: number; publicId: string; personId: number; status: string; expiresAt: string; emailStatus?: 'NOT_SENT' | 'SENT' | 'FAILED' | 'BLOCKED_BY_TEST_MODE'; emailSentAt?: string; emailLastAttemptAt?: string; emailAttemptCount?: number }
 export interface CreatedInvitation extends CommunityInvitation { invitationUrl: string; deliveryStatus: string; mail: { to: string; subject: string; body: string } }
 export interface OwnOnboardingRequest {
     firstName: string; lastName: string; phone: string; parishId: number; communityNumber: number;
@@ -60,10 +60,12 @@ export class OnboardingApiService {
         return this.community.createMember(payload);
     }
     invite(communityId: number, personId: number, email?: string): Promise<CreatedInvitation> {
-        return firstValueFrom(this.http.post<CreatedInvitation>(`${this.url}/invitations`, { communityId, personId, email }).pipe(timeout(15000)));
+        return firstValueFrom(this.http.post<CreatedInvitation>(`${this.url}/invitations`, { communityId, personId, email }).pipe(timeout(70000)));
     }
     invitations(): Promise<CommunityInvitation[]> { return firstValueFrom(this.http.get<CommunityInvitation[]>(`${this.url}/invitations`).pipe(timeout(15000))); }
     cancelInvitation(id: number): Promise<unknown> { return firstValueFrom(this.http.post(`${this.url}/invitations/${id}/cancel`, {}).pipe(timeout(15000))); }
+    invitationDelivery(id: number): Promise<CreatedInvitation> { return firstValueFrom(this.http.get<CreatedInvitation>(`${this.url}/invitations/${id}/delivery`).pipe(timeout(15000))); }
+    resendInvitation(id: number): Promise<CreatedInvitation> { return firstValueFrom(this.http.post<CreatedInvitation>(`${this.url}/invitations/${id}/resend`, {}).pipe(timeout(70000))); }
     invitation(id: string): Promise<{status: string; communityName: string; parishName: string; firstName: string; lastName: string}> {
         return firstValueFrom(this.http.get<any>(`${this.url}/invitations/${encodeURIComponent(id)}`).pipe(timeout(15000)));
     }

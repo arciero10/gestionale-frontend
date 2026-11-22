@@ -13,11 +13,16 @@ class InvitationHarness extends CommunityMemberInvitation {
   get inviteEmail() { return this.recipient; }
   begin() { this.open(); }
   submit() { return this.create(); }
+  retry() { return this.resend(); }
+  get label() { return this.deliveryLabel; }
+  get waiting() { return this.busy; }
+  get failure() { return this.error; }
+  setResult(value:CreatedInvitation) { this.created=value; }
 }
 const result = {id:1,invitationUrl:'https://example.test/?inviteId=public-id',mail:{to:'first@example.test',subject:'Invito',body:'Invito'}} as CreatedInvitation;
-function harness(invite:()=>Promise<CreatedInvitation>) {
+function harness(invite:()=>Promise<CreatedInvitation>,extra:Record<string,unknown>={}) {
   const injector=createEnvironmentInjector([
-    {provide:OnboardingApiService,useValue:{invite}},
+    {provide:OnboardingApiService,useValue:{invite,...extra}},
     {provide:CurrentUserService,useValue:{context:()=>({communityId:91})}}
   ],null as any);
   const component=runInInjectionContext(injector,()=>new InvitationHarness());
@@ -54,4 +59,24 @@ test('Emmanuel invitation visibility follows account, permission, pending and em
   assert.equal(memberInvitationAction({...detail,canInvite:undefined},{...actor,role:'MEMBER'}),'FORBIDDEN');
   assert.equal(memberInvitationAction({...detail,canInvite:undefined},actor),'INVITE');
   for(const status of ['EXPIRED','CANCELLED'])assert.equal(memberInvitationAction({...detail,member:{...detail.member,invitationStatus:status}},actor),'INVITE');
+});
+test('delivery distinguishes sent failed blocked prepared expired cancelled and linked',()=>{
+  const {component,injector}=harness(async()=>result);
+  for(const [emailStatus,label] of [['SENT','Invito inviato'],['FAILED','Invito creato, ma email non inviata'],['BLOCKED_BY_TEST_MODE','Invio email bloccato in ambiente TEST.'],['NOT_SENT','Invito creato · Email preparata, non inviata']] as const){
+    component.setResult({...result,status:'PENDING',emailStatus});assert.equal(component.label,label);
+  }
+  for(const [status,label] of [['EXPIRED','Invito scaduto'],['CANCELLED','Invito annullato'],['ACCEPTED','Account collegato']]){component.setResult({...result,status});assert.equal(component.label,label);}
+  injector.destroy();
+});
+test('retry keeps ID loading state and link; failure remains readable',async()=>{
+  let resolve!:(x:CreatedInvitation)=>void;let calls=0;
+  const {component,injector}=harness(async()=>{throw Error('must not create');},{resendInvitation:(id:number)=>{assert.equal(id,1);calls++;return new Promise(r=>resolve=r);}});
+  component.setResult({...result,status:'PENDING',emailStatus:'FAILED'});
+  const pending=component.retry();assert.equal(component.waiting,true);await component.retry();assert.equal(calls,1);
+  resolve({...result,status:'PENDING',emailStatus:'SENT'});await pending;
+  assert.equal(component.label,'Invito inviato');assert.equal(component.result?.invitationUrl,result.invitationUrl);assert.equal(component.waiting,false);
+  injector.destroy();
+  const broken=harness(async()=>result,{resendInvitation:async()=>{throw {status:500,error:{message:'SECRET_PROVIDER_DETAIL'}};}});
+  broken.component.setResult({...result,status:'PENDING',emailStatus:'FAILED'});await broken.component.retry();
+  assert.ok(broken.component.failure.includes('Il link resta disponibile'));assert.ok(!broken.component.failure.includes('SECRET'));broken.injector.destroy();
 });

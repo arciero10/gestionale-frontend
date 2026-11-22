@@ -1,11 +1,11 @@
 # Inviti e richieste accesso alla comunita
 
-## Delivery email: verifica infrastruttura
+## Delivery email ACS
 
-Vedere [17-email-delivery.md](17-email-delivery.md): nessuna risorsa ACS Email
-visibile nella sottoscrizione attiva e nessuna configurazione Email__ nella
-Container App. Sono predisposti contratto e template; l'invio reale resta
-disabilitato, senza modifiche al flusso mobile o al lifecycle degli inviti.
+Vedere [17-email-delivery.md](17-email-delivery.md): ACS/ECS e dominio verificato
+sono presenti. Provider, template, allowlist TEST, stato persistente e reinvio
+sono implementati. Restano configurazione manuale Azure e migration TEST prima
+del push backend; nessuna email reale e stata inviata durante questa attivita.
 
 ## Modello e confini
 
@@ -49,15 +49,13 @@ invito, PersonId e comunita; niente token/password nei log o audit.
 
 ## Email e deep link
 
-CommunityInvitationService usa ICommunityInvitationEmailSender. In questa versione
-PreparedCommunityInvitationEmailSender restituisce PREPARED_NOT_SENT: prepara
-oggetto/corpo, NON invia email e non finge una consegna. La UI permette copia link
-e apertura client email con testo preparato. "Invito inviato" nella lista indica
-un invito emesso per consegna manuale, non una ricevuta email.
-
-Provider futuri: Azure Communication Services Email, Graph/Exchange o provider
-esistente, con credenziali gestite esternamente e outbox/retry durevoli. Non sono
-state aggiunte password SMTP, segreti o access token al repository.
+CommunityInvitationService usa ICommunityInvitationEmailSender con provider ACS,
+allowlist TEST, stato persistente e reinvio dello stesso invito. La UI permette
+copia link e apertura client email, distingue SENT/FAILED/NOT_SENT/blocco TEST.
+La lista usa Invito attivo per PENDING, senza presumere consegna. La preparazione
+legacy resta compatibile con backend non ancora aggiornati. Nessuna password
+SMTP, segreto o access token e stato aggiunto al repository. Dettagli in
+17-email-delivery.md, inclusi migration gate e invio reale ancora da collaudare.
 
 V1: il sito ricorda il publicId per un'ora in sessionStorage prima del login e
 mostra accettazione nell'onboarding web/mobile. Non e fonte di autorizzazione.
@@ -113,7 +111,8 @@ senza escludere i fratelli offline dai contenuti comunitari.
 
 ## Migration e pubblicazione
 
-20261120122111_CommunityInvitationLifecycle, SOLO CREATA, NON APPLICATA A TEST.
+20261120122111_CommunityInvitationLifecycle: applicata a TEST secondo conferma
+dell'operatore precedente. Riepilogo storico delle colonne:
 Solo CommunityAccessInvitations:
 - PublicId uuid nullable, indice UNIQUE (legacy NULL ammessi).
 - CreatedAt timestamptz non nullable; default migration epoch, backfill legacy
@@ -125,7 +124,9 @@ Restano FK composite alla membership e hash token UNIQUE. Nessuna modifica a
 Person/User/CommunityMember, nessuna nuova tabella richieste/inviti.
 
 NON avviare host Development contro TEST: l'initializer esistente puo migrare.
-Push di entrambi i repository sospeso fino ad applicazione TEST e conferma.
+La nuova 20261122113638_CommunityInvitationEmailDelivery e SOLO CREATA:
+EmailStatus (NOT_SENT), EmailAttemptCount (0), timestamp e codice errore nullable.
+Push backend sospeso fino ad applicazione TEST; frontend retrocompatibile.
 Comando dalla sessione con connessione gia configurata, senza stampare segreti:
 
 ```powershell

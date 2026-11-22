@@ -227,6 +227,7 @@ async function installNative(context, platform, cached = false) {
       let communityManager = flow === 'calendar-manager' || flow === 'directory-manager';
       let directoryConfirmed = false;
       const inviteId='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa';let invitationAccepted=false;
+      const savedInvitations=[];let emailDeliveryState='NOT_SENT';
       const preparedInvites=[];const accessRequests=[{id:202,firstName:'Emmanuel',lastName:'Baciarlini',email:'emmanuel@example.test',parishId:11,parishName:'Parrocchia di test',communityNumber:3,requestedRole:'MEMBER',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',existingPeople:[{id:15,name:'Emmanuel Baciarini'}],candidates:[{id:15,name:'Emmanuel Baciarini',reasons:['FUZZY_NAME']}],canApprove:true,canReject:true},{id:203,firstName:'Nuova',lastName:'Persona',email:'new@example.test',parishId:11,parishName:'Parrocchia di test',communityNumber:3,requestedRole:'MEMBER',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',existingPeople:[],candidates:[],canApprove:true,canReject:true}];
       const personalProfile={firstName:'Test',lastName:'Member',phone:'',email:'user@example.test',birthDate:null,photoUrl:null,photoUploadAvailable:false};
       let emmanuelCapability=true,emmanuelPending=null,emmanuelLinked=false,emmanuelEmail='emmanuel@example.test';
@@ -339,12 +340,19 @@ async function installNative(context, platform, cached = false) {
           assert.equal(route.request().headers().authorization,'Bearer sdk-api-test-token');
           if(apiPath.endsWith('/accept')){assert.equal(route.request().postDataJSON().privacyConsent,true);invitationAccepted=true;await route.fulfill({headers,json:{linkedToCommunity:true}});}
           else if(apiPath.endsWith(inviteId)){await route.fulfill({headers,json:{status:'PENDING',communityName:'3ª Comunità',parishName:'Parrocchia Martiri Canadesi',firstName:'Test',lastName:'Member'}});}
-          else if(apiPath.endsWith('/cancel')){await route.fulfill({headers,json:{status:'CANCELLED'}});}
+          else if(apiPath.endsWith('/cancel')){const item=savedInvitations.find(x=>x.id===Number(apiPath.split('/').at(-2)));if(item)item.status='CANCELLED';await route.fulfill({headers,json:{status:'CANCELLED'}});}
+          else if(apiPath.endsWith('/delivery')||apiPath.endsWith('/resend')){
+            const item=savedInvitations.find(x=>x.id===Number(apiPath.split('/').at(-2)));
+            if(!item){await route.fulfill({status:404,headers,json:{message:'Invito non disponibile'}});return;}
+            if(apiPath.endsWith('/resend'))item.emailStatus=emailDeliveryState;
+            await route.fulfill({headers,json:item});
+          }
           else if(route.request().method()==='POST'){
             const body=route.request().postDataJSON();assert.equal(body.communityId,91);assert.ok(body.email.includes('@'));
             preparedInvites.push(body);const member=communityMembers.find(x=>x.personId===body.personId);if(member)member.invitationStatus='PENDING';
-            await route.fulfill({headers,json:{id:501,publicId:inviteId,personId:body.personId,status:'PENDING',invitationUrl:`https://test.eventidicomunita.it/?inviteId=${inviteId}`,deliveryStatus:'PREPARED_NOT_SENT',mail:{to:body.email,subject:'Invito a Eventi di Comunità',body:'Accedi con Microsoft alla tua comunità.'}}});
-          }else await route.fulfill({headers,json:[]});return;
+            const item={id:501+savedInvitations.length,publicId:inviteId,personId:body.personId,status:'PENDING',expiresAt:'2026-12-01T12:00:00Z',invitationUrl:`https://test.eventidicomunita.it/?inviteId=${inviteId}`,emailStatus:emailDeliveryState,deliveryStatus:'PREPARED_NOT_SENT',mail:{to:body.email,subject:'Invito a Eventi di Comunità',body:'Accedi con Microsoft alla tua comunità.'}};
+            savedInvitations.push(item);await route.fulfill({headers,json:item});
+          }else await route.fulfill({headers,json:savedInvitations});return;
         }
         if(apiPath==='/api/me/community/profile'){
           if(route.request().method()==='PUT'){const body=route.request().postDataJSON();assert.equal(body.personId,undefined);assert.equal(body.role,undefined);Object.assign(personalProfile,body);await route.fulfill({status:204,headers});}
@@ -571,10 +579,22 @@ async function installNative(context, platform, cached = false) {
             await page.getByRole('button',{name:'Crea invito',exact:true}).click();
             await page.getByRole('status').filter({hasText:'Email preparata, non inviata'}).waitFor();
             assert.ok((await page.getByLabel('Link invito',{exact:true}).inputValue()).includes('?inviteId='));
+            if(email==='nuovo@example.test'){
+              for(const [state,label] of [['FAILED','Invito creato, ma email non inviata'],['BLOCKED_BY_TEST_MODE','Invio email bloccato in ambiente TEST.'],['SENT','Invito inviato']]){
+                emailDeliveryState=state;await page.getByRole('button',{name:'Reinvia email',exact:true}).click();
+                await page.getByRole('status').filter({hasText:label}).waitFor();
+                assert.equal(preparedInvites.length,2,'Retry never creates another invitation');
+                for(const width of [320,390,412]){await page.setViewportSize({width,height:844});await verifyMobileDesign(page);await page.screenshot({path:path.join(output,`email-${state}-${width}.png`),fullPage:true});}
+              }
+              await context.grantPermissions(['clipboard-read','clipboard-write']);await page.getByRole('button',{name:'Copia link',exact:true}).click();await page.getByText('Link copiato.',{exact:true}).waitFor();
+              await page.getByRole('link',{name:'Comunità',exact:true}).first().click();await page.locator('.member-row').filter({hasText:name}).click();
+              await page.getByRole('status').filter({hasText:'Invito inviato'}).waitFor();
+              await page.getByRole('button',{name:'Annulla invito',exact:true}).click();await page.getByText('Invito annullato.',{exact:true}).waitFor();
+            }
             for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`community-invite-${width}.png`),fullPage:true});}
             await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
           }
-          assert.equal(preparedInvites.length,2);await page.getByText('Invito inviato · consegna manuale',{exact:true}).first().waitFor();
+          assert.equal(preparedInvites.length,2);await page.getByText('Invito attivo',{exact:true}).first().waitFor();
           await page.getByRole('link',{name:'Richieste accesso',exact:true}).click();
           const existing=page.locator('.access-approvals article').filter({hasText:'Emmanuel Baciarlini'});
           await existing.getByRole('combobox').click();await page.getByRole('option',{name:'Emmanuel Baciarini',exact:true}).click();
@@ -591,7 +611,8 @@ async function installNative(context, platform, cached = false) {
             await page.getByRole('heading',{name:'Emmanuel Baciarini',exact:true}).waitFor();
             if(['email','missing-capability'].includes(scenario))await page.getByRole('button',{name:"Invita nell'app",exact:true}).waitFor();
             else if(scenario==='no-email')await page.getByRole('button',{name:'Aggiungi email e invita',exact:true}).waitFor();
-            else {assert.equal(await page.locator('app-community-member-invitation').count(),0);if(scenario==='pending')await page.getByText('Invito inviato',{exact:true}).waitFor();if(scenario==='linked')await page.getByText('Account collegato',{exact:true}).waitFor();}
+            else if(scenario==='pending'){await page.locator('app-community-member-invitation').getByText('Invito attivo',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:"Invita nell'app",exact:true}).count(),0);}
+            else {assert.equal(await page.locator('app-community-member-invitation').count(),0);if(scenario==='linked')await page.getByText('Account collegato',{exact:true}).waitFor();}
             await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
           }
           console.log('PASS Emmanuel invite visibility: email, missing capability, missing email, pending, linked and explicit denial');

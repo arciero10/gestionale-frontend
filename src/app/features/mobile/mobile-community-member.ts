@@ -39,8 +39,7 @@ import { CommunityMemberInvitation } from './community-member-invitation';
           <dt>Coniuge</dt><dd>@if (detail.spouse) { <a [routerLink]="'/mobile/community/member/' + detail.spouse.personId">{{ detail.spouse.firstName }} {{ detail.spouse.lastName }}</a> } @else { Non disponibile }</dd>
         </dl>
         @if (detail.canEdit) { <button class="primary" type="button" [disabled]="busy" (click)="edit()">Modifica scheda</button> }
-        @if (invitationAction === 'PENDING') { <p class="feedback" role="status">Invito inviato</p> }
-        @if (invitationAction === 'INVITE' || invitationAction === 'ADD_EMAIL') { <app-community-member-invitation [personId]="detail.member.personId" [email]="detail.member.email?.trim() || ''" /> }
+        @if (invitationAction === 'INVITE' || invitationAction === 'ADD_EMAIL' || invitationAction === 'PENDING') { <app-community-member-invitation [personId]="detail.member.personId" [email]="detail.member.email?.trim() || ''" [pending]="invitationAction === 'PENDING'" /> }
         @if (detail.isSelf) { <a class="back" routerLink="/mobile/complete-profile">Completa il tuo profilo</a> }
         @if (detail.isSelf) { <a class="back" routerLink="/mobile/privacy"><i class="pi pi-bell" aria-hidden="true"></i> Preferenze notifiche</a> }
       }

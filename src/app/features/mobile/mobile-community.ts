@@ -34,7 +34,7 @@ import { communityRoleLabel } from '../../auth/community-roles';
           <span class="member-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><span [class.lead]="member.role === 'RESPONSIBLE' || member.role === 'CO_RESPONSIBLE'">{{ roleLabel(member.role) }}</span>@if (member.stage) { <small class="stage">{{ member.stage }}</small> }@if (member.birthdayLabel || member.birthDate) { <small class="birthday"><i class="pi pi-gift" aria-hidden="true"></i> {{ member.birthdayLabel || ((member.birthDate + 'T00:00:00Z') | date:'dd/MM':'UTC') }}</small> }@if (member.phoneNumber) { <span class="directory-phone">{{ member.phoneNumber }}</span> }@if (member.accountLinked !== undefined) { <small class="directory-account">{{ member.accountLinked ? 'Account collegato' : 'Non ancora registrato' }}</small> }</span>
           <i class="pi pi-angle-right chevron" aria-hidden="true"></i>
         </a>
-        @if(!member.accountLinked && member.invitationStatus){<small>{{member.invitationStatus==='PENDING'?'Invito inviato · consegna manuale':member.invitationStatus==='EXPIRED'?'Invito scaduto':member.invitationStatus==='CANCELLED'?'Invito annullato':'Invito accettato'}}</small>}
+        @if(!member.accountLinked && member.invitationStatus){<small>{{member.invitationStatus==='PENDING'?'Invito attivo':member.invitationStatus==='EXPIRED'?'Invito scaduto':member.invitationStatus==='CANCELLED'?'Invito annullato':'Invito accettato'}}</small>}
         @if(!member.accountLinked && !member.email){<small>Senza email</small>}
         </li>
       }</ul>
