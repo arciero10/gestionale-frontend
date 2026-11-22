@@ -1,17 +1,15 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-mobile-welcome',
   standalone: true,
-  imports: [RouterLink],
   templateUrl: './mobile-welcome.html',
   styleUrl: './mobile-welcome.scss'
 })
 export class MobileWelcome implements OnInit, OnDestroy {
+  @Input() pendingInvitation = false;
   @Output() readonly access = new EventEmitter<void>();
-  @Output() readonly registration = new EventEmitter<void>();
   private readonly document = inject(DOCUMENT);
   private viewport: HTMLMetaElement | null = null;
   private originalViewport: string | null = null;

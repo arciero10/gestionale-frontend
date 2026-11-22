@@ -16,6 +16,9 @@ preserves only that hint and its original expiry, never auth secrets. This is no
 an authorization source; there are no native credentials in this store.
 
 Unlinked and already linked accounts resume /invite/ID before default Home.
+Welcome V2: an unauthenticated native invite displays generic invite copy and a
+single Continua button using MobileWelcome. It starts the existing OTP flow only
+on that explicit tap; no invitation metadata is requested before authentication.
 Native invite login selects the existing OTP UI; SDK protocols, Entra scopes,
 client/tenant IDs, biometrics and auth callbacks are unchanged. A browser-auth
 fallback callback now ignores unrelated HTTPS invite events.

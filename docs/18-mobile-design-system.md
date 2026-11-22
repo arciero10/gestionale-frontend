@@ -1,5 +1,18 @@
 # Mobile navy and gold
 
+## Welcome V2
+
+Native welcome keeps the existing full-bleed photo with navy overlay, serif brand
+and one gold CTA. Normal: Accedi + email-code microcopy. Pending invitation: the
+same component shows generic invite copy + Continua, without recipient metadata.
+No icon, registration CTA, demo/FAQ links, bordered access panel or copyright row.
+Footer: Un progetto PANTELEIA - APS / Applicazione indipendente.
+The root view selects the already-existing OTP UI preference for Accedi; SDK,
+NativeAuthPanel and auth services/configuration are not modified. An invitation
+now displays its dedicated welcome before the user chooses Continua. Existing
+post-login routing, invitation API/linking and locked-session UI are unchanged.
+Signup/password/reset SDK tests remain even though signup has no welcome CTA.
+
 UI-only theme. Backend, auth flows, API, models, invitation/privacy/import logic
 and routes are unchanged. Global CSS is scoped to app-mobile-shell,
 app-mobile-welcome and app-native-auth-panel; desktop styles retain their values.

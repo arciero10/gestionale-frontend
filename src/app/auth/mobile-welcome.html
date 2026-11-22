@@ -1,24 +1,20 @@
-<main class="mobile-welcome" aria-labelledby="mobile-welcome-title">
+<main class="mobile-welcome" [class.invitation-welcome]="pendingInvitation" aria-labelledby="mobile-welcome-title">
   <img class="welcome-photo" src="assets/images/login-bg.jpg" alt="" aria-hidden="true" fetchpriority="high" />
   <div class="welcome-shade" aria-hidden="true"></div>
 
   <header class="welcome-brand">
-    <i class="pi pi-users welcome-mark" aria-hidden="true"></i>
     <h1 id="mobile-welcome-title">Eventi di Comunità</h1>
-    <p>Strumento al servizio delle Comunità</p>
+    @if (pendingInvitation) { <p class="welcome-invitation">Hai ricevuto un invito<br />a entrare nella tua comunità</p> }
+    @else { <p>Strumento al servizio delle Comunità</p> }
   </header>
 
   <div class="welcome-breathing-room" aria-hidden="true"></div>
 
-  <section class="welcome-access" aria-labelledby="mobile-access-title">
-    <h2 id="mobile-access-title">Accedi o registrati</h2>
-    <button type="button" class="welcome-button welcome-primary" (click)="access.emit()">Accedi</button>
-    <button type="button" class="welcome-button welcome-secondary" (click)="registration.emit()">Registrati</button>
-    <nav class="welcome-links" aria-label="Esplora Eventi di Comunità">
-      <a routerLink="/demo"><i class="pi pi-play-circle" aria-hidden="true"></i><span>Guarda la demo</span></a>
-      <a routerLink="/faq"><i class="pi pi-question-circle" aria-hidden="true"></i><span>FAQ</span></a>
-    </nav>
+  <section class="welcome-access" aria-label="Accesso all'app">
+    <button type="button" class="welcome-button welcome-primary" (click)="access.emit()">{{ pendingInvitation ? 'Continua' : 'Accedi' }}</button>
+    @if (pendingInvitation) { <p class="welcome-helper">Accedi con l’indirizzo email<br />a cui hai ricevuto l’invito</p> }
+    @else { <p class="welcome-helper">Accesso tramite codice inviato via email</p> }
   </section>
 
-  <footer class="welcome-footer">© Eventi di Comunità <span aria-hidden="true">•</span> PANTELEIA - APS</footer>
+  <footer class="welcome-footer"><p>Un progetto PANTELEIA – APS</p><p>Applicazione indipendente</p></footer>
 </main>

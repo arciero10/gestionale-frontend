@@ -46,9 +46,9 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
     @if (!showLoading() && showLogin()) {
       @if (isNativeWelcome()) {
         @if (mobileAuth.requestedFlow() || mobileAuth.nativeOutcome().step === 'unlock') {
-          <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" [invitationLogin]="!!invitationLinks.pendingId()" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
+          <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" [invitationLogin]="mobileAuth.requestedFlow() === 'signin' || !!invitationLinks.pendingId()" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
         } @else {
-          <app-mobile-welcome (access)="login()" (registration)="register()"></app-mobile-welcome>
+          <app-mobile-welcome [pendingInvitation]="!!invitationLinks.pendingId()" (access)="login()"></app-mobile-welcome>
         }
       } @else {
       <main class="login-page">

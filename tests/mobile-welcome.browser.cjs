@@ -156,6 +156,13 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(base);
       await page.locator('app-mobile-welcome h1').waitFor();
+      assert.equal(await page.locator('app-mobile-welcome button').count(),1,'One welcome CTA');
+      assert.equal(await page.getByRole('button',{name:'Registrati',exact:true}).count(),0);
+      assert.equal(await page.locator('app-mobile-welcome a,.welcome-mark').count(),0,'No secondary links or brand icon');
+      assert.equal(await page.getByText('Accedi o registrati',{exact:true}).count(),0);
+      await page.getByText('Accesso tramite codice inviato via email',{exact:true}).waitFor();
+      await page.getByText('Un progetto PANTELEIA – APS',{exact:true}).waitFor();
+      await page.getByText('Applicazione indipendente',{exact:true}).waitFor();
       await page.locator('app-mobile-welcome').evaluate((element, insets) => {
         element.style.setProperty('--mobile-safe-top', `${insets.top}px`);
         element.style.setProperty('--mobile-safe-bottom', `${insets.bottom}px`);
@@ -173,6 +180,11 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       assert.ok(metrics.brand.bottom <= metrics.card.top, `${name}: brand/card overlap`);
       assert.ok(metrics.card.bottom <= metrics.footer.top, `${name}: card/footer overlap`);
       assert.ok(metrics.buttons.every(h => h >= 48), `${name}: touch targets`);
+      const ctaContrast=await page.locator('.welcome-button').evaluate(n=>{
+        const s=getComputedStyle(n);const lum=color=>{const v=color.match(/[\d.]+/g).slice(0,3).map(x=>Number(x)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return v[0]*.2126+v[1]*.7152+v[2]*.0722;};
+        const a=lum(s.color),b=lum(s.backgroundColor);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+      });
+      assert.ok(ctaContrast>=4.5,`${name}: CTA text contrast >=4.5:1`);
       if (height >= 568) {
         assert.ok(metrics.scroll <= height + 1, `${name}: unnecessary scroll (${metrics.scroll})`);
         assert.ok(metrics.footer.bottom <= height - bottom, `${name}: bottom safe area`);
@@ -201,24 +213,26 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await installNative(context, 'ios');
       const page = await context.newPage(); await page.goto(base);
-      await page.getByRole('link', { name: label, exact: true }).click();
+      assert.equal(await page.getByRole('link', { name: label, exact: true }).count(),0,'Secondary links removed from welcome');
+      await page.goto(base+target);
       await page.waitForURL(url => url.pathname.startsWith(target));
       assert.equal(await page.locator('app-mobile-welcome').count(), 0);
-      console.log(`PASS link ${label}`); await context.close();
+      console.log(`PASS public route ${label}: removed from welcome`); await context.close();
     }
-    for (const label of ['Accedi', 'Registrati']) {
+    for (const label of ['Accedi']) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await installNative(context, 'ios');
       const page = await context.newPage(); page.setDefaultTimeout(12000); await page.goto(base);
       await page.getByRole('button', { name: label, exact: true }).click();
       await page.locator('app-native-auth-panel h1').waitFor();
       assert.equal(await page.locator('app-native-auth-panel h1').textContent(), label);
+      assert.equal(await page.locator('#native-password').count(),0,'Welcome uses existing OTP method');
       assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
       await verifyMobileDesign(page); await page.screenshot({ path: path.join(output, `native-${label}.png`), fullPage: true });
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
     }
-    for (const flow of ['password', 'otp', 'signup', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
+    for (const flow of ['password', 'otp', 'reset', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
       await installNative(context, flow === 'directory-member' ? 'ios' : 'android');
       let meCalls = 0;
@@ -430,13 +444,13 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(flow==='invitation'?base+'?inviteId='+inviteId:base);
-      await page.getByRole('button', { name: flow === 'signup' ? 'Registrati' : 'Accedi', exact: true }).click();
-      if (flow === 'otp') await page.getByRole('button', { name: 'Accedi con codice via email' }).click();
+      await page.getByRole('button', { name: flow === 'invitation' ? 'Continua' : 'Accedi', exact: true }).click();
+      if (flow === 'password') await page.getByRole('button', { name: 'Accedi con password' }).click();
       if (flow === 'reset') await page.getByRole('button', { name: 'Hai dimenticato la password?' }).click();
       await page.getByLabel('Email', { exact: true }).fill('user@example.test');
-      if (['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) await page.getByLabel('Password', { exact: true }).fill('test-only');
+      if (flow === 'password') await page.getByLabel('Password', { exact: true }).fill('test-only');
       await page.locator('app-native-auth-panel button[type="submit"]').click();
-      if (!['password', 'linked', 'retry', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member'].includes(flow)) {
+      if (flow !== 'password') {
         await page.getByLabel('Codice di verifica').fill('000000');
         await page.locator('app-native-auth-panel button[type="submit"]').click();
       }
@@ -876,7 +890,18 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
           await route.fulfill({json:[]});
         });
         const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-        await page.goto(base);await page.locator('#native-email').waitFor();
+        await page.goto(base);await page.getByRole('button',{name:'Continua',exact:true}).waitFor();
+        await page.locator('.welcome-invitation').getByText('Hai ricevuto un invito',{exact:false}).waitFor();
+        assert.equal(await page.locator('app-mobile-welcome button').count(),1);
+        assert.equal(await page.getByRole('button',{name:'Accedi',exact:true}).count(),0);
+        assert.equal(reads,0,'No invitation metadata on dedicated welcome');
+        for(const [width,height] of [[320,568],[390,844],[412,915]]){
+          await page.setViewportSize({width,height});await page.locator('app-mobile-welcome').evaluate((n,ios)=>{n.style.setProperty('--mobile-safe-top',ios?'47px':'24px');n.style.setProperty('--mobile-safe-bottom',ios?'34px':'24px');},platform==='ios');
+          assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+          assert.ok(await page.locator('.welcome-footer').evaluate((n,bottom)=>n.getBoundingClientRect().bottom<=innerHeight-bottom,platform==='ios'?34:24),'Invitation footer remains in safe area');
+          await page.screenshot({path:path.join(output,`welcome-invitation-${platform}-${width}.png`),fullPage:true});
+        }
+        await page.getByRole('button',{name:'Continua',exact:true}).click();await page.locator('#native-email').waitFor();
         assert.equal(reads,0,'No Person metadata before authentication');assert.equal(await page.locator('#native-password').count(),0,'Invite selects existing OTP UI');
         await page.locator('#native-email').fill('invite-test@example.test');await page.locator('app-native-auth-panel button[type=submit]').click();
         await page.locator('#native-code').fill('000000');await page.locator('app-native-auth-panel button[type=submit]').click();

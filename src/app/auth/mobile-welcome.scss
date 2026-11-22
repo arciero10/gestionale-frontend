@@ -10,53 +10,46 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: calc(28px + var(--safe-top)) max(22px, env(safe-area-inset-right, 0px)) calc(16px + var(--safe-bottom)) max(22px, env(safe-area-inset-left, 0px));
+  padding: calc(36px + var(--safe-top)) max(24px, env(safe-area-inset-right, 0px)) calc(20px + var(--safe-bottom)) max(24px, env(safe-area-inset-left, 0px));
   background: var(--color-primary-dark);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
+  font-family: var(--font-ui);
   text-align: center;
 }
 .welcome-photo, .welcome-shade { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 .welcome-photo { object-fit: cover; object-position: 17% center; }
-.welcome-shade { background: linear-gradient(180deg, rgba(31,38,75,.8), rgba(31,38,75,.12) 28%, rgba(31,38,75,.08) 46%, rgba(31,38,75,.72) 78%, rgba(31,38,75,.92)); }
-.welcome-brand { width: 100%; max-width: 420px; }
-.welcome-mark { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid #ffffff75; border-radius: 50%; font-size: 23px; }
-.welcome-brand h1 { color: var(--color-surface); font-family:var(--font-display); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 16px 0 10px; text-shadow: 0 2px 16px #0008; }
-.welcome-brand p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--color-background); text-shadow: 0 1px 8px #000b; }
+.welcome-shade { background: linear-gradient(180deg, rgba(var(--color-primary-rgb), .9), rgba(var(--color-primary-rgb), .18) 32%, rgba(var(--color-primary-rgb), .08) 48%, rgba(var(--color-primary-rgb), .9) 78%, var(--color-primary-dark)); }
+.welcome-brand, .welcome-access { width: 100%; max-width: 420px; }
+.welcome-brand h1 { color: var(--color-on-primary); font-family: var(--font-display); font-size: 34px; line-height: 1.2; letter-spacing: 0; font-weight: 600; margin: 0 0 14px; text-shadow: 0 2px 16px var(--color-primary-dark); overflow-wrap: anywhere; }
+.welcome-brand p { margin: 0; font-size: 16px; line-height: 1.6; color: var(--color-on-primary); text-shadow: 0 1px 8px var(--color-primary-dark); }
+.welcome-brand .welcome-invitation { font-size: 19px; font-weight: 550; }
 .welcome-breathing-room { flex: 1; min-height: 160px; }
-.welcome-access { box-sizing: border-box; width: 100%; max-width: 420px; padding: 24px; border: 1px solid var(--color-gold); border-radius: var(--radius-md); background: var(--color-overlay); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: var(--shadow-card); }
-.welcome-access h2 { color: var(--color-surface); font-size: 19px; line-height: 1.4; font-weight: 650; margin: 0 0 20px; }
-.welcome-button { display: block; width: 100%; min-height: 52px; border: 1px solid transparent; border-radius: 12px; padding: 12px 16px; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.welcome-access { box-sizing: border-box; padding: 0; }
+.welcome-button { display: block; box-sizing: border-box; width: 100%; min-height: 54px; border: 0; border-radius: var(--radius-md); padding: 14px 18px; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 .welcome-primary { background: var(--color-gold-light); color: var(--color-primary-dark); }
-.welcome-secondary { margin-top: 12px; background: var(--color-background); color: var(--color-primary); }
 .welcome-primary:active { background: var(--color-gold); }
-.welcome-secondary:active { background: var(--color-divider); }
-.welcome-links { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
-.welcome-links a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 4px 2px; color: var(--color-surface); font-size: 14px; line-height: 1.4; text-decoration: none; }
-.welcome-links a:hover { text-decoration: underline; }
-.welcome-button:focus-visible, .welcome-links a:focus-visible { outline: 3px solid var(--color-surface); outline-offset: 4px; }
-.welcome-footer { margin-top: 20px; color: var(--color-divider); font-size: 11px; line-height: 1.6; }
-@supports not (backdrop-filter: blur(10px)) { .welcome-access { background: var(--color-primary-dark); } }
+.welcome-button:focus-visible { outline: 3px solid var(--color-on-primary); outline-offset: 4px; }
+.welcome-helper { margin: 14px 0 0; font-size: 14px; line-height: 1.6; color: var(--color-on-primary); overflow-wrap: anywhere; }
+.welcome-footer { margin-top: 28px; color: var(--color-on-primary); font-size: 12px; line-height: 1.65; }
+.welcome-footer p { margin: 0; }
+.welcome-footer p + p { margin-top: 2px; opacity: .82; }
 @media (max-width: 360px) {
-  .mobile-welcome { padding-right: 18px; padding-left: 18px; }
+  .mobile-welcome { padding-right: 20px; padding-left: 20px; }
   .welcome-brand h1 { font-size: 30px; }
-  .welcome-access { padding: 20px; }
   .welcome-photo { object-position: 14% center; }
 }
 @media (max-height: 740px) {
-  .mobile-welcome { padding-top: calc(18px + var(--safe-top)); }
-  .welcome-brand h1 { margin-top: 10px; }
-  .welcome-breathing-room { min-height: 104px; }
-  .welcome-access { padding: 20px; }
-  .welcome-access h2 { margin-bottom: 14px; }
-  .welcome-footer { margin-top: 14px; }
+  .mobile-welcome { padding-top: calc(24px + var(--safe-top)); }
+  .welcome-breathing-room { min-height: 112px; }
+  .welcome-footer { margin-top: 22px; }
 }
 @media (max-height: 610px) {
-  .welcome-mark { width: 34px; height: 34px; font-size: 19px; }
-  .welcome-brand h1 { font-size: 28px; margin-bottom: 6px; }
+  .mobile-welcome { padding-top: calc(18px + var(--safe-top)); padding-bottom: calc(16px + var(--safe-bottom)); }
+  .welcome-brand h1 { font-size: 28px; margin-bottom: 10px; }
   .welcome-brand p { font-size: 14px; }
-  .welcome-breathing-room { min-height: 72px; }
-  .welcome-access { padding: 18px; }
-  .welcome-access h2 { margin-bottom: 12px; }
-  .welcome-links { margin-top: 8px; }
+  .welcome-brand .welcome-invitation { font-size: 17px; }
+  .welcome-breathing-room { min-height: 52px; }
+  .welcome-helper { margin-top: 12px; }
+  .welcome-footer { margin-top: 18px; }
 }
-@media (min-width: 700px) { .welcome-photo { object-position: 25% center; } .welcome-breathing-room { min-height: 220px; } }
+@media (min-width: 700px) { .welcome-photo { object-position: 25% center; } }
