@@ -9,10 +9,10 @@ import { AuthService } from '../../auth/auth.service';
   template: `
     <div class="mobile-shell">
       <header class="mobile-topbar">
-        <a class="brand" routerLink="/mobile/home">Eventi di Comunità<span>{{ current.context()?.communityName || 'La tua comunità' }}</span></a>
+        <a class="brand" routerLink="/mobile/home">Eventi di Comunità@if (current.context()?.parishName) { <span>{{ current.context()?.parishName }}</span> }<span>{{ current.context()?.communityName || 'La tua comunità' }}</span></a>
         @if (current.context()?.linkedToCommunity) {
           <a class="icon" routerLink="/mobile/avvisi" aria-label="Notifiche"><i class="pi pi-bell" aria-hidden="true"></i></a>
-          <a class="avatar icon" routerLink="/mobile/profilo" aria-label="Profilo">{{ (current.context()?.displayName || 'P').charAt(0).toLocaleUpperCase('it') }}</a>
+          <a class="avatar icon" routerLink="/mobile/profilo" aria-label="Apri profilo">{{ (current.context()?.displayName || 'P').charAt(0).toLocaleUpperCase('it') }}</a>
         } @else {
           <button class="icon" type="button" (click)="auth.logout()" aria-label="Esci"><i class="pi pi-sign-out" aria-hidden="true"></i></button>
         }
@@ -52,7 +52,7 @@ export class MobileShell implements OnInit, OnDestroy {
     { label: 'Home', icon: 'pi-home', path: '/mobile/home' },
     { label: 'Calendario', icon: 'pi-calendar', path: '/mobile/calendario' },
     { label: 'Comunità', icon: 'pi-users', path: '/mobile/community' },
-    { label: 'Altro', icon: 'pi-ellipsis-h', path: '/mobile/altro' }
+    { label: 'Profilo', icon: 'pi-user', path: '/mobile/profilo' }
   ];
   ngOnInit(): void {
     this.viewport = this.document.querySelector('meta[name="viewport"]');

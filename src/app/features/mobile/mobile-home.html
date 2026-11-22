@@ -1,0 +1,42 @@
+@if (section === 'home') {
+  <header class="greeting"><p>La vita della comunità</p><h1>{{ current.context()?.displayName ? 'Ciao ' + current.context()?.displayName?.split(' ')?.[0] : 'Benvenuto' }}</h1></header>
+  <img class="home-photo" src="assets/images/login-bg.jpg" alt="" />
+  <a class="community-card" routerLink="/mobile/community"><i class="pi pi-users" aria-hidden="true"></i><span><strong>La mia comunità</strong>@if (current.context()?.memberCount !== undefined) { <small>{{ current.context()?.memberCount === 1 ? '1 fratello' : current.context()?.memberCount + ' fratelli' }}</small> }</span><i class="pi pi-angle-right" aria-hidden="true"></i></a>
+  @if (pendingRequests) { <a class="back" routerLink="/mobile/approvazioni"><i class="pi pi-user-plus" aria-hidden="true"></i>Nuova richiesta di accesso · {{pendingRequests}}</a> }
+  @if (profilePrompt) { <section class="profile-prompt"><h2>Completa il tuo profilo</h2><a class="back" routerLink="/mobile/complete-profile">Completa profilo</a><button type="button" class="back" (click)="later()">Completa più tardi</button></section> }
+  @if (nextEvent || nextAssignment || hasUpcomingBirthday) {
+    <section aria-labelledby="personal-summary"><h2 class="section-label" id="personal-summary">Cosa riguarda me</h2><div class="home-overview">
+      @if (nextEvent; as event) { <a class="next-event" [routerLink]="['/mobile/calendar', event.id]"><span>Prossimo appuntamento</span><strong>{{ event.title }}</strong><small>{{ calendarDate(event.date) }} · {{ event.startTime?.slice(0,5) }}</small></a> }
+      @if (nextAssignment; as event) { <a class="next-assignment" [routerLink]="['/mobile/calendar', event.id]"><span>Il tuo incarico</span><strong>{{ assignmentLabel(event) }}</strong><small>{{ calendarDate(event.date) }}</small></a> }
+      @if (hasUpcomingBirthday) { <a routerLink="/mobile/birthdays"><span>Prossimi compleanni</span><strong>{{ birthdaySummary }}</strong></a> }
+    </div></section>
+  }
+  <h2 class="section-label">Accessi rapidi</h2>
+  <div class="app-grid">
+    @for (card of cards; track card.path) { <a class="app-tile" [routerLink]="'/mobile/' + card.path"><span class="tile-icon"><i [class]="'pi ' + card.icon" aria-hidden="true"></i></span><h2>{{ card.title }}</h2><p>{{ card.subtitle }}</p><i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a> }
+    @if (canOrganize()) { <a class="app-tile" routerLink="/mobile/posti-convivenza"><span class="tile-icon"><i class="pi pi-building" aria-hidden="true"></i></span><h2>Posti di convivenza</h2><p>Organizzazione e sistemazioni</p><i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a> }
+  </div>
+} @else {
+  <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a><h1>{{ title }}</h1>
+  @if (section === 'profilo') {
+    <nav class="links" aria-label="Impostazioni personali">
+      <a routerLink="/mobile/account">Il mio profilo <i class="pi pi-user" aria-hidden="true"></i></a>
+      @if (canApprove()) { <a routerLink="/mobile/approvazioni">Appartenenze e deleghe <i class="pi pi-check-square" aria-hidden="true"></i></a> }
+      @else { <a routerLink="/mobile/account" fragment="membership">Appartenenze e deleghe <i class="pi pi-id-card" aria-hidden="true"></i></a> }
+      <a routerLink="/mobile/privacy">Preferenze notifiche <i class="pi pi-bell" aria-hidden="true"></i></a>
+      <a routerLink="/faq">Aiuto e assistenza <i class="pi pi-question-circle" aria-hidden="true"></i></a>
+      <a routerLink="/mobile/informazioni">Informazioni sull’app <i class="pi pi-info-circle" aria-hidden="true"></i></a>
+    </nav>
+  } @else if (section === 'account') {
+    <a class="back" routerLink="/mobile/complete-profile">Completa il tuo profilo</a>
+    <dl><dt>Nome</dt><dd>{{ current.context()?.displayName || 'Non disponibile' }}</dd><dt>Comunità</dt><dd>{{ current.context()?.communityName || 'Non associata' }}</dd><dt>Parrocchia</dt><dd>{{ current.context()?.parishName || 'Non disponibile' }}</dd><dt>Ruolo</dt><dd>{{ current.context()?.role || 'Non disponibile' }}</dd></dl>
+    <section id="membership"><h2>Appartenenze e deleghe</h2><p>{{ current.context()?.communityName }} · {{ current.context()?.parishName }}</p><p>Le autorizzazioni operative sono quelle assegnate alla tua appartenenza.</p>@if (canApprove()) { <a class="back" routerLink="/mobile/approvazioni">Gestisci appartenenze e deleghe</a> }</section>
+    @if (profileFeedback) { <p role="status">{{ profileFeedback }}</p> }
+    <button type="button" class="back" [disabled]="refreshing" (click)="refreshContext()"><i class="pi pi-refresh" aria-hidden="true"></i> Aggiorna profilo e permessi</button>
+    <button type="button" class="logout" (click)="auth.logout()"><i class="pi pi-sign-out" aria-hidden="true"></i> Esci dall'app</button>
+  } @else if (section === 'informazioni') {
+    <section class="app-info"><h2>Eventi di Comunità</h2><p>Un progetto PANTELEIA – APS</p><p>Applicazione indipendente per le attività della comunità, non ufficiale del Cammino Neocatecumenale.</p></section>
+  } @else {
+    <section class="empty"><i [class]="'pi ' + emptyIcon" aria-hidden="true"></i><h2>{{ title }}</h2><p>{{ unavailableMessage }}</p></section>
+  }
+}

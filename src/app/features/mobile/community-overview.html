@@ -1,0 +1,21 @@
+@if (leaders.length) {
+  <section aria-labelledby="leaders-title"><h2 id="leaders-title">Responsabili</h2><div class="people-strip">
+    @for (member of leaders; track member.personId) { <a class="person" [routerLink]="['/mobile/community/member',member.personId]"><span class="avatar">@if (member.photoUrl && !failedPhotos.has(member.personId)) { <img [src]="member.photoUrl" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="failedPhotos.add(member.personId)" /> } @else { {{ initials(member) }} }</span><strong>{{ member.firstName }} {{ member.lastName }}</strong><small>{{ roleLabel(member.role) }}</small></a> }
+  </div></section>
+}
+<section aria-labelledby="brothers-title"><div class="section-heading"><h2 id="brothers-title">Fratelli</h2><span>{{ data.members.length }}</span></div>
+  @if (preview.length) { <div class="people-strip">
+    @for (member of preview; track member.personId) { <a class="person" [routerLink]="['/mobile/community/member',member.personId]"><span class="avatar">@if (member.photoUrl && !failedPhotos.has(member.personId)) { <img [src]="member.photoUrl" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="failedPhotos.add(member.personId)" /> } @else { {{ initials(member) }} }</span><strong>{{ member.firstName }} {{ member.lastName }}</strong>@if (member.stage) { <small>{{ member.stage }}</small> }</a> }
+  </div><a class="section-link" routerLink="/mobile/community/members">Vedi tutti i fratelli <i class="pi pi-angle-right" aria-hidden="true"></i></a> }
+  @else { <p>Nessun fratello censito</p> }
+</section>
+@if (data.members.length > 1) {
+  <section aria-labelledby="couples-title"><div class="section-heading"><h2 id="couples-title">Coppie</h2>@if (!couplesLoaded) { <button type="button" [disabled]="couplesLoading" (click)="loadCouples()">{{ couplesLoading ? 'Caricamento…' : 'Mostra coppie' }}</button> }</div>
+    @if (couplesError) { <p role="alert">{{ couplesError }}</p> }
+    @if (couplesLoaded && !couples.length) { <p>Nessuna coppia presente nelle schede disponibili.</p> }
+    <div class="couples">@for (pair of (showAllCouples ? couples : couples.slice(0,3)); track pair.first.personId) { <article><a [routerLink]="['/mobile/community/member',pair.first.personId]">{{ pair.first.firstName }} {{ pair.first.lastName }}</a><span aria-label="e">+</span><a [routerLink]="['/mobile/community/member',pair.second.personId]">{{ pair.second.firstName }} {{ pair.second.lastName }}</a></article> }</div>
+    @if (couples.length > 3) { <button type="button" (click)="showAllCouples = !showAllCouples">{{ showAllCouples ? 'Mostra meno' : 'Vedi tutte' }}</button> }
+  </section>
+}
+@if (birthdays.length) { <section aria-labelledby="birthday-title"><h2 id="birthday-title">Prossimi compleanni</h2>@for (birthday of birthdays; track birthday.personId) { <a class="birthday-row" [routerLink]="['/mobile/community/member',birthday.personId]"><i class="pi pi-gift" aria-hidden="true"></i><strong>{{ birthday.displayName }}</strong><span>{{ birthday.dateLabel }}</span></a> }<a class="section-link" routerLink="/mobile/birthdays">Vedi tutti <i class="pi pi-angle-right" aria-hidden="true"></i></a></section> }
+@if (pending > 0) { <section aria-labelledby="requests-title"><h2 id="requests-title">Richieste</h2><a class="section-link" routerLink="/mobile/approvazioni"><span>{{ pending === 1 ? '1 richiesta da gestire' : pending + ' richieste da gestire' }}</span><i class="pi pi-angle-right" aria-hidden="true"></i></a></section> }

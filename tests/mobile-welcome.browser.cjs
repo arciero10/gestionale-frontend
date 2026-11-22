@@ -413,7 +413,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
               accountLinked:checkEmmanuel?emmanuelLinked:member.personId>=101?false:![14,15].includes(member.personId), canManageMarriage: communityManager, canInvite:checkEmmanuel?emmanuelCapability:communityManager && (member.personId>=101 || [14,15].includes(member.personId)),
               ...(member.personId === 13 ? {spouse:{personId:12,firstName:'Anna',lastName:'Rossi'}} : {}),
               assignableRoles: communityManager ? ['MEMBER', 'CO_RESPONSIBLE'] : [member.role] } });
-          } else await route.fulfill({ headers, json: { context: { personId: 12, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
+          } else await route.fulfill({ headers, json: { context: { personId: 12, communityNumber:3, communityName: '3ª Comunità', parishName: 'Parrocchia Martiri Canadesi',
               role: communityManager ? 'RESPONSIBLE' : 'MEMBER', permissions: communityManager ? ['EDIT_MEMBRI', 'APPROVE_REQUESTS'] : ['VIEW_MEMBRI'] },
             members: communityState === 'empty' ? [] : communityState === 'single' ? communityMembers.slice(0,1) : communityMembers,
             canAddMember: communityManager, canManageMarriage: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
@@ -483,7 +483,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.getByRole('heading',{name:'Invito nella comunità',exact:true}).waitFor();
         await page.getByLabel("Ho letto l'informativa privacy per l'accesso alla comunità",{exact:true}).check();
         await page.getByRole('button',{name:'Accetta invito',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/community');
-        await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
+        await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Il mio profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
         await page.getByRole('heading',{name:'Completa il tuo profilo',exact:true}).waitFor();
         assert.equal(await page.locator('.avatar').count()>0,true);assert.equal(await page.getByLabel('URL foto personale (HTTPS)').count(),0);
         await page.getByLabel('Carica foto',{exact:true}).setInputFiles({name:'foto.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
@@ -492,13 +492,13 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.getByLabel('Telefono opzionale',{exact:true}).fill('3331234567');await page.getByRole('button',{name:'Salva profilo',exact:true}).click();
         try{await page.waitForURL(url=>url.pathname==='/mobile/home');}catch(error){await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'invitation-profile-error.png'),fullPage:true});console.log(await page.locator('app-mobile-personal-profile').innerText());throw error;}
         assert.equal(personalProfile.phone,'3331234567');assert.equal(invitationAccepted,true);
-        await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
+        await page.getByRole('link',{name:'Profilo',exact:true}).click();await page.getByRole('link',{name:'Il mio profilo',exact:true}).click();await page.getByRole('link',{name:'Completa il tuo profilo',exact:true}).click();
         await page.getByRole('button',{name:'Completa più tardi',exact:true}).click();await page.waitForURL(url=>url.pathname==='/mobile/home');
-        assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+        assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Profilo']);
       }
       if (flow.startsWith('calendar-')) {
         await page.getByText('Prossimo appuntamento',{exact:true}).waitFor();
-        await page.getByText('Prossimo incarico',{exact:true}).waitFor();
+        await page.getByText('Il tuo incarico',{exact:true}).waitFor();
         await page.locator('.mobile-bottom').getByRole('link',{name:'Calendario',exact:true}).click();
         await page.locator('app-mobile-calendar .event').filter({hasText:'Celebrazione della Parola'}).first().click();
         await page.getByRole('heading',{name:'Il tuo incarico',exact:true}).waitFor();
@@ -529,13 +529,26 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         for (const width of [320,390,412]) {
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Profilo']);
           await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`${flow}-${width}.png`),fullPage:true});
         }
         console.log(`PASS ${flow}: Home, incarico, calendario, revisione e permessi`);
       }
       if (flow.startsWith('directory-')) {
         await page.locator('.mobile-bottom').getByRole('link',{name:'Comunità',exact:true}).click();
+        if(communityManager) {
+          assert.equal(await page.getByRole('heading',{name:'Richieste',exact:true}).count(),0,'Requests from a different parish are not summarized');
+          const request={...accessRequests[0],id:999,parishName:'Parrocchia Martiri Canadesi'};
+          accessRequests.push(request);
+          await page.getByRole('button',{name:'Aggiorna membri',exact:true}).click();
+          await page.getByText('1 richiesta da gestire',{exact:true}).waitFor();
+          request.status='APPROVATA';
+          await page.getByRole('button',{name:'Aggiorna membri',exact:true}).click();
+          await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).waitFor();
+          await page.waitForFunction(()=>!document.querySelector('#requests-title'));
+          accessRequests.pop();
+        }
+        await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
         await page.getByRole('searchbox',{name:'Cerca nella comunità'}).fill('333123');
         assert.equal(await page.locator('.member-row').count(),1);
         await page.getByRole('button',{name:'Cancella ricerca',exact:true}).click();
@@ -584,7 +597,9 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
           await page.getByRole('button',{name:'Conferma importazione',exact:true}).click();
           await page.getByRole('heading',{name:'Importazione completata',exact:true}).waitFor();assert.equal(directoryConfirmed,true);
           await page.getByRole('link',{name:'Torna alla rubrica',exact:true}).click();
-          await page.getByRole('searchbox').fill('Mario 333123');assert.equal(await page.locator('.member-row').count(),1);
+          await page.locator('.people-strip').last().waitFor();
+          assert.equal(await page.locator('.people-strip').last().locator('.person').count(),6,'Compact preview is bounded');
+          await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();await page.getByRole('searchbox').fill('Mario 333123');assert.equal(await page.locator('.member-row').count(),1);
           await page.getByText('Non ancora registrato',{exact:true}).waitFor();
           await page.getByRole('button',{name:'Cancella ricerca',exact:true}).click();
           for(const [name,email,button] of [['Cristiano Giagnorio','cristianogiagnorio@gmail.com',"Invita nell'app"],['Nuovo6 Censito','nuovo@example.test','Aggiungi email e invita']]){
@@ -602,12 +617,12 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
                 for(const width of [320,390,412]){await page.setViewportSize({width,height:844});await verifyMobileDesign(page);await page.screenshot({path:path.join(output,`email-${state}-${width}.png`),fullPage:true});}
               }
               await context.grantPermissions(['clipboard-read','clipboard-write']);await page.getByRole('button',{name:'Copia link',exact:true}).click();await page.getByText('Link copiato.',{exact:true}).waitFor();
-              await page.getByRole('link',{name:'Comunità',exact:true}).first().click();await page.locator('.member-row').filter({hasText:name}).click();
+              await page.getByRole('link',{name:'Comunità',exact:true}).first().click();await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();await page.locator('.member-row').filter({hasText:name}).click();
               await page.getByRole('status').filter({hasText:'Invito inviato'}).waitFor();
               await page.getByRole('button',{name:'Annulla invito',exact:true}).click();await page.getByText('Invito annullato.',{exact:true}).waitFor();
             }
             for(const width of [320,390,412]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`community-invite-${width}.png`),fullPage:true});}
-            await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
+            await page.getByRole('link',{name:'Comunità',exact:true}).first().click();await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
           }
           assert.equal(preparedInvites.length,2);await page.getByText('Invito attivo',{exact:true}).first().waitFor();
           await page.getByRole('link',{name:'Richieste accesso',exact:true}).click();
@@ -620,6 +635,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
           assert.ok(accessRequests.every(x=>x.status==='APPROVATA'));
           communityMembers.push({personId:15,firstName:'Emmanuel',lastName:'Baciarini',email:'emmanuel@example.test',role:'MEMBER',accountLinked:false});
           await page.locator('.mobile-bottom').getByRole('link',{name:'Comunità',exact:true}).click();
+          await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
           for(const scenario of ['email','missing-capability','no-email','pending','linked','denied']){
             emmanuelCapability=scenario==='missing-capability'?undefined:scenario!=='denied';emmanuelEmail=scenario==='no-email'?'':'emmanuel@example.test';emmanuelPending=scenario==='pending'?'PENDING':null;emmanuelLinked=scenario==='linked';
             await page.locator('.member-row').filter({hasText:'Emmanuel Baciarini'}).click();
@@ -628,11 +644,11 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
             else if(scenario==='no-email')await page.getByRole('button',{name:'Aggiungi email e invita',exact:true}).waitFor();
             else if(scenario==='pending'){await page.locator('app-community-member-invitation').getByText('Invito attivo',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:"Invita nell'app",exact:true}).count(),0);}
             else {assert.equal(await page.locator('app-community-member-invitation').count(),0);if(scenario==='linked')await page.getByText('Account collegato',{exact:true}).waitFor();}
-            await page.getByRole('link',{name:'Comunità',exact:true}).first().click();
+            await page.getByRole('link',{name:'Comunità',exact:true}).first().click();await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
           }
           console.log('PASS Emmanuel invite visibility: email, missing capability, missing email, pending, linked and explicit denial');
         } else assert.equal(await page.getByRole('link',{name:'Importa elenco',exact:true}).count(),0);
-        assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+        assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Profilo']);
         console.log(`PASS ${flow}: rubrica telefono, 40 righe, revisione, duplicati e conferma`);
       }
       if (flow === 'linked') {
@@ -649,7 +665,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         for (const width of [320,390,393,412]) {
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
-          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Altro']);
+          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(),['Home','Calendario','Comunità','Profilo']);
           await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`birthdays-${width}.png`),fullPage:true});
         }
         await page.locator('app-mobile-birthdays .member-row').filter({hasText:'Emmanuel Baciarini'}).click();
@@ -672,7 +688,8 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.getByRole('button',{name:'Riprova',exact:true}).click();
         await page.getByRole('heading',{name:'Nessun compleanno disponibile',exact:true}).waitFor();
         await page.getByRole('link',{name:'Home',exact:true}).click();
-        await page.getByText('Nessun compleanno imminente',{exact:true}).waitFor();
+        await page.locator('.app-grid').waitFor();
+        assert.equal(await page.locator('.home-overview a[href="/mobile/birthdays"]').count(),0,'No empty birthday summary');
         await page.getByRole('link',{name:'Profilo',exact:true}).click();
         await page.getByRole('link',{name:'Preferenze notifiche',exact:true}).click();
         await page.getByLabel('Ricevi notifiche sui compleanni',{exact:true}).waitFor();
@@ -697,6 +714,18 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.getByRole('link',{name:'Home',exact:true}).first().click();
         console.log('PASS birthdays: sezioni, scheda, riepilogo Home, privacy, loading/error/empty e viewport');
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /3ª Comunità/);
+        assert.match(await page.locator('app-mobile-shell .brand').textContent(), /Parrocchia di test/);
+        await page.getByRole('heading',{name:'Cosa riguarda me',exact:true}).waitFor();
+        assert.equal(await page.locator('.home-photo + .community-card').count(),1);
+        assert.equal(await page.locator('.home-photo *').count(),0);
+        assert.equal(await page.locator('.app-tile p').count(),5);
+        await page.locator('.mobile-bottom').getByRole('link',{name:'Profilo',exact:true}).click();
+        const profileMenu=page.getByRole('navigation',{name:'Impostazioni personali',exact:true});
+        assert.equal(await profileMenu.getByRole('link',{name:/Compleanni|Gruppi|Avvisi/}).count(),0);
+        assert.equal(await page.locator('.mobile-bottom').getByText('Altro',{exact:true}).count(),0);
+        await profileMenu.getByRole('link',{name:'Informazioni sull’app',exact:true}).click();
+        await page.getByText(/Applicazione indipendente per le attività/).waitFor();
+        await page.locator('.mobile-bottom').getByRole('link',{name:'Home',exact:true}).click();
         assert.equal(await page.locator('.mobile-bottom a').count(), 4);
         assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);
         assert.equal(await page.getByRole('link', { name: 'Posti di convivenza', exact: true }).count(), 0);
@@ -712,9 +741,18 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.evaluate(()=>document.body.style.fontSize='');
         await page.locator('.community-card').click();
         await page.waitForURL(url => url.pathname === '/mobile/community');
+        await page.getByRole('heading',{name:'Responsabili',exact:true}).waitFor();
+        await page.getByRole('heading',{name:'Fratelli',exact:true}).waitFor();
+        assert.equal(await page.locator('.member-row,table,input[type=search]').count(),0);
+        assert.equal(await page.getByRole('heading',{name:'Richieste',exact:true}).count(),0);
+        await page.getByRole('button',{name:'Mostra coppie',exact:true}).click();
+        await page.locator('.couples article').first().waitFor();
+        assert.equal(await page.locator('.couples article').count(),1,'Marriage pairs deduplicated');
+        for(const width of [320,390,412]) { await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await verifyMobileDesign(page);await page.screenshot({path:path.join(output,`community-overview-${width}.png`),fullPage:true}); }
+        await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
         await page.locator('.member-row').first().waitFor();
         assert.equal(await page.locator('.member-row').count(), 2);
-        assert.match(await page.locator('.community-header').textContent(), /3ª Comunità · Parrocchia Martiri Canadesi/);
+        assert.match(await page.locator('.community-header').textContent(), /Parrocchia Martiri Canadesi/);
         await page.getByText('2 fratelli', { exact: true }).waitFor();
         assert.equal(await page.locator('app-mobile-community table, app-mobile-community app-member-editor').count(), 0);
         assert.equal(await page.locator('.member-list a[href^="tel:"],.member-list a[href^="mailto:"]').count(), 0);
@@ -738,7 +776,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
           await page.setViewportSize({width,height:844});
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           assert.ok(await page.locator('.member-copy').evaluateAll(nodes => nodes.every(n => n.scrollWidth <= n.clientWidth)));
-          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(), ['Home','Calendario','Comunità','Altro']);
+          assert.deepEqual(await page.locator('.mobile-bottom a span').allTextContents(), ['Home','Calendario','Comunità','Profilo']);
           await verifyMobileDesign(page); await page.screenshot({path:path.join(output,`community-${width}.png`),fullPage:true});
         }
         await page.setViewportSize({width:390,height:844});
@@ -762,9 +800,10 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'community-detail.png'),fullPage:true});
         communityManager = true;
         await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
+        await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
         await page.getByRole('link', {name:'Richieste e storico'}).waitFor();
         assert.equal(await page.getByRole('link', {name:'Richieste e storico'}).getAttribute('href'), '/mobile/approvazioni');
-        assert.equal(approvalCalls, 0, 'La pagina comunita non carica richieste approvate');
+        assert.ok(approvalCalls > 0, 'Dashboard loads authorized requests');
         assert.equal(await page.locator('app-mobile-community table, app-mobile-community app-member-editor').count(), 0);
         await page.getByRole('link', { name: 'Aggiungi fratello', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/mobile/community/add');
@@ -795,6 +834,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'community-add.png'),fullPage:true});
         await page.getByRole('button', { name: 'Salva fratello', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/mobile/community');
+        await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
         await page.locator('.member-row').filter({hasText:'Nuovo Fratello'}).click();
         await page.getByRole('heading', {name:'Nuovo Fratello',exact:true}).waitFor();
         await page.getByText('Non ancora registrato', {exact:true}).waitFor();
@@ -816,6 +856,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         assert.equal(censusCalls, 1); assert.equal(memberUpdates, 2); assert.equal(spouseId, null);
         assert.equal(await page.locator('app-sidebar,.layout-container').count(), 0);
         await page.getByRole('link', { name: 'Comunità', exact: true }).first().click();
+        await page.getByRole('link',{name:'Vedi tutti i fratelli',exact:true}).click();
         communityState = 'error';
         await page.getByRole('button', { name: 'Aggiorna membri' }).click();
         await page.getByRole('heading', { name: 'Comunità non disponibile' }).waitFor();

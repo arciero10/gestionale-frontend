@@ -1,17 +1,19 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CommunityOverview } from './community-overview';
 import { DatePipe } from '@angular/common';
 import { CommunityApiService, CommunityMemberView, CommunityView } from '../../services/community-api.service';
 import { communityRoleLabel } from '../../auth/community-roles';
 
 @Component({
-  selector: 'app-mobile-community', standalone: true, imports: [FormsModule, RouterLink, DatePipe], styleUrl: './mobile-community-list.scss',
+  selector: 'app-mobile-community', standalone: true, imports: [FormsModule, RouterLink, DatePipe, CommunityOverview], styleUrl: './mobile-community-list.scss',
   template: `
     <header class="community-header">
-      <div class="heading-row"><h1>La mia comunità</h1><button class="icon" type="button" aria-label="Aggiorna membri" title="Aggiorna membri" (click)="load()" [disabled]="loading"><i class="pi pi-refresh" aria-hidden="true"></i></button></div>
+      @if (fullList) { <a class="back" routerLink="/mobile/community">La mia comunità</a> }
+      <div class="heading-row"><h1>{{ fullList ? 'Tutti i fratelli' : data?.context?.communityName || 'La mia comunità' }}</h1><button class="icon" type="button" aria-label="Aggiorna membri" title="Aggiorna membri" (click)="load()" [disabled]="loading"><i class="pi pi-refresh" aria-hidden="true"></i></button></div>
       @if (data) {
-        <p class="community-context">{{ data.context.communityName }} · {{ data.context.parishName }}</p>
+        <p class="community-context">{{ data.context.parishName }}</p>
         <div class="community-meta"><span>Ruolo: {{ roleLabel(data.context.role || 'MEMBER') }}</span><strong>{{ memberCountLabel }}</strong></div>
       }
     </header>
@@ -20,6 +22,8 @@ import { communityRoleLabel } from '../../auth/community-roles';
     @else if (data) {
       @if (data.canAddMember) { <a class="primary" routerLink="/mobile/community/add"><i class="pi pi-plus" aria-hidden="true"></i><span>Aggiungi fratello</span></a> }
       @if (canImport) { <a class="primary" routerLink="/mobile/community/import"><i class="pi pi-upload" aria-hidden="true"></i><span>Importa elenco</span></a> }
+      @if (!fullList) { <app-community-overview [data]="data" /> }
+      @else {
       <div class="search-bar">
         <i class="pi pi-search" aria-hidden="true"></i>
         <input type="search" name="query" [(ngModel)]="query" aria-label="Cerca nella comunità" placeholder="Cerca nella comunità" autocomplete="off" enterkeyhint="search" />
@@ -43,10 +47,12 @@ import { communityRoleLabel } from '../../auth/community-roles';
         @if (data.context.personId) { <a [routerLink]="'/mobile/community/member/' + data.context.personId"><i class="pi pi-user" aria-hidden="true"></i><span>La mia scheda</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
         @if (canReview) { <a routerLink="/mobile/approvazioni"><i class="pi pi-history" aria-hidden="true"></i><span>Richieste e storico</span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }
       </nav>
+      }
     }
   `
 })
 export class MobileCommunity implements OnInit {
+  protected readonly fullList = inject(ActivatedRoute).snapshot.data['fullList'] === true;
   private readonly api = inject(CommunityApiService);
   protected data: CommunityView | null = null;
   protected loading = true;
