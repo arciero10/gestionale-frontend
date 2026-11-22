@@ -20,6 +20,8 @@ const section = (path: string, title: string) => ({ path, loadComponent: () => i
 export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   section('home', 'Home'),
+  { path: 'community-life', loadComponent: () => import('./mobile-areas').then(c => c.MobileAreas), data: { area: 'life' }, canMatch: [linkedGuard] },
+  { path: 'retreats', loadComponent: () => import('./mobile-areas').then(c => c.MobileAreas), data: { area: 'retreats' }, canMatch: [linkedGuard] },
   { path: 'calendario', loadComponent: () => import('./mobile-calendar').then(c => c.MobileCalendar), canMatch: [linkedGuard] },
   { path: 'calendar', loadComponent: () => import('./mobile-calendar').then(c => c.MobileCalendar), canMatch: [linkedGuard] },
   { path: 'calendar/import', loadComponent: () => import('./mobile-calendar-import').then(c => c.MobileCalendarImport), canMatch: [linkedGuard] },

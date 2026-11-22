@@ -424,7 +424,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
           meCalls++;
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
           const linked = invitationAccepted || flow === 'linked' || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
-          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI','APPROVE_REQUESTS']:[])] : [],
+          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI','APPROVE_REQUESTS','CREATE_CONVIVENZA']:[])] : [],
             ...(linked ? { userId:1,personId:12,communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
         } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : flow==='directory-manager'?accessRequests:[] }); }
         else if (/\/onboarding\/requests\/20[23]\/approve$/.test(apiPath)){
@@ -535,6 +535,11 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         console.log(`PASS ${flow}: Home, incarico, calendario, revisione e permessi`);
       }
       if (flow.startsWith('directory-')) {
+        await page.locator('.retreat-card').click();
+        await page.locator('.area-link').first().waitFor();
+        assert.equal(await page.locator('.area-link').count(),communityManager?2:1);
+        if(communityManager)assert.equal(await page.locator('.area-link[href="/mobile/posti-convivenza"]').count(),1);
+        await page.locator('.mobile-bottom').getByRole('link',{name:'Home',exact:true}).click();
         await page.locator('.mobile-bottom').getByRole('link',{name:'Comunità',exact:true}).click();
         if(communityManager) {
           assert.equal(await page.getByRole('heading',{name:'Richieste',exact:true}).count(),0,'Requests from a different parish are not summarized');
@@ -654,7 +659,12 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       if (flow === 'linked') {
         await page.locator('app-mobile-home h1').waitFor();
         await page.getByText('2 nei prossimi 7 giorni', {exact:true}).waitFor();
-        await page.locator('.app-grid').getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
+        await page.locator('.life-card').click();
+        await page.locator('.area-link').first().waitFor();
+        assert.equal(await page.locator('.area-link').count(),4);
+        assert.deepEqual(await page.locator('.area-link strong').allTextContents(),['Calendario','Gruppi','Compleanni','Avvisi']);
+        for(const width of [320,390,412]) { await page.setViewportSize({width,height:844});await verifyMobileDesign(page);assert.ok(await page.locator('.area-link').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=44)));await page.screenshot({path:path.join(output,`community-life-${width}.png`),fullPage:true}); }
+        await page.locator('.area-link').filter({hasText:'Compleanni'}).click();
         await page.waitForURL(url => url.pathname === '/mobile/birthdays');
         for (const title of ['Oggi','Prossimi 7 giorni','Questo mese','Prossimamente'])
           await page.getByRole('heading',{name:title,exact:true}).waitFor();
@@ -676,7 +686,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         assert.equal(await page.getByRole('link',{name:'WhatsApp',exact:true}).getAttribute('href'),'https://wa.me/390212345678');
         assert.equal(await page.getByRole('link',{name:'Email',exact:true}).getAttribute('href'),'mailto:emmanuel@example.test');
         await page.getByRole('link',{name:'Home',exact:true}).click();
-        await page.locator('.app-grid').getByRole('link').filter({has:page.getByRole('heading',{name:'Compleanni',exact:true})}).click();
+        await page.locator('.life-card').click();await page.locator('.area-link').filter({hasText:'Compleanni'}).click();
         birthdayState = 'loading';
         await page.getByRole('button',{name:'Aggiorna compleanni'}).click();
         await page.getByRole('status',{name:'Caricamento compleanni'}).waitFor();
@@ -688,7 +698,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         await page.getByRole('button',{name:'Riprova',exact:true}).click();
         await page.getByRole('heading',{name:'Nessun compleanno disponibile',exact:true}).waitFor();
         await page.getByRole('link',{name:'Home',exact:true}).click();
-        await page.locator('.app-grid').waitFor();
+        await page.locator('.macro-areas').waitFor();
         assert.equal(await page.locator('.home-overview a[href="/mobile/birthdays"]').count(),0,'No empty birthday summary');
         await page.getByRole('link',{name:'Profilo',exact:true}).click();
         await page.getByRole('link',{name:'Preferenze notifiche',exact:true}).click();
@@ -707,7 +717,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         birthdayState = 'ready';
         await page.getByRole('link',{name:'Home',exact:true}).click();
         await page.getByText('2 nei prossimi 7 giorni',{exact:true}).waitFor();
-        await page.locator('.app-grid').getByRole('link').filter({has:page.getByRole('heading',{name:'Avvisi',exact:true})}).click();
+        await page.locator('.life-card').click();await page.locator('.area-link').filter({hasText:'Avvisi'}).click();
         await page.waitForURL(url => url.pathname === '/mobile/avvisi');
         await page.locator('app-mobile-home h1').filter({hasText:'Avvisi'}).waitFor();
         assert.equal(preferences.receiveCommunityNotifications,false);
@@ -716,9 +726,17 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /3ª Comunità/);
         assert.match(await page.locator('app-mobile-shell .brand').textContent(), /Parrocchia di test/);
         await page.getByRole('heading',{name:'Cosa riguarda me',exact:true}).waitFor();
-        assert.equal(await page.locator('.home-photo + .community-card').count(),1);
-        assert.equal(await page.locator('.home-photo *').count(),0);
-        assert.equal(await page.locator('.app-tile p').count(),5);
+        assert.equal(await page.locator('.macro-areas>a').count(),3);
+        assert.equal(await page.locator('.app-grid,.app-tile,.home-photo').count(),0);
+        assert.equal(await page.locator('.macro-areas img').count(),1);
+        assert.equal(await page.locator('.community-card').getAttribute('href'),'/mobile/community');
+        await page.locator('.retreat-card').click();
+        await page.getByRole('heading',{name:'Convivenze',exact:true}).waitFor();
+        await page.locator('.area-link').first().waitFor();
+        for(const width of [320,390,412]) { await page.setViewportSize({width,height:844});await verifyMobileDesign(page);await page.screenshot({path:path.join(output,`retreats-hub-${width}.png`),fullPage:true}); }
+        assert.equal(await page.locator('.area-link').first().getAttribute('href'),'/mobile/convivenze');
+        assert.equal(await page.locator('.area-link[href="/mobile/posti-convivenza"]').count(),0,'Places retain permission gating');
+        await page.locator('.mobile-bottom').getByRole('link',{name:'Home',exact:true}).click();
         await page.locator('.mobile-bottom').getByRole('link',{name:'Profilo',exact:true}).click();
         const profileMenu=page.getByRole('navigation',{name:'Impostazioni personali',exact:true});
         assert.equal(await profileMenu.getByRole('link',{name:/Compleanni|Gruppi|Avvisi/}).count(),0);

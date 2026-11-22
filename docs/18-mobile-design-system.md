@@ -1,5 +1,26 @@
 # Mobile navy and gold
 
+## Macro areas V3 and native icons
+
+Home keeps the real personal summary above three primary links: community,
+community life and retreats. The duplicated small quick-link grid is removed.
+/mobile/community-life is a navigation-only hub for calendar, groups, birthdays
+and notices. /mobile/retreats links to the existing /mobile/convivenze module
+and to places only with CREATE_CONVIVENZA. Existing guards and module URLs stay
+unchanged. No Organization placeholder or invented backend data is introduced.
+The retreat photo is the existing assets/images/dashboard/convivenze.jpg.
+Profile and bottom navigation retain their existing structure.
+
+Native launcher artwork is rasterized from public/layout/images/logo/logo-cn.svg,
+the original vector matching the web favicon, not the legacy GC favicon under
+src/assets. Web favicon files are untouched. scripts/generate-native-icons.mjs
+requires sharp as development-only tooling (NODE_PATH may point to a tooling
+installation), and produces five Android density sets and the existing modern
+universal 1024px opaque iOS icon. Adaptive foreground uses a 60dp symbol in a
+108dp layer on the existing white background, inside the central safe circle.
+No additional text is added to the emblem. Package/bundle IDs and associated
+domains are unchanged. Actual iOS compilation still requires macOS/Xcode.
+
 ## Home, community and profile V2
 
 Home header reads ParishName and CommunityName from /api/me, in that order.

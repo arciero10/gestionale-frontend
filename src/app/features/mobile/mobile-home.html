@@ -1,7 +1,5 @@
 @if (section === 'home') {
   <header class="greeting"><p>La vita della comunità</p><h1>{{ current.context()?.displayName ? 'Ciao ' + current.context()?.displayName?.split(' ')?.[0] : 'Benvenuto' }}</h1></header>
-  <img class="home-photo" src="assets/images/login-bg.jpg" alt="" />
-  <a class="community-card" routerLink="/mobile/community"><i class="pi pi-users" aria-hidden="true"></i><span><strong>La mia comunità</strong>@if (current.context()?.memberCount !== undefined) { <small>{{ current.context()?.memberCount === 1 ? '1 fratello' : current.context()?.memberCount + ' fratelli' }}</small> }</span><i class="pi pi-angle-right" aria-hidden="true"></i></a>
   @if (pendingRequests) { <a class="back" routerLink="/mobile/approvazioni"><i class="pi pi-user-plus" aria-hidden="true"></i>Nuova richiesta di accesso · {{pendingRequests}}</a> }
   @if (profilePrompt) { <section class="profile-prompt"><h2>Completa il tuo profilo</h2><a class="back" routerLink="/mobile/complete-profile">Completa profilo</a><button type="button" class="back" (click)="later()">Completa più tardi</button></section> }
   @if (nextEvent || nextAssignment || hasUpcomingBirthday) {
@@ -11,11 +9,11 @@
       @if (hasUpcomingBirthday) { <a routerLink="/mobile/birthdays"><span>Prossimi compleanni</span><strong>{{ birthdaySummary }}</strong></a> }
     </div></section>
   }
-  <h2 class="section-label">Accessi rapidi</h2>
-  <div class="app-grid">
-    @for (card of cards; track card.path) { <a class="app-tile" [routerLink]="'/mobile/' + card.path"><span class="tile-icon"><i [class]="'pi ' + card.icon" aria-hidden="true"></i></span><h2>{{ card.title }}</h2><p>{{ card.subtitle }}</p><i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a> }
-    @if (canOrganize()) { <a class="app-tile" routerLink="/mobile/posti-convivenza"><span class="tile-icon"><i class="pi pi-building" aria-hidden="true"></i></span><h2>Posti di convivenza</h2><p>Organizzazione e sistemazioni</p><i class="pi pi-arrow-up-right arrow" aria-hidden="true"></i></a> }
-  </div>
+  <nav class="macro-areas" aria-label="Aree principali">
+    <a class="community-card" routerLink="/mobile/community"><i class="pi pi-users" aria-hidden="true"></i><span><strong>La mia comunità</strong>@if (current.context()?.memberCount !== undefined) { <small>{{ current.context()?.memberCount === 1 ? '1 fratello' : current.context()?.memberCount + ' fratelli' }}</small> }</span><i class="pi pi-angle-right" aria-hidden="true"></i></a>
+    <a class="life-card" routerLink="/mobile/community-life"><span class="macro-icon"><i class="pi pi-calendar" aria-hidden="true"></i></span><span><strong>Vita della comunità</strong><small>Calendario · Gruppi · Compleanni · Avvisi</small></span><i class="pi pi-angle-right" aria-hidden="true"></i></a>
+    <a class="retreat-card" routerLink="/mobile/retreats"><img src="assets/images/dashboard/convivenze.jpg" alt="" /><span class="retreat-caption"><strong>Convivenze</strong><small>{{ canOrganize() ? 'Convivenze · Posti di convivenza' : 'Le convivenze della comunità' }}</small><i class="pi pi-arrow-right" aria-hidden="true"></i></span></a>
+  </nav>
 } @else {
   <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a><h1>{{ title }}</h1>
   @if (section === 'profilo') {
