@@ -49,20 +49,19 @@ adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROW
 Do not force an approval state with pm set-app-links, clear application data or
 bypass biometrics. Verify the implicit VIEW resolves to MainActivity, not Chrome.
 
-## iOS: Team ID required
+## iOS: real Team ID configured
 
 App/App.entitlements contains applinks:test.eventidicomunita.it and is referenced
 by both Xcode build configurations. Existing SceneDelegateProxy already forwards
 userActivity for Universal Links/cold start. No callback implementation replaced.
 
-No DEVELOPMENT_TEAM, provisioning profile or Apple signing certificate was found
-locally. AASA is deliberately valid but DISABLED: applinks.details=[] (no fake appID).
-Universal Links are NOT ready/verified until the real signing identifier is known.
-Find Team ID under Apple Developer > Account > Membership details, or Xcode >
-Signing & Capabilities > Team. Verify signed application-identifier prefix too.
-With the real ten-character Team ID, run:
+The operator supplied the real Team ID K39JD89VPJ. Both AASA copies now declare
+K39JD89VPJ.it.panteleia.eventidicomunita with paths /invite/* only.
+No signing credentials or DEVELOPMENT_TEAM setting were changed. Universal Links
+still require a correctly signed iOS build and a device test; publishing AASA is
+not proof of device association. To regenerate the identical hosting files:
 ```powershell
-node scripts/configure-ios-universal-links.mjs REAL_APPLE_TEAM_ID
+node scripts/configure-ios-universal-links.mjs K39JD89VPJ
 ```
 This generates the actual TEAM.it.panteleia.eventidicomunita appID with paths
 /invite/* only. Commit/publish that file; no placeholder is shipped. Enable

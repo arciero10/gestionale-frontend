@@ -1,6 +1,13 @@
 {
   "applinks": {
     "apps": [],
-    "details": []
+    "details": [
+      {
+        "appID": "K39JD89VPJ.it.panteleia.eventidicomunita",
+        "paths": [
+          "/invite/*"
+        ]
+      }
+    ]
   }
 }

@@ -61,8 +61,8 @@ URL canonica: https://test.eventidicomunita.it/invite/PUBLIC_ID. Il sito mantien
 compatibili i vecchi link root ?inviteId=GUID. InvitationDeepLinkService gestisce
 cold start/appUrlOpen; PublicId temporaneo, non fonte di autorizzazione, ripreso
 dopo il login e cancellato dopo completamento/stato terminale/uscita esplicita.
-Android App Links usa il fingerprint debug TEST reale. Universal Links iOS e
-predisposto ma non attivabile senza Team ID Apple: AASA details resta vuoto.
+Android App Links usa il fingerprint debug TEST reale. AASA iOS ora contiene
+K39JD89VPJ.it.panteleia.eventidicomunita per /invite/*; restano firma e test iPhone.
 Dettagli e procedure di verifica in 19-invitation-deep-links.md.
 SDK, configurazioni Entra e protocolli auth sono invariati; il routing da invito
 seleziona l'OTP esistente e la conferma invito prima della Home.
