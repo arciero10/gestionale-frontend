@@ -9,7 +9,7 @@ import { TAPPE_CAMMINO } from '../gestionaleCN/data/tappe-cammino.mock';
 @Component({
   selector: 'app-mobile-directory-import-row', standalone: true, imports: [FormsModule, RouterLink], styleUrl: './directory-import.scss',
   template: `
-    <a class="back" [routerLink]="['/mobile/community/import', importId]"><i class="pi pi-arrow-left" aria-hidden="true"></i> Elenco importato</a>
+
     <h1>Verifica persona</h1>
     @if (loading) { <p role="status">Caricamento riga...</p> }
     @if (error) { <p class="feedback error" role="alert">{{ error }}</p><button (click)="load()" [disabled]="busy">Ricarica riga</button> }

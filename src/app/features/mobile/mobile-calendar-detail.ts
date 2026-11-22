@@ -7,7 +7,7 @@ import { CalendarEventEditor } from './calendar-event-editor';
 @Component({
   selector: 'app-mobile-calendar-detail', standalone: true, imports: [RouterLink, CalendarEventEditor],
   template: `
-    <a routerLink="/mobile/calendar" class="back"><i class="pi pi-arrow-left" aria-hidden="true"></i> Calendario</a>
+
     @if (loading) { <p role="status">Caricamento appuntamento...</p> }
     @if (error) { <p role="alert">{{ error }}</p><button (click)="load()" [disabled]="loading">Ricarica appuntamento</button> }
     @if (feedback) { <p role="status">{{ feedback }}</p> }

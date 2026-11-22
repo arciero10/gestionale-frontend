@@ -13,7 +13,7 @@ import { CommunityMemberInvitation } from './community-member-invitation';
   imports: [RouterLink, MemberEditor, CommunityMemberInvitation], styleUrl: './mobile-community.scss',
   styles: [`.contact-actions{display:grid;gap:10px;margin-top:10px}.contact-actions a.secondary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px;width:100%}`],
   template: `
-    <a class="back" routerLink="/mobile/community"><i class="pi pi-arrow-left" aria-hidden="true"></i> Comunità</a>
+
     @if (loading) { <div class="skeleton" role="status" aria-label="Caricamento scheda"></div> }
     @else {
       @if (error) { <p class="feedback" role="alert">{{ error }}</p><button class="secondary" type="button" (click)="load(id)">Riprova</button> }

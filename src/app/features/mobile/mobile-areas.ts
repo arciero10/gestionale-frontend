@@ -3,7 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../auth/current-user.service';
 
 @Component({ selector: 'app-mobile-areas', standalone: true, imports: [RouterLink], template: `
-  <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a>
+
   <h1>{{ life ? 'La mia comunità' : 'Convivenze' }}</h1>
   <nav aria-label="Funzioni dell’area">
     @for (card of cards; track card.path) { <a class="area-link" [routerLink]="card.path">@if(card.image) { <img class="area-photo" [src]="'images/backgrounds/mobile/'+card.image+'.webp'" alt="" loading="lazy" /> } @else { <i [class]="'pi '+card.icon" aria-hidden="true"></i> }<span><strong>{{card.title}}</strong><small>{{card.subtitle}}</small></span><i class="pi pi-angle-right" aria-hidden="true"></i></a> }

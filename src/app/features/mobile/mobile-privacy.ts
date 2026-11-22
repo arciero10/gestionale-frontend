@@ -6,7 +6,7 @@ import { CommunityApiService, MemberPrivacy } from '../../services/community-api
 @Component({
   selector: 'app-mobile-privacy', standalone: true, imports: [RouterLink, FormsModule], styleUrl: './mobile-community.scss',
   template: `
-    <a class="back" routerLink="/mobile/profilo"><i class="pi pi-arrow-left" aria-hidden="true"></i> Profilo</a><h1>Preferenze notifiche</h1>
+    <h1>Preferenze notifiche</h1>
     @if (loading) { <div class="skeleton" role="status" aria-label="Caricamento preferenze"></div> }
     @else if (preferences) {
       <section class="privacy"><form (ngSubmit)="save()">

@@ -6,7 +6,7 @@ import { CurrentUserService } from '../../auth/current-user.service';
 
 export function dismissProfilePrompt(userId: number | null | undefined): void { if(!userId)return;try{localStorage.setItem('community.profile-prompted:'+userId,'1');}catch{/* UI preference only. */} }
 @Component({selector:'app-mobile-personal-profile',standalone:true,imports:[FormsModule,RouterLink],styleUrl:'./mobile-community.scss',template:`
-  <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i>Home</a><h1>Completa il tuo profilo</h1><p class="muted">I campi sono facoltativi. Puoi completarli anche più tardi.</p>
+  <h1>Completa il tuo profilo</h1><p class="muted">I campi sono facoltativi. Puoi completarli anche più tardi.</p>
   @if(loading){<p role="status">Caricamento profilo...</p>}
   @if(profile;as person){<form class="member-form" #form="ngForm" (ngSubmit)="save()">
     <header class="profile-head"><span class="avatar">@if(preview || person.photoUrl){<img [src]="preview || person.photoUrl" alt="Foto profilo" referrerpolicy="no-referrer" (error)="person.photoUrl = null; clearPreview()" />}@else{ {{person.firstName.charAt(0)}}{{person.lastName.charAt(0)}} }</span><strong>{{person.firstName}} {{person.lastName}}</strong></header>

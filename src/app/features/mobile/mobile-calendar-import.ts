@@ -9,7 +9,7 @@ import { CalendarEventEditor } from './calendar-event-editor';
 @Component({
   selector: 'app-mobile-calendar-import', standalone: true, imports: [FormsModule, RouterLink, CalendarEventEditor],
   template: `
-    <a class="back" routerLink="/mobile/calendar"><i class="pi pi-arrow-left" aria-hidden="true"></i> Calendario</a>
+
     <h1>{{ draft ? 'Revisione calendario' : 'Importa calendario' }}</h1>
     @if (!canManage) { <p role="alert">Non hai il permesso di gestire il calendario.</p> }
     @else {

@@ -1,5 +1,10 @@
 app-mobile-shell .mobile-shell {
-  background: var(--color-background);
+  background: transparent;
+  --mobile-panel: rgba(255,255,255,.94);
+  .mobile-content { padding-top: 12px; }
+  .mobile-content :is(.member-row,.event,.area-link,.member-form,.row-link,dl) { background-color: var(--mobile-panel); }
+  .mobile-content :is(.posti-page,.convivenze-page) { background: transparent; min-height: auto; }
+  .mobile-content app-posti-convivenza { background: transparent; }
   *, *::before, *::after { box-sizing: border-box; }
   h1, h2, h3, p, a, button, label, dd { overflow-wrap: anywhere; letter-spacing: 0; }
   .mobile-content :is(h1, h2, h3) { font-family: var(--font-ui); }

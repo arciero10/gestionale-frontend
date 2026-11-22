@@ -1,5 +1,53 @@
 # Mobile navy and gold
 
+## Home V5 and compact community directory
+
+The Virgin artwork is now a fixed pseudo-element of the shared MobileShell,
+not a per-route image. Actual source directory remains public/images/backgrounds;
+prepare-mobile-backgrounds.mjs also generates the 42KB Virgin WebP. A pale overlay
+and translucent reading surfaces keep the shared scene visible on operational
+mobile pages, with no image remount between routes. Legacy places/retreat page
+backgrounds are neutralized only inside the mobile shell. Web and the native
+authentication/locked-session screens retain their existing presentation.
+Home still has two photo cards; the community count is removed only from that
+card, not from backend data or the community directory.
+
+Community now renders complete, surname/name-sorted sections in this order:
+Presbitero (PRESBYTER), Responsabile (RESPONSIBLE), Corresponsabili
+(CO_RESPONSIBLE), Fratelli (all active API members, including role holders).
+Each section deduplicates by PersonId and empty role sections are omitted.
+No role assignment, fabricated person or ecclesial-to-admin permission inference
+is introduced. Existing DTOs already carry the required role values.
+The full-list URL remains valid and uses the same component. Search still works,
+including phone matching when that field is returned by the backend, but cards
+show only avatar/name/useful role/chevron, not contacts, birthdays, stage or
+account status. These remain in member details. Couple relationships and
+marriage editing remain in existing member details, birthdays in their module.
+
+Administrative links move to a native details/summary ellipsis menu. Add-member
+uses backend CanAddMember; import keeps its existing EDIT_MEMBRI and responsible/
+co-responsible restriction; approvals use the existing backend capabilities.
+The ordinary brother sees no administrative menu. No backend or schema change.
+
+MobileShell provides one visible back arrow on linked secondary pages. Existing
+top-level back anchors are removed, leaving contextual actions and wizard-step
+buttons intact. The in-memory MobileNavigationHistory records only operational
+/mobile URLs, rejects auth callback parameters and never stores login/OTP paths.
+It supports visited-route history, safe direct-entry parents and reset at Home
+or shell destruction/logout. Android App.backButton uses this same handler and
+does not close the app at Home; an open admin menu is closed first. iOS has a
+left-edge swipe handler (80px horizontal threshold, excluding form fields) and
+the same visible arrow. Router popstate to non-operational/auth URLs is redirected
+to Home only while a linked backend context exists; logout/auth flows are not
+rewritten. Listener registration is scoped to the shell and cleaned up on exit.
+
+Run the existing auth (29), deep-link (4), auth-completion (11), member-invitation
+(5), native-icon/asset (7) suites plus scripts/test-mobile-v5.mjs (5) and the full
+production browser suite. V5 tests include Android hardware-back callback,
+iOS swipe/arrow, all four role sections and named co-responsibles, duplicate
+suppression, privacy-safe compact rows, manager/brother UI separation and OTP
+regressions. iPhone viewport tests from Windows are not an Xcode/device build.
+
 ## Home V4
 
 Home has exactly two primary cards: La mia comunita -> /mobile/community-life
