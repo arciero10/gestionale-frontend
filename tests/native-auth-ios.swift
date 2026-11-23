@@ -3,6 +3,12 @@ import XCTest
 @testable import NativeAuthDiagnostics
 
 final class NativeAuthDiagnosticTests: XCTestCase {
+    func testNumericSdkFailureContainsNoErrorDescription() {
+        let diagnostic = NativeAuthDiagnostic(phase: "token", localFailure: .keychain, sdkCode: -34018)
+        XCTAssertEqual(diagnostic.code, "AUTH_KEYCHAIN_FAILED")
+        XCTAssertEqual(diagnostic.data["sdkCode"] as? Int, -34018)
+        XCTAssertEqual(Set(diagnostic.data.keys), Set(["platform", "phase", "code", "serverCodes", "sdkCode"]))
+    }
     func testOtpSubmissionAfterReadingMailUsesCurrentEpoch() {
         let startEpoch = 1
         let afterMailEpoch = 2

@@ -388,18 +388,42 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         startPhase("token")
         let epoch = generation
         do {
-            guard let account = application?.getNativeAuthUserAccount() else {
+            guard let application, let account = application.getNativeAuthUserAccount() else {
                 rejectLocal(call, .cacheMissing); pending = nil; busy = false; return
             }
-            let delegate = NativeFlow(owner: self, scopes: scopes)
-            delegate.tokenGeneration = epoch
-            flow = delegate
-            let parameters = MSALNativeAuthGetAccessTokenParameters()
-            parameters.scopes = scopes
-            parameters.returnRefreshToken = false
-            account.getAccessToken(parameters: parameters, delegate: delegate)
+            // MSAL 2.17 account.getAccessToken recreates a PCA with the default Keychain group.
+            // Use the same SDK silent acquisition on OUR configured PCA/cache instead.
+            let parameters = MSALSilentTokenParameters(scopes: scopes, account: account.account)
+            application.acquireTokenSilent(with: parameters) { [weak self] result, error in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if let error { self.silentTokenFailed(error, epoch: epoch); return }
+                    guard let result, !result.accessToken.isEmpty else {
+                        self.silentTokenFailed(nil, epoch: epoch); return
+                    }
+                    self.token(result.accessToken, epoch: epoch)
+                }
+            }
         }
     } }
+
+    private func silentTokenFailed(_ error: Error?, epoch: Int) {
+        guard !cancelled, epoch == generation else {
+            if !cancelled, let pending { rejectLocal(pending, .sessionChanged) }
+            pending = nil; busy = false; return
+        }
+        let outer = error as NSError?
+        let inner = outer?.userInfo[NSUnderlyingErrorKey] as? NSError
+        let transport = outer?.domain == NSURLErrorDomain || inner?.domain == NSURLErrorDomain
+        let keychain = outer?.domain == NSOSStatusErrorDomain || inner?.domain == NSOSStatusErrorDomain
+        let interaction = outer?.domain == MSALErrorDomain && outer?.code == MSALError.interactionRequired.rawValue
+        let numeric = outer.flatMap { [MSALErrorDomain, NSOSStatusErrorDomain, NSURLErrorDomain].contains($0.domain) ? $0.code : nil }
+        let diagnostic = NativeAuthDiagnostic(phase: "token", transportFailure: transport,
+            localFailure: keychain ? .keychain : interaction ? .interactionRequired : nil, sdkCode: numeric)
+        report(diagnostic)
+        if let pending { pending.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data) }
+        pending = nil; busy = false
+    }
 
     func token(_ value: String, epoch: Int?) {
         if cancelled { application?.getNativeAuthUserAccount()?.signOut() }

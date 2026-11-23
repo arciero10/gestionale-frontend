@@ -52,8 +52,8 @@ async function verifyMobileDesign(page) {
   }
 }
 
-async function installNative(context, platform, cached = false, launchUrl = '', startFailure = null, unlockFailure = null) {
-  await context.addInitScript(({ platform, cached, launchUrl, startFailure, unlockFailure }) => {
+async function installNative(context, platform, cached = false, launchUrl = '', startFailure = null, unlockFailure = null, tokenFailure = null) {
+  await context.addInitScript(({ platform, cached, launchUrl, startFailure, unlockFailure, tokenFailure }) => {
     window.CapacitorCustomPlatform = { name: platform };
     window.__nativeCalls = [];
     const methods = {
@@ -78,7 +78,11 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
             await new Promise(resolve => setTimeout(resolve, 40)); cached = false;
             return { step: 'login' };
           }
-          if (method === 'getAccessToken') return { accessToken: 'sdk-api-test-token' };
+          if (method === 'getAccessToken') {
+            if (tokenFailure) throw Object.assign(new Error('PRIVATE-TOKEN-ERROR'), { code: tokenFailure,
+              data: { platform: 'ios', phase: 'token', sdkCode: -50000 } });
+            return { accessToken: 'sdk-api-test-token' };
+          }
           if (method === 'start') {
             if (startFailure) throw Object.assign(new Error('DO-NOT-EXPOSE-SDK-PAYLOAD'), { code:startFailure,
               data:{platform:'ios',phase:'start',serverCodes:[],email:'DO-NOT-EXPOSE-SDK-PAYLOAD'} });
@@ -109,7 +113,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         return {};
       }
     };
-  }, { platform, cached, launchUrl, startFailure, unlockFailure });
+  }, { platform, cached, launchUrl, startFailure, unlockFailure, tokenFailure });
 }
 
 (async () => {
@@ -178,6 +182,54 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       assert.equal(calls.includes('Browser.open'), false);
       assert.equal(calls.includes('CapacitorHttp.request'), false);
       console.log(`PASS iOS Bentornato diagnostic ${code}: locked, no cache clear, token or API`);
+      await context.close();
+    }
+    {
+      const context = await browser.newContext({ viewport: { width: 393, height: 852 } });
+      await installNative(context, 'ios', false, '', null, null, 'AUTH_TOKEN_FAILED');
+      const page = await context.newPage(), logs = [];
+      page.on('console', event => logs.push(event.text()));
+      await page.goto(base);
+      await page.getByRole('button', { name: 'Accedi', exact: true }).click();
+      await page.locator('#native-email').fill('fixture@example.test');
+      await page.locator('app-native-auth-panel button[type=submit]').click();
+      await page.locator('#native-code').fill('000000');
+      await page.locator('app-native-auth-panel button[type=submit]').click();
+      await page.getByRole('heading', { name: 'Accesso non completato', exact: true }).waitFor();
+      await page.getByText('Codice assistenza: IOS-token-AUTH_TOKEN_FAILED-SDK-50000', { exact: true }).waitFor();
+      assert.equal(await page.locator('app-mobile-home').count(), 0);
+      assert.equal(logs.join('\n').includes('PRIVATE-TOKEN-ERROR'), false);
+      assert.equal((await page.locator('body').innerText()).includes('PRIVATE-TOKEN-ERROR'), false);
+      assert.equal(await page.evaluate(() => window.__nativeCalls.includes('Browser.open')), false);
+      console.log('PASS iOS post-OTP token failure: support code retained, no Home or browser bypass');
+      await context.close();
+    }
+    let sharedHomeCards;
+    for (const platform of ['android', 'ios']) {
+      const context = await browser.newContext({ viewport: { width: 393, height: 852 } });
+      await installNative(context, platform);
+      let profileReads = 0;
+      await context.route('**/api/**', route => {
+        if (new URL(route.request().url()).pathname.endsWith('/api/me')) profileReads++;
+        return route.fulfill({ json: { authenticated: true, linkedToCommunity: true, communityId: 91,
+          role: 'MEMBER', status: 'LINKED', permissions: [], communityName: 'Comunità test' } });
+      });
+      const page = await context.newPage();
+      await page.goto(base);
+      await page.getByRole('button', { name: 'Accedi', exact: true }).click();
+      await page.locator('#native-email').fill('fixture@example.test');
+      await page.locator('app-native-auth-panel button[type=submit]').click();
+      await page.locator('#native-code').fill('000000');
+      await page.locator('app-native-auth-panel button[type=submit]').click();
+      await page.waitForURL('**/mobile/home');
+      await page.locator('app-mobile-home .macro-areas').waitFor();
+      const cards = await page.locator('app-mobile-home .macro-areas a').evaluateAll(nodes => nodes.map(n => ({
+        title: n.querySelector('strong').textContent, href: n.getAttribute('href'), image: n.querySelector('img').getAttribute('src')
+      })));
+      if (sharedHomeCards) assert.deepEqual(cards, sharedHomeCards); else sharedHomeCards = cards;
+      assert.equal(profileReads, 1);
+      assert.equal(await page.locator('app-native-auth-panel').count(), 0);
+      console.log(`PASS ${platform} OTP -> verified /api/me -> same Home V5 cards, routes and images`);
       await context.close();
     }
     const cases = [

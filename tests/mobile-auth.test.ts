@@ -21,6 +21,9 @@ test('iOS unlock diagnostics distinguish local authentication, lifecycle, cache 
 });
 
 test('iOS diagnostics never expose SDK descriptions or arbitrary metadata', () => {
+  assert.equal(nativeAuthDiagnostic({ code: 'AUTH_TOKEN_FAILED', data: { platform: 'ios', phase: 'token', sdkCode: -50000 } })?.reference,
+    'IOS-token-AUTH_TOKEN_FAILED-SDK-50000');
+  assert.equal(nativeAuthDiagnostic({ code: 'AUTH_TOKEN_FAILED', data: { sdkCode: 'PRIVATE' } })?.reference.includes('PRIVATE'), false);
   const d = nativeAuthDiagnostic({ code: 'AUTH_START_FAILED', message: 'DO-NOT-EXPOSE', data: {
     platform: 'ios', phase: 'start', serverCodes: [700016, 'DO-NOT-EXPOSE', -1, 700016], email: 'DO-NOT-EXPOSE', token: 'DO-NOT-EXPOSE'
   } });

@@ -27,6 +27,7 @@ export class MobileAuthService {
   readonly native = authPlatform(Capacitor.getPlatform()) === 'native';
   readonly signedIn = signal(false);
   readonly error = signal<string | null>(null);
+  readonly diagnostic = signal<ReturnType<typeof nativeAuthDiagnostic>>(null);
   readonly nativeOutcome = signal<NativeOutcome>({ step: 'login' });
   readonly requestedFlow = signal<'signin' | 'signup' | null>(null);
   private readonly sdk = registerPlugin<NativeAuthBridge>('EntraNativeAuth');
@@ -146,11 +147,13 @@ export class MobileAuthService {
   accessToken(): Promise<string> {
     const startedAt = performance.now();
     if (!this.browserMode) return this.tokenPromise ??= this.sdkSession.accessToken().then(token => {
+      this.diagnostic.set(null);
       console.info('[AUTH timing] API token ready', { elapsedMs: Math.round(performance.now()-startedAt), obtained: Boolean(token) });
       return token;
     }).catch(async error => {
       console.info('[AUTH native] API access token obtained', false);
       const diagnostic = nativeAuthDiagnostic(error);
+      this.diagnostic.set(diagnostic);
       this.error.set(diagnostic?.message ?? MOBILE_AUTH_MESSAGES.token);
       if (diagnostic) console.info('[AUTH diagnostic]', { code: diagnostic.code, phase: diagnostic.phase, serverCodes: diagnostic.serverCodes });
       if (error?.code === 'SESSION_EXPIRED') {
@@ -173,6 +176,7 @@ export class MobileAuthService {
     this.signedIn.set(false);
     this.error.set(null);
     this.requestedFlow.set(preserveLoginPanel ? this.requestedFlow() ?? 'signin' : null);
+    this.diagnostic.set(null);
     this.nativeOutcome.set({ step: 'login' });
     this.logoutPromise = this.sdkSession.logout().catch(() => {
       this.error.set('Disconnessione non completata. Riprova prima di accedere con un altro account.');

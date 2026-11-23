@@ -38,6 +38,9 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
         <section class="auth-loading-card error">
           <h2>Accesso non completato</h2>
           <p>{{ authErrorMessage() }}</p>
+          @if (mobileAuth.native && mobileAuth.diagnostic(); as diagnostic) {
+            <p>Codice assistenza: {{ diagnostic.reference }}</p>
+          }
           <button type="button" class="auth-retry-button" (click)="retryLogin()">Riprova accesso</button>
         </section>
       </main>

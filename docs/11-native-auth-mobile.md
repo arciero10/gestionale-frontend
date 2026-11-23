@@ -1,5 +1,25 @@
 # Native Authentication mobile
 
+## iOS 1008: token acquisition cache alignment
+
+MSAL 2.17 MSALNativeAuthUserAccountResult+Internal.swift creates a new config
+for getAccessTokenInternal without copying cacheConfig.keychainSharingGroup.
+MSALNativeAuthSilentTokenProvider then creates another native PCA, using the
+default shared group instead of the bridge's supported private bundle group.
+This can fail even though OTP and getNativeAuthUserAccount succeeded.
+
+The bridge now calls acquireTokenSilent on the already configured native PCA,
+with account.account and the same API scopes. This is the same public SDK API
+called by the SDK silent provider; refresh remains owned by MSAL. No cache
+migration, keychain deletion or new entitlements are needed. Face ID and epoch
+checks are unchanged. The original public error message identified token
+failure, not a desktop routing or Home V5 difference. The real iPhone test
+remains required to confirm the repair.
+
+MobileAuthService retains sanitized diagnostic metadata so the root post-login
+error can display the same assistance reference as the auth panel. Only known
+NSError domains contribute numeric SDK codes. No raw description is exposed.
+
 ## iOS unlock after successful Face ID
 
 OTP-to-Welcome cause: authenticationGeneration was captured only in start().

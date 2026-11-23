@@ -10,6 +10,8 @@ const messages: Record<string, string> = {
   AUTH_CACHE_ACCOUNT_MISSING: 'L’account non e disponibile nella sessione salvata. Accedi nuovamente.',
   AUTH_SESSION_LOCKED: 'La sessione e ancora bloccata. Sblocca il dispositivo per continuare.',
   AUTH_TOKEN_EXPIRED: 'La sessione Microsoft e scaduta. Accedi nuovamente.',
+  AUTH_KEYCHAIN_FAILED: 'Non e stato possibile accedere alla sessione protetta del dispositivo. Comunica il codice assistenza.',
+  AUTH_TOKEN_INTERACTION_REQUIRED: 'Microsoft richiede un nuovo accesso per completare la sessione.',
   AUTH_CONFIGURATION: 'Accesso non disponibile per questa configurazione dell’app. Contatta l’assistenza.',
   AUTH_TRANSPORT: 'Il servizio di accesso non è raggiungibile. Riprova tra poco.',
   AUTH_METHOD_UNAVAILABLE: 'Il servizio richiede un metodo diverso dal codice email. Contatta l’assistenza.',
@@ -30,6 +32,7 @@ export function nativeAuthDiagnostic(error: unknown): { message: string; referen
   if (typeof code !== 'string' || !Object.hasOwn(messages, code)) return null;
   const phase = typeof data['phase'] === 'string' && phases.has(data['phase']) ? data['phase'] : 'start';
   const serverCodes = Array.isArray(data['serverCodes']) ? [...new Set(data['serverCodes'].filter((n): n is number => Number.isSafeInteger(n) && n > 0 && n < 10_000_000))].sort((a,b)=>a-b).slice(0,3) : [];
+  const sdkCode = Number.isSafeInteger(data['sdkCode']) && Math.abs(data['sdkCode'] as number) < 10_000_000 ? data['sdkCode'] as number : null;
   return { message: messages[code], code, phase, serverCodes,
-    reference: `${data['platform'] === 'ios' ? 'IOS' : 'NATIVE'}-${phase}-${code}${serverCodes.length ? '-' + serverCodes.join('.') : ''}` };
+    reference: `${data['platform'] === 'ios' ? 'IOS' : 'NATIVE'}-${phase}-${code}${serverCodes.length ? '-' + serverCodes.join('.') : ''}${sdkCode !== null ? '-SDK' + sdkCode : ''}` };
 }

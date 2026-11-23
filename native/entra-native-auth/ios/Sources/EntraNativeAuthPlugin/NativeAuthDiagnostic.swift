@@ -22,20 +22,24 @@ enum NativeAuthLocalFailure: String, CaseIterable {
     case sessionChanged = "AUTH_SESSION_CHANGED"
     case cacheMissing = "AUTH_CACHE_ACCOUNT_MISSING"
     case locked = "AUTH_SESSION_LOCKED"
+    case keychain = "AUTH_KEYCHAIN_FAILED"
+    case interactionRequired = "AUTH_TOKEN_INTERACTION_REQUIRED"
 }
 
 struct NativeAuthDiagnostic {
     let phase: String
     let code: String
     let serverCodes: [Int]
+    let sdkCode: Int?
 
     init(phase: String, serverCodes: [Int] = [], browserRequired: Bool = false,
          invalidCode: Bool = false, signInRejected: Bool = false,
          accountConflict: Bool = false, transportFailure: Bool = false,
          configurationFailure: Bool = false, methodUnavailable: Bool = false,
-         localFailure: NativeAuthLocalFailure? = nil, tokenExpired: Bool = false) {
+         localFailure: NativeAuthLocalFailure? = nil, tokenExpired: Bool = false, sdkCode: Int? = nil) {
         let phases = ["configuration", "start", "challenge", "resend", "token", "unlock", "logout", "restore"]
         self.phase = phases.contains(phase) ? phase : "start"
+        self.sdkCode = sdkCode
         self.serverCodes = Array(Set(serverCodes.filter { $0 > 0 && $0 < 10_000_000 })).sorted().prefix(3).map { $0 }
         if let localFailure { code = localFailure.rawValue }
         else if tokenExpired { code = "AUTH_TOKEN_EXPIRED" }
@@ -51,5 +55,9 @@ struct NativeAuthDiagnostic {
         else { code = "AUTH_START_FAILED" }
     }
 
-    var data: [String: Any] { ["platform": "ios", "phase": phase, "code": code, "serverCodes": serverCodes] }
+    var data: [String: Any] {
+        var result: [String: Any] = ["platform": "ios", "phase": phase, "code": code, "serverCodes": serverCodes]
+        if let sdkCode { result["sdkCode"] = sdkCode }
+        return result
+    }
 }
