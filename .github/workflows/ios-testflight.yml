@@ -70,6 +70,7 @@ jobs:
       - name: Test auth, inviti e navigazione mobile
         run: |
           npm run test:auth-mobile
+          node scripts/test-ios-msal-configuration.mjs
           npm run test:invitation-links
           node scripts/test-auth-completion.mjs
           node scripts/test-member-invitation.mjs

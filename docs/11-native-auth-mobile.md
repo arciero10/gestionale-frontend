@@ -1,5 +1,28 @@
 # Native Authentication mobile
 
+## iOS 1006: required MSAL query schemes
+
+The 1005 device reference IOS-configuration-AUTH_CONFIGURATION is emitted
+by configure(), before signIn starts. This reference alone does not retain
+the original NSError and cannot prove which initialization check failed.
+Source inspection found a concrete missing SDK prerequisite: Info.plist did
+not register LSApplicationQueriesSchemes msauthv2 and msauthv3.
+
+MSAL 2.17 sets bypassRedirectURIValidation for native auth without a custom
+redirect, but its superclass still checks additional query schemes when the
+default registered redirect is broker-capable. CommonCore selects the app's
+registered msauth bundle redirect and requires BOTH query schemes. This is
+a local initializer failure, not an OTP server response. Registering these
+schemes only permits OS queries; it does not enable automatic browser fallback.
+
+Sources: MSAL 2.17 MSALPublicClientApplication.m and its pinned CommonCore
+32a4d4937a04c51897afefeb6f93c37fb95d27da,
+IdentityCore/src/util/ios/MSIDRedirectUriVerifier.m.
+The iOS tenantSubdomain convenience initializer constructs the CIAM authority;
+Android's full authority constructor must not be copied into this iOS API.
+Client ID, tenant, OOB challenge, keychain and tenant policy remain unchanged.
+Real iPhone OTP verification remains required after installing 1006.
+
 ## iOS TestFlight 1004: errore prima dell'OTP (23 novembre 2026)
 
 Il caso reale riferito dall'utente fallisce dopo invio email, prima del codice.
