@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-26
+    runs-on: macos-26-intel
     timeout-minutes: 60
     env:
       BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
