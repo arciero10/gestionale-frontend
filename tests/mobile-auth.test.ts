@@ -7,6 +7,24 @@ import { loadNativeAuthRedirect, NativeAuthConfigError } from '../src/app/auth/n
 import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, NativeSubmission } from '../src/app/auth/entra-native-core';
 import { postLoginDestination } from '../src/app/auth/post-login-route';
 import { COMMUNITY_ONBOARDING_ROLES } from '../src/app/auth/community-roles';
+import { nativeAuthDiagnostic } from '../src/app/auth/native-auth-diagnostics';
+
+test('iOS diagnostics never expose SDK descriptions or arbitrary metadata', () => {
+  const d = nativeAuthDiagnostic({ code: 'AUTH_START_FAILED', message: 'DO-NOT-EXPOSE', data: {
+    platform: 'ios', phase: 'start', serverCodes: [700016, 'DO-NOT-EXPOSE', -1, 700016], email: 'DO-NOT-EXPOSE', token: 'DO-NOT-EXPOSE'
+  } });
+  assert.equal(d?.reference, 'IOS-start-AUTH_START_FAILED-700016');
+  assert.equal(JSON.stringify(d).includes('DO-NOT-EXPOSE'), false);
+  assert.equal(nativeAuthDiagnostic({ code: 'private-data' }), null);
+  assert.equal(nativeAuthDiagnostic({ code: 'AUTH_TOKEN_FAILED', data: { phase: 'token' } })?.phase, 'token');
+});
+
+test('unknown SDK result is rejected without an authenticated session', async () => {
+  const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
+  sdk.next = { step: 'unknown' } as unknown as NativeOutcome;
+  await assert.rejects(session.start({ flow: 'signin', method: 'otp', email: 'fixture@example.test' }), { code: 'AUTH_SDK_RESULT' });
+  assert.equal(session.signedIn, false);
+});
 
 test('ordinary onboarding excludes catechist and keeps brother responsible and corresponsible', () => {
   assert.equal(COMMUNITY_ONBOARDING_ROLES.some(r => String(r.backend) === 'CATECHIST'), false);

@@ -2,6 +2,7 @@ import { Component, effect, inject, input, output, signal } from '@angular/core'
 import { FormsModule } from '@angular/forms';
 import { MobileAuthService } from './mobile-auth.service';
 import { NativeFlow } from './entra-native-core';
+import { nativeAuthDiagnostic } from './native-auth-diagnostics';
 
 @Component({
   selector: 'app-native-auth-panel',
@@ -14,6 +15,7 @@ import { NativeFlow } from './entra-native-core';
         <p class="brand">Eventi di Comunità</p>
         <h1 id="native-auth-title">{{ step() === 'unlock' ? 'Bentornato' : title() }}</h1>
         @if (message()) { <p class="feedback" role="alert">{{ message() }}</p> }
+        @if (supportCode()) { <p class="feedback">Codice assistenza: {{ supportCode() }}</p> }
         @if (step() === 'unlock') {
           <p>Sblocca la sessione con biometria o codice del dispositivo.</p>
           <button type="button" class="primary" (click)="unlock()" [disabled]="busy()">Sblocca sessione</button>
@@ -78,6 +80,7 @@ export class NativeAuthPanel {
   protected readonly mobile = inject(MobileAuthService);
   protected readonly busy = signal(false);
   protected readonly message = signal<string | null>(null);
+  protected readonly supportCode = signal<string | null>(null);
   private readonly overrideFlow = signal<NativeFlow | null>(null);
   protected email = '';
   protected password = '';
@@ -94,14 +97,24 @@ export class NativeAuthPanel {
     if (this.busy()) return;
     this.busy.set(true);
     this.message.set(null);
+    this.supportCode.set(null);
     try {
       await operation();
+      const outcomeDiagnostic = nativeAuthDiagnostic({ data: this.mobile.nativeOutcome().diagnostic });
+      if (outcomeDiagnostic) this.supportCode.set(outcomeDiagnostic.reference);
       if (this.step() === 'complete') {
         this.overrideFlow.set('signin');
         this.message.set('Password aggiornata. Accedi con la nuova password.');
       }
       if (this.mobile.signedIn()) this.authenticated.emit();
     } catch (error) {
+      const diagnostic = nativeAuthDiagnostic(error);
+      if (diagnostic) {
+        this.message.set(diagnostic.message);
+        this.supportCode.set(diagnostic.reference);
+        console.info('[AUTH diagnostic]', { code: diagnostic.code, phase: diagnostic.phase, serverCodes: diagnostic.serverCodes });
+        return;
+      }
       const code = (error as { code?: string })?.code;
       this.message.set(this.mobile.error() ?? (code === 'SESSION_EXPIRED' ? 'Sessione scaduta. Accedi nuovamente.'
         : code === 'ACCOUNT_ALREADY_SIGNED_IN' ? 'La sessione precedente non si e chiusa. Riprova l\'accesso.'

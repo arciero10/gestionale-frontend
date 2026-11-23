@@ -11,12 +11,14 @@ final class NativeFlow: NSObject, SignInStartDelegate, SignInVerifyCodeDelegate,
     weak var owner: EntraNativeAuthPlugin?
     var state: AnyObject?
     let scopes: [String]
+    let otpOnly: Bool
     var tokenGeneration: Int?
     var authenticationGeneration: Int?
 
-    init(owner: EntraNativeAuthPlugin, scopes: [String]) {
+    init(owner: EntraNativeAuthPlugin, scopes: [String], otpOnly: Bool = false) {
         self.owner = owner
         self.scopes = scopes
+        self.otpOnly = otpOnly
     }
 
     private func step(_ name: String, _ state: AnyObject) {
@@ -54,7 +56,10 @@ final class NativeFlow: NSObject, SignInStartDelegate, SignInVerifyCodeDelegate,
     func onSignUpResendCodeCodeRequired(newState: SignUpCodeRequiredState, sentTo: String, channelTargetType: MSALNativeAuthChannelType, codeLength: Int) { code(newState, codeLength) }
     func onResetPasswordCodeRequired(newState: ResetPasswordCodeRequiredState, sentTo: String, channelTargetType: MSALNativeAuthChannelType, codeLength: Int) { code(newState, codeLength) }
     func onResetPasswordResendCodeRequired(newState: ResetPasswordCodeRequiredState, sentTo: String, channelTargetType: MSALNativeAuthChannelType, codeLength: Int) { code(newState, codeLength) }
-    func onSignInPasswordRequired(newState: SignInPasswordRequiredState) { step("password", newState) }
+    func onSignInPasswordRequired(newState: SignInPasswordRequiredState) {
+        if otpOnly { state = nil; owner?.requireDifferentMethod(); return }
+        step("password", newState)
+    }
     func onSignUpPasswordRequired(newState: SignUpPasswordRequiredState) { step("password", newState) }
     func onPasswordRequired(newState: ResetPasswordRequiredState) { step("password", newState) }
 

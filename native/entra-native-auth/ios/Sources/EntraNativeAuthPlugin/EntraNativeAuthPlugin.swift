@@ -1,6 +1,7 @@
 import Capacitor
 import LocalAuthentication
 import MSAL
+import OSLog
 import UIKit
 
 @objc(EntraNativeAuthPlugin)
@@ -22,6 +23,21 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     private var backgroundObserver: NSObjectProtocol?
     private var generation = 0
     private var unlocked = false
+    private var phase = "configuration"
+    private var phaseStarted = Date()
+    private let diagnostics = Logger(subsystem: "it.panteleia.eventidicomunita", category: "NativeAuth")
+
+    private func startPhase(_ value: String) {
+        phase = value
+        phaseStarted = Date()
+        diagnostics.info("phase=\(value, privacy: .public) event=started")
+    }
+
+    private func report(_ diagnostic: NativeAuthDiagnostic) {
+        let elapsed = Int(Date().timeIntervalSince(phaseStarted) * 1000)
+        let codes = diagnostic.serverCodes.map(String.init).joined(separator: ",")
+        diagnostics.info("phase=\(diagnostic.phase, privacy: .public) code=\(diagnostic.code, privacy: .public) serverCodes=\(codes, privacy: .public) elapsedMs=\(elapsed)")
+    }
 
     public override func load() {
         MSALGlobalConfig.loggerConfig.logLevel = .nothing
@@ -42,10 +58,17 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func main(_ action: @escaping () -> Void) { DispatchQueue.main.async(execute: action) }
     private func reject(_ call: CAPPluginCall, _ code: String) {
+        if ["INVALID_CONFIGURATION", "NOT_CONFIGURED"].contains(code) {
+            let diagnostic = NativeAuthDiagnostic(phase: phase, configurationFailure: true)
+            report(diagnostic)
+            call.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data)
+            return
+        }
         call.reject("Native authentication could not complete.", code)
     }
 
     @objc public func configure(_ call: CAPPluginCall) { main { [self] in
+        startPhase("configuration")
         guard !busy else { reject(call, "BUSY"); return }
         guard let client = call.getString("clientId"), UUID(uuidString: client) != nil,
               let tenant = call.getString("tenantSubdomain"),
@@ -76,7 +99,14 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             unlocked = false
             generation += 1
             call.resolve(["step": "login"])
-        } catch { reject(call, "INVALID_CONFIGURATION") }
+        } catch {
+            let nsError = error as NSError
+            let diagnostic = NativeAuthDiagnostic(phase: phase,
+                transportFailure: nsError.domain == NSURLErrorDomain,
+                configurationFailure: nsError.domain != NSURLErrorDomain)
+            report(diagnostic)
+            call.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data)
+        }
     } }
 
     private func begin(_ call: CAPPluginCall) -> Bool {
@@ -89,6 +119,10 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     func finish(_ result: JSObject) {
+        let step = result["step"] as? String ?? "missing"
+        if ["login", "code", "password", "attributes", "authenticated", "complete", "fallback", "unlock"].contains(step) {
+            diagnostics.info("phase=\(self.phase, privacy: .public) outcome=\(step, privacy: .public)")
+        }
         if !cancelled { pending?.resolve(result) }
         pending = nil
         busy = false
@@ -96,15 +130,26 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     func failed(_ error: MSALNativeAuthError) {
-        if error.isBrowserRequired { flow?.state = nil; finish(["step": "fallback"]); return }
+        let startError = error as? SignInStartError
+        let diagnostic = NativeAuthDiagnostic(phase: phase, serverCodes: error.errorCodes,
+            browserRequired: error.isBrowserRequired,
+            invalidCode: (error as? VerifyCodeError)?.isInvalidCode == true,
+            signInRejected: startError?.isInvalidCredentials == true || startError?.isInvalidUsername == true || startError?.isUserNotFound == true,
+            accountConflict: error.localizedDescription.lowercased().contains("already signed in"))
+        report(diagnostic)
+        if error.isBrowserRequired { flow?.state = nil; finish(["step": "fallback", "diagnostic": diagnostic.data]); return }
         if !cancelled, let call = pending {
-            let code = error.localizedDescription.lowercased().contains("already signed in")
-                ? "ACCOUNT_ALREADY_SIGNED_IN" : "AUTH_FAILED"
-            reject(call, code)
+            call.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data)
         }
         pending = nil
         busy = false
         if cancelled { flow = nil }
+    }
+
+    func requireDifferentMethod() {
+        let diagnostic = NativeAuthDiagnostic(phase: phase, methodUnavailable: true)
+        report(diagnostic)
+        finish(["step": "fallback", "diagnostic": diagnostic.data])
     }
 
     func authenticated(_ result: MSALNativeAuthUserAccountResult, epoch: Int?) {
@@ -125,6 +170,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
               let method = call.getString("method"), ["password", "otp"].contains(method)
         else { reject(call, "INVALID_INPUT"); return }
         guard begin(call) else { return }
+        startPhase("start")
         do {
             // OTP must not advertise password support: the SDK negotiates the challenge.
             application?.getNativeAuthUserAccount()?.signOut()
@@ -144,7 +190,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             pending = nil; busy = false
             return
         }
-        let delegate = NativeFlow(owner: self, scopes: scopes)
+        let delegate = NativeFlow(owner: self, scopes: scopes, otpOnly: method == "otp")
         delegate.authenticationGeneration = generation
         flow = delegate
         if kind == "signin" {
@@ -179,6 +225,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         default: reject(call, "NO_FLOW"); return
         }
         guard begin(call) else { return }
+        startPhase("challenge")
         switch state {
         case let s as SignInCodeRequiredState: s.submitCode(code: code, delegate: flow)
         case let s as SignUpCodeRequiredState: s.submitCode(code: code, delegate: flow)
@@ -197,6 +244,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
               state is SignInCodeRequiredState || state is SignUpCodeRequiredState || state is ResetPasswordCodeRequiredState
         else { reject(call, "NO_FLOW"); return }
         guard begin(call) else { return }
+        startPhase("resend")
         if let s = state as? SignInCodeRequiredState { s.resendCode(delegate: flow) }
         if let s = state as? SignUpCodeRequiredState { s.resendCode(delegate: flow) }
         if let s = state as? ResetPasswordCodeRequiredState { s.resendCode(delegate: flow) }
@@ -228,12 +276,14 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc public func restore(_ call: CAPPluginCall) { main { [self] in
+        startPhase("restore")
         guard application != nil else { reject(call, "NOT_CONFIGURED"); return }
         guard !busy else { reject(call, "BUSY"); return }
         unlocked = false
         call.resolve(["step": application?.getNativeAuthUserAccount() == nil ? "login" : "unlock"])
     } }
     @objc public func unlock(_ call: CAPPluginCall) { main { [self] in
+        startPhase("unlock")
         gated(call) { [self] in
             unlocked = application?.getNativeAuthUserAccount() != nil
             finish(["step": unlocked ? "authenticated" : "login"])
@@ -249,6 +299,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc public func getAccessToken(_ call: CAPPluginCall) { main { [self] in
         guard unlocked, UIApplication.shared.applicationState == .active else { reject(call, "LOCKED"); return }
         guard begin(call) else { return }
+        startPhase("token")
         let epoch = generation
         do {
             guard let account = application?.getNativeAuthUserAccount() else { finish(["step": "login"]); return }
@@ -286,6 +337,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc public func cancel(_ call: CAPPluginCall) { main { [self] in stop(); call.resolve(["step": "login"]) } }
     @objc public func logout(_ call: CAPPluginCall) { main { [self] in
+        startPhase("logout")
         stop()
         drainLogout(call, remaining: 200)
     } }

@@ -2,6 +2,7 @@ export type NativeFlow = 'signin' | 'signup' | 'reset';
 export type NativeStep = 'login' | 'code' | 'password' | 'attributes' | 'authenticated' | 'complete' | 'fallback' | 'unlock';
 export interface NativeOutcome {
   step: NativeStep;
+  diagnostic?: Record<string, unknown>;
   attributes?: { name: string; label?: string; required: boolean }[];
 }
 export interface NativeStart { flow: NativeFlow; email: string; password?: string; method: 'password' | 'otp' }
@@ -26,14 +27,17 @@ export class EntraNativeSession {
   private signingOut: Promise<void> | null = null;
   constructor(private readonly bridge: NativeAuthBridge) {}
   get signedIn(): boolean { return this.outcome.step === 'authenticated'; }
-  private async transition(operation: () => Promise<NativeOutcome>): Promise<NativeOutcome> {
+  private async transition(operation: () => Promise<NativeOutcome>, phase = 'start'): Promise<NativeOutcome> {
     const version = this.version;
     const outcome = await operation();
     if (version !== this.version) throw new Error('Operazione annullata.');
+    if (!outcome || !['login', 'code', 'password', 'attributes', 'authenticated', 'complete', 'fallback', 'unlock'].includes(outcome.step)) {
+      throw Object.assign(new Error('Unrecognized native authentication result.'), { code: 'AUTH_SDK_RESULT', data: { phase } });
+    }
     this.outcome = outcome;
     return outcome;
   }
-  restore(): Promise<NativeOutcome> { return this.transition(() => this.bridge.restore()); }
+  restore(): Promise<NativeOutcome> { return this.transition(() => this.bridge.restore(), 'restore'); }
   async start(options: NativeStart): Promise<NativeOutcome> {
     // Cancelling a challenge does not remove an SDK account from secure storage.
     const signingOut = this.logout();
@@ -52,9 +56,9 @@ export class EntraNativeSession {
       }
     });
   }
-  submit(options: NativeSubmission): Promise<NativeOutcome> { return this.transition(() => this.bridge.submit(options)); }
-  resend(): Promise<NativeOutcome> { return this.transition(() => this.bridge.resend()); }
-  unlock(): Promise<NativeOutcome> { return this.transition(() => this.bridge.unlock()); }
+  submit(options: NativeSubmission): Promise<NativeOutcome> { return this.transition(() => this.bridge.submit(options), 'challenge'); }
+  resend(): Promise<NativeOutcome> { return this.transition(() => this.bridge.resend(), 'resend'); }
+  unlock(): Promise<NativeOutcome> { return this.transition(() => this.bridge.unlock(), 'unlock'); }
   async accessToken(): Promise<string> {
     if (!this.signedIn) throw new Error('Sblocca la sessione o accedi nuovamente.');
     const version = this.version;

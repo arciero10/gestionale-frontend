@@ -1,5 +1,37 @@
 # Native Authentication mobile
 
+## iOS TestFlight 1004: errore prima dell'OTP (23 novembre 2026)
+
+Il caso reale riferito dall'utente fallisce dopo invio email, prima del codice.
+Non ci sono ancora codici SDK del dispositivo: non attribuire la causa a rete,
+password, OTP, API profili o routing. La configurazione pubblica usa lo stesso
+client/tenant di Android. La disponibilita OTP e le policy effettive del tenant
+non sono verificabili dal solo repository e richiedono verifica amministrativa.
+
+Il gruppo cache privato bundleIdentifier e espressamente supportato da MSAL:
+non aggiungere Keychain Sharing o cambiare authority per tentativi. Fonte versione:
+https://github.com/AzureAD/microsoft-authentication-library-for-objc/blob/2.17.0/MSAL/src/public/configuration/publicClientApplication/cache/MSALCacheConfig.h
+
+Corretto il difetto certo di osservabilita: tutti gli errori SDK diventavano
+AUTH_FAILED e configure perdeva il codice nel catch TypeScript. Il bridge ora
+trasmette solo categoria, fase e fino a tre codici numerici server, senza
+errorDescription, correlation ID, errorUri o payload. OSLog contiene solo questi
+campi e durata; il logging interno MSAL resta disabilitato. La UI mostra messaggi
+curati e un codice assistenza copiabile manualmente, non messaggi Microsoft.
+Un generalError privo di codici resta AUTH_START_FAILED, non una diagnosi di rete.
+AUTH_TRANSPORT e usato solo quando un errore di trasporto e realmente tipizzato.
+
+OTP richiesto continua ad annunciare solo OOB. Un callback password durante quel
+tentativo ferma la continuation e segnala metodo diverso; browser resta esplicito,
+mai automatico. Risultati bridge sconosciuti sono rifiutati senza autenticare.
+Token, /api/me e navigazione rimangono subordinati all'account/sessione reali.
+
+Test: suite auth e completion, UI pre-OTP iOS con configurazione/trasporto/errore
+generale, nessuna chiamata /api/me, nessun browser, nessun messaggio SDK grezzo.
+Il workflow macOS esegue anche sei XCTest Swift sulla classificazione diagnostica;
+non sono test di login reale contro Entra. La causa specifica del device rimane
+da stabilire; una build diagnostica non certifica un fix del login iPhone.
+
 ## Post-OTP completion and diagnostics (22 November 2026)
 
 Android/iOS Native Authentication does not use the SPA getAllAccounts cache or

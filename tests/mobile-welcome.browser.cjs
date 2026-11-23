@@ -52,8 +52,8 @@ async function verifyMobileDesign(page) {
   }
 }
 
-async function installNative(context, platform, cached = false, launchUrl = '') {
-  await context.addInitScript(({ platform, cached, launchUrl }) => {
+async function installNative(context, platform, cached = false, launchUrl = '', startFailure = null) {
+  await context.addInitScript(({ platform, cached, launchUrl, startFailure }) => {
     window.CapacitorCustomPlatform = { name: platform };
     window.__nativeCalls = [];
     const methods = {
@@ -76,6 +76,8 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
           }
           if (method === 'getAccessToken') return { accessToken: 'sdk-api-test-token' };
           if (method === 'start') {
+            if (startFailure) throw Object.assign(new Error('DO-NOT-EXPOSE-SDK-PAYLOAD'), { code:startFailure,
+              data:{platform:'ios',phase:'start',serverCodes:[],email:'DO-NOT-EXPOSE-SDK-PAYLOAD'} });
             if (cached) throw Object.assign(new Error('An account is already signed in'), { code: 'ACCOUNT_ALREADY_SIGNED_IN' });
             window.__nativeFlow = options.flow;
             window.__nativeSubmits = 0;
@@ -103,7 +105,7 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
         return {};
       }
     };
-  }, { platform, cached, launchUrl });
+  }, { platform, cached, launchUrl, startFailure });
 }
 
 (async () => {
@@ -248,6 +250,27 @@ async function installNative(context, platform, cached = false, launchUrl = '') 
       await verifyMobileDesign(page); await page.screenshot({ path: path.join(output, `native-${label}.png`), fullPage: true });
       console.log(`PASS ${label}: form in-app, nessuna apertura browser`);
       await context.close();
+    }
+    if(!process.env.MOBILE_TEST_FLOW||process.env.MOBILE_TEST_FLOW==='ios-diagnostics'){
+      for(const code of ['AUTH_START_FAILED','AUTH_CONFIGURATION','AUTH_TRANSPORT']){
+        const context=await browser.newContext({viewport:{width:390,height:844}});
+        await installNative(context,'ios',false,'',code);
+        let meCalls=0;
+        await context.route('**/api/me',async route=>{meCalls++;await route.fulfill({status:401,json:{}});});
+        const page=await context.newPage();const logs=[];page.on('console',msg=>logs.push(msg.text()));
+        await page.goto(base);await page.getByRole('button',{name:'Accedi',exact:true}).click();
+        await page.locator('#native-email').fill('fixture@example.test');
+        await page.locator('app-native-auth-panel button[type="submit"]').click();
+        await page.getByText(`Codice assistenza: IOS-start-${code}`,{exact:true}).waitFor();
+        assert.equal(await page.locator('#native-code').count(),0);
+        assert.equal(await page.locator('#native-password').count(),0);
+        assert.equal(await page.locator('app-mobile-shell').count(),0);
+        assert.equal(await page.evaluate(()=>window.__nativeCalls.includes('Browser.open')),false);
+        assert.equal(meCalls,0);
+        assert.equal((await page.locator('body').innerText()).includes('DO-NOT-EXPOSE'),false);
+        assert.equal(logs.join('\n').includes('DO-NOT-EXPOSE'),false);
+        await context.close();console.log(`PASS iOS pre-OTP diagnostic ${code}: no browser, token/profile or raw SDK payload`);
+      }
     }
     for (const flow of ['password', 'otp', 'reset', 'linked', 'retry', 'profile-slow', 'profile-down', 'profile-denied', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });

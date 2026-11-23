@@ -9,6 +9,7 @@ import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, Nativ
 import { loadNativeAuthRedirect, NativeAuthConfigError } from './native-auth-config';
 import { MobileAuthError, MobileAuthSession } from './mobile-auth-core';
 import { parseInvitationDeepLink } from './invitation-link';
+import { nativeAuthDiagnostic } from './native-auth-diagnostics';
 
 export const MOBILE_AUTH_MESSAGES = {
   cancelled: 'Accesso annullato. Puoi riprovare.',
@@ -51,7 +52,7 @@ export class MobileAuthService {
         }
       });
       this.applyOutcome(await this.sdkSession.restore());
-    })().catch(() => { this.sdkInitialization = null; throw new Error('Accesso nativo non disponibile. Riprova.'); });
+    })().catch(error => { this.sdkInitialization = null; throw error; });
   }
 
   private applyOutcome(outcome: NativeOutcome): void {
@@ -149,6 +150,9 @@ export class MobileAuthService {
       return token;
     }).catch(async error => {
       console.info('[AUTH native] API access token obtained', false);
+      const diagnostic = nativeAuthDiagnostic(error);
+      this.error.set(diagnostic?.message ?? MOBILE_AUTH_MESSAGES.token);
+      if (diagnostic) console.info('[AUTH diagnostic]', { code: diagnostic.code, phase: diagnostic.phase, serverCodes: diagnostic.serverCodes });
       if (error?.code === 'SESSION_EXPIRED') {
         await this.logout();
         this.error.set(MOBILE_AUTH_MESSAGES.expired);
