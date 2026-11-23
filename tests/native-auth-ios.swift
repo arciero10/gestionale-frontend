@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+@testable import NativeAuthDiagnostics
 
 final class NativeAuthDiagnosticTests: XCTestCase {
     func testConfiguration() {
@@ -28,16 +29,3 @@ final class NativeAuthDiagnosticTests: XCTestCase {
     }
 }
 
-@main
-struct NativeAuthTestRunner {
-    static func main() {
-        XCTMain([testCase([
-            ("configuration", NativeAuthDiagnosticTests.testConfiguration),
-            ("start classification", NativeAuthDiagnosticTests.testStartIsNotAssumedToBeNetworkOrBadCode),
-            ("challenge and token", NativeAuthDiagnosticTests.testOtpAndTokenAreSeparate),
-            ("explicit browser and method", NativeAuthDiagnosticTests.testBrowserAndMethodAreExplicit),
-            ("account recovery", NativeAuthDiagnosticTests.testExistingAccountRecoveryIsPreserved),
-            ("allowlisted metadata", NativeAuthDiagnosticTests.testOnlyAllowlistedMetadataCrossesBridge)
-        ])])
-    }
-}

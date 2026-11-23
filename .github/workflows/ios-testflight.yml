@@ -76,9 +76,14 @@ jobs:
           node scripts/test-mobile-v5.mjs
       - name: Test unitari Swift diagnostica Native Auth
         run: |
-          TEST_FRAMEWORKS="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/Library/Frameworks"
-          swiftc -F "$TEST_FRAMEWORKS" -Xlinker -rpath -Xlinker "$TEST_FRAMEWORKS" native/entra-native-auth/ios/Sources/EntraNativeAuthPlugin/NativeAuthDiagnostic.swift tests/native-auth-ios.swift -o "$RUNNER_TEMP/native-auth-ios-tests"
-          "$RUNNER_TEMP/native-auth-ios-tests"
+          SOURCE_ROOT="$PWD"
+          TEST_PACKAGE="$RUNNER_TEMP/native-auth-diagnostics"
+          mkdir -p "$TEST_PACKAGE"
+          cd "$TEST_PACKAGE"
+          swift package init --type library --name NativeAuthDiagnostics
+          cp "$SOURCE_ROOT/native/entra-native-auth/ios/Sources/EntraNativeAuthPlugin/NativeAuthDiagnostic.swift" Sources/NativeAuthDiagnostics/NativeAuthDiagnostics.swift
+          cp "$SOURCE_ROOT/tests/native-auth-ios.swift" Tests/NativeAuthDiagnosticsTests/NativeAuthDiagnosticsTests.swift
+          swift test
       - run: npm run build
       - run: npx cap sync ios
       - name: Risolvi Swift Package Manager
