@@ -1,5 +1,15 @@
 const phases = new Set(['configuration', 'start', 'challenge', 'resend', 'token', 'unlock', 'logout', 'restore']);
 const messages: Record<string, string> = {
+  AUTH_LOCAL_UNAVAILABLE: 'Sblocco dispositivo non disponibile. Verifica Face ID e il codice del dispositivo.',
+  AUTH_LOCAL_CANCELLED: 'Sblocco annullato o interrotto. La sessione e conservata: puoi riprovare.',
+  AUTH_LOCAL_REJECTED: 'Lo sblocco del dispositivo non e riuscito. Puoi riprovare.',
+  AUTH_LOCAL_LOCKOUT: 'Sblocco biometrico temporaneamente bloccato. Verifica il codice del dispositivo.',
+  AUTH_LOCAL_CONTEXT_INVALID: 'La verifica del dispositivo e stata interrotta. Puoi riprovare.',
+  AUTH_APP_INACTIVE: 'L’app non era attiva al completamento dello sblocco. Riprova con l’app aperta.',
+  AUTH_SESSION_CHANGED: 'La sessione e stata bloccata durante la verifica. Puoi riprovare.',
+  AUTH_CACHE_ACCOUNT_MISSING: 'L’account non e disponibile nella sessione salvata. Accedi nuovamente.',
+  AUTH_SESSION_LOCKED: 'La sessione e ancora bloccata. Sblocca il dispositivo per continuare.',
+  AUTH_TOKEN_EXPIRED: 'La sessione Microsoft e scaduta. Accedi nuovamente.',
   AUTH_CONFIGURATION: 'Accesso non disponibile per questa configurazione dell’app. Contatta l’assistenza.',
   AUTH_TRANSPORT: 'Il servizio di accesso non è raggiungibile. Riprova tra poco.',
   AUTH_METHOD_UNAVAILABLE: 'Il servizio richiede un metodo diverso dal codice email. Contatta l’assistenza.',

@@ -1,5 +1,31 @@
 # Native Authentication mobile
 
+## iOS unlock after successful Face ID
+
+OTP-to-Welcome cause: authenticationGeneration was captured only in start().
+Opening Mail between start and submit increments generation on background.
+The successful OTP callback therefore returned unlock instead of authenticated.
+Each validated foreground submit now captures the current generation; a new
+background event DURING verification still invalidates that operation.
+
+The previous gate rejected a successful LAContext callback if UIApplication was
+still inactive. The new gate waits for didBecomeActive (at most 5 seconds),
+then rechecks the session generation and cancellation before looking up the
+MSAL account. It never authorizes an inactive app. Real backgrounding still
+invalidates the generation; logout/lock cancel pending activation. No cache
+is deleted. The five-second bound is a failure timeout, not a login delay.
+
+Restore only offers unlock when MSAL reports a cached account. OTP completion
+now also checks that MSAL exposes the account before reporting authenticated.
+MSAL getAccessToken remains responsible for cached tokens and refresh; no
+manual refresh token storage or authentication fallback is introduced.
+
+Safe references distinguish IOS-unlock-AUTH_LOCAL_*, AUTH_APP_INACTIVE,
+AUTH_SESSION_CHANGED, AUTH_CACHE_ACCOUNT_MISSING, IOS-token-AUTH_TOKEN_FAILED,
+and IOS-PROFILE-UNAVAILABLE. No LAError descriptions or keychain contents cross
+the bridge. The lifecycle race is reproducible in gate unit tests; the actual
+device failure must still be confirmed with a new iPhone test and reference.
+
 ## iOS 1006: required MSAL query schemes
 
 The 1005 device reference IOS-configuration-AUTH_CONFIGURATION is emitted

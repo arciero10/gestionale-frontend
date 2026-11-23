@@ -1,5 +1,6 @@
 import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { MsalService } from '@azure/msal-angular';
+import { Capacitor } from '@capacitor/core';
 import { Router } from '@angular/router';
 import { MobileAuthService } from './mobile-auth.service';
 import { CurrentUserService } from './current-user.service';
@@ -88,7 +89,8 @@ export class AuthService {
       // A transient API/transport failure is not a failed Entra login.
       // The interceptor still signs out on an actual HTTP 401.
       currentUser.reset();
-      throw new Error('Impossibile verificare il profilo. Controlla la connessione e riprova.');
+      throw new Error('Impossibile verificare il profilo. Controlla la connessione e riprova.' +
+        (Capacitor.getPlatform() === 'ios' ? ' Codice assistenza: IOS-PROFILE-UNAVAILABLE' : ''));
     }
     const target = pendingInvitationRoute() || postLoginDestination(true, currentUser.context()?.linkedToCommunity === true);
     console.info('[AUTH native] route selected', target);

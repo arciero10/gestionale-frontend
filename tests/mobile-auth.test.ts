@@ -9,6 +9,17 @@ import { postLoginDestination } from '../src/app/auth/post-login-route';
 import { COMMUNITY_ONBOARDING_ROLES } from '../src/app/auth/community-roles';
 import { nativeAuthDiagnostic } from '../src/app/auth/native-auth-diagnostics';
 
+test('iOS unlock diagnostics distinguish local authentication, lifecycle, cache and token without secrets', () => {
+  for (const code of ['AUTH_LOCAL_UNAVAILABLE', 'AUTH_LOCAL_CANCELLED', 'AUTH_LOCAL_REJECTED',
+    'AUTH_LOCAL_LOCKOUT', 'AUTH_LOCAL_CONTEXT_INVALID', 'AUTH_APP_INACTIVE', 'AUTH_SESSION_CHANGED',
+    'AUTH_CACHE_ACCOUNT_MISSING', 'AUTH_SESSION_LOCKED', 'AUTH_TOKEN_FAILED']) {
+    const phase = code === 'AUTH_TOKEN_FAILED' ? 'token' : 'unlock';
+    const diagnostic = nativeAuthDiagnostic({ code, message: 'PRIVATE', data: { platform: 'ios', phase, token: 'PRIVATE' } });
+    assert.equal(diagnostic?.reference, `IOS-${phase}-${code}`);
+    assert.equal(JSON.stringify(diagnostic).includes('PRIVATE'), false);
+  }
+});
+
 test('iOS diagnostics never expose SDK descriptions or arbitrary metadata', () => {
   const d = nativeAuthDiagnostic({ code: 'AUTH_START_FAILED', message: 'DO-NOT-EXPOSE', data: {
     platform: 'ios', phase: 'start', serverCodes: [700016, 'DO-NOT-EXPOSE', -1, 700016], email: 'DO-NOT-EXPOSE', token: 'DO-NOT-EXPOSE'

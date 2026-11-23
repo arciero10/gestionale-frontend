@@ -21,6 +21,8 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     private var cancelled = false
     private var context: LAContext?
     private var backgroundObserver: NSObjectProtocol?
+    private var activationObserver: NSObjectProtocol?
+    private var activationTimeout: DispatchWorkItem?
     private var generation = 0
     private var unlocked = false
     private var phase = "configuration"
@@ -53,6 +55,8 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     deinit {
         if let observer = backgroundObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = activationObserver { NotificationCenter.default.removeObserver(observer) }
+        activationTimeout?.cancel()
         context?.invalidate()
     }
 
@@ -135,7 +139,9 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             browserRequired: error.isBrowserRequired,
             invalidCode: (error as? VerifyCodeError)?.isInvalidCode == true,
             signInRejected: startError?.isInvalidCredentials == true || startError?.isInvalidUsername == true || startError?.isUserNotFound == true,
-            accountConflict: error.localizedDescription.lowercased().contains("already signed in"))
+            accountConflict: error.localizedDescription.lowercased().contains("already signed in"),
+            configurationFailure: (error as? RetrieveAccessTokenError)?.isInvalidScope == true,
+            tokenExpired: (error as? RetrieveAccessTokenError)?.isRefreshTokenExpired == true)
         report(diagnostic)
         if error.isBrowserRequired { flow?.state = nil; finish(["step": "fallback", "diagnostic": diagnostic.bridgeData]); return }
         if !cancelled, let call = pending {
@@ -160,6 +166,11 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             finish(["step": "unlock"])
             return
         }
+        guard application?.getNativeAuthUserAccount() != nil else {
+            if let pending { rejectLocal(pending, .cacheMissing) }
+            self.pending = nil; busy = false; return
+        }
+        diagnostics.info("phase=challenge event=account_cache_verified")
         unlocked = true
         finish(["step": "authenticated"])
     }
@@ -209,6 +220,10 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc public func submit(_ call: CAPPluginCall) { main { [self] in
         guard !busy else { reject(call, "BUSY"); return }
+        guard let submissionEpoch = NativeAuthChallengeEpoch.submission(current: generation,
+            active: UIApplication.shared.applicationState == .active) else {
+            startPhase("challenge"); rejectLocal(call, .inactive); return
+        }
         guard let flow, let state = flow.state else { reject(call, "NO_FLOW"); return }
         let code = call.getString("code") ?? ""
         let password = call.getString("password") ?? ""
@@ -226,6 +241,9 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         guard begin(call) else { return }
         startPhase("challenge")
+        // Reading the OTP in Mail can background the app between start and submit.
+        // Bind this foreground operation to the current lock epoch, not the old start epoch.
+        flow.authenticationGeneration = submissionEpoch
         switch state {
         case let s as SignInCodeRequiredState: s.submitCode(code: code, delegate: flow)
         case let s as SignUpCodeRequiredState: s.submitCode(code: code, delegate: flow)
@@ -251,26 +269,84 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     } }
 
     // LocalAuthentication is the only way to unlock a restored SDK session.
+    private func clearActivationWait() {
+        if let observer = activationObserver { NotificationCenter.default.removeObserver(observer) }
+        activationObserver = nil
+        activationTimeout?.cancel()
+        activationTimeout = nil
+    }
+
+    private func completeLocalUnlock(_ call: CAPPluginCall, epoch: Int, action: @escaping () -> Void) {
+        clearActivationWait()
+        let decision = NativeUnlockDecision.evaluate(verified: true, cancelled: cancelled,
+            sameSession: epoch == generation, active: UIApplication.shared.applicationState == .active)
+        switch decision {
+        case .deny:
+            if !cancelled { rejectLocal(call, .sessionChanged) }
+            pending = nil; busy = false
+        case .allow:
+            diagnostics.info("phase=unlock event=local_auth_verified")
+            action()
+        case .awaitActivation:
+            // Face ID may reply before UIKit reactivates the app. Never authorize while inactive.
+            diagnostics.info("phase=unlock event=awaiting_activation")
+            activationObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+            ) { [weak self] _ in self?.completeLocalUnlock(call, epoch: epoch, action: action) }
+            let timeout = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.clearActivationWait()
+                if !self.cancelled { self.rejectLocal(call, .inactive) }
+                self.pending = nil; self.busy = false
+            }
+            activationTimeout = timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
+        }
+    }
+
+    private func rejectLocal(_ call: CAPPluginCall, _ failure: NativeAuthLocalFailure) {
+        let diagnostic = NativeAuthDiagnostic(phase: phase, localFailure: failure)
+        report(diagnostic)
+        call.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data)
+    }
+
+    private func localFailure(_ error: Error?) -> NativeAuthLocalFailure {
+        guard let error = error as? LAError else { return .rejected }
+        switch error.code {
+        case .userCancel, .systemCancel, .appCancel, .userFallback: return .cancelled
+        case .biometryLockout: return .lockout
+        case .invalidContext: return .contextInvalid
+        case .biometryNotAvailable, .biometryNotEnrolled, .passcodeNotSet: return .unavailable
+        default: return .rejected
+        }
+    }
+
     private func gated(_ call: CAPPluginCall, action: @escaping () -> Void) {
         guard begin(call) else { return }
         let local = LAContext()
         context = local
         let epoch = generation
         var error: NSError?
-        guard UIApplication.shared.applicationState == .active,
-              local.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
-        else { pending = nil; busy = false; reject(call, "LOCAL_AUTH_UNAVAILABLE"); return }
-        local.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock your account") { [weak self] success, _ in
+        guard UIApplication.shared.applicationState == .active else {
+            pending = nil; busy = false; context = nil; rejectLocal(call, .inactive); return
+        }
+        guard local.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            pending = nil; busy = false; context = nil; rejectLocal(call, localFailure(error)); return
+        }
+        local.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock your account") { [weak self] success, evaluationError in
             DispatchQueue.main.async {
                 guard let self else { return }
-                guard success, !self.cancelled, epoch == self.generation,
-                      UIApplication.shared.applicationState == .active else {
-                    if !self.cancelled { self.reject(call, "LOCAL_AUTH_FAILED") }
+                guard success, !self.cancelled, epoch == self.generation else {
+                    if !self.cancelled {
+                        let failure: NativeAuthLocalFailure = !success ? self.localFailure(evaluationError)
+                            : epoch != self.generation ? .sessionChanged : .inactive
+                        self.rejectLocal(call, failure)
+                    }
                     self.pending = nil; self.busy = false; self.context = nil
                     return
                 }
                 self.context = nil
-                action()
+                self.completeLocalUnlock(call, epoch: epoch, action: action)
             }
         }
     }
@@ -280,16 +356,23 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         guard application != nil else { reject(call, "NOT_CONFIGURED"); return }
         guard !busy else { reject(call, "BUSY"); return }
         unlocked = false
+        diagnostics.info("phase=restore accountPresent=\(application?.getNativeAuthUserAccount() != nil)")
         call.resolve(["step": application?.getNativeAuthUserAccount() == nil ? "login" : "unlock"])
     } }
     @objc public func unlock(_ call: CAPPluginCall) { main { [self] in
         startPhase("unlock")
         gated(call) { [self] in
             unlocked = application?.getNativeAuthUserAccount() != nil
+            guard unlocked else {
+                rejectLocal(call, .cacheMissing); pending = nil; busy = false; return
+            }
             finish(["step": unlocked ? "authenticated" : "login"])
         }
     } }
     @objc public func lock(_ call: CAPPluginCall) { main { [self] in
+        let awaitingActivation = activationObserver != nil
+        clearActivationWait()
+        if awaitingActivation, let pending { rejectLocal(pending, .sessionChanged); self.pending = nil; busy = false }
         unlocked = false
         generation += 1
         context?.invalidate()
@@ -297,12 +380,17 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["step": "unlock"])
     } }
     @objc public func getAccessToken(_ call: CAPPluginCall) { main { [self] in
-        guard unlocked, UIApplication.shared.applicationState == .active else { reject(call, "LOCKED"); return }
+        guard unlocked, UIApplication.shared.applicationState == .active else {
+            startPhase("token")
+            rejectLocal(call, unlocked ? .inactive : .locked); return
+        }
         guard begin(call) else { return }
         startPhase("token")
         let epoch = generation
         do {
-            guard let account = application?.getNativeAuthUserAccount() else { finish(["step": "login"]); return }
+            guard let account = application?.getNativeAuthUserAccount() else {
+                rejectLocal(call, .cacheMissing); pending = nil; busy = false; return
+            }
             let delegate = NativeFlow(owner: self, scopes: scopes)
             delegate.tokenGeneration = epoch
             flow = delegate
@@ -316,7 +404,9 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     func token(_ value: String, epoch: Int?) {
         if cancelled { application?.getNativeAuthUserAccount()?.signOut() }
         guard unlocked, epoch == generation, UIApplication.shared.applicationState == .active else {
-            if !cancelled, let pending { reject(pending, "LOCKED") }
+            if !cancelled, let pending {
+                rejectLocal(pending, epoch == generation ? .inactive : .sessionChanged)
+            }
             pending = nil
             finish([:])
             return
@@ -325,6 +415,8 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func stop() {
+        if activationObserver != nil { busy = false }
+        clearActivationWait()
         generation += 1
         cancelled = true
         unlocked = false

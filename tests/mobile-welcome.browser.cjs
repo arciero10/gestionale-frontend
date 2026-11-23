@@ -52,8 +52,8 @@ async function verifyMobileDesign(page) {
   }
 }
 
-async function installNative(context, platform, cached = false, launchUrl = '', startFailure = null) {
-  await context.addInitScript(({ platform, cached, launchUrl, startFailure }) => {
+async function installNative(context, platform, cached = false, launchUrl = '', startFailure = null, unlockFailure = null) {
+  await context.addInitScript(({ platform, cached, launchUrl, startFailure, unlockFailure }) => {
     window.CapacitorCustomPlatform = { name: platform };
     window.__nativeCalls = [];
     const methods = {
@@ -69,7 +69,11 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         window.__nativeCalls.push(`${plugin}.${method}`);
         if (plugin === 'EntraNativeAuth') {
           if (method === 'restore') return { step: cached ? 'unlock' : 'login' };
-          if (method === 'unlock') return { step: cached ? 'authenticated' : 'login' };
+          if (method === 'unlock') {
+            if (unlockFailure) throw Object.assign(new Error('PRIVATE-LOCAL-AUTH'), { code: unlockFailure,
+              data: { platform: 'ios', phase: 'unlock' } });
+            return { step: cached ? 'authenticated' : 'login' };
+          }
           if (method === 'logout') {
             await new Promise(resolve => setTimeout(resolve, 40)); cached = false;
             return { step: 'login' };
@@ -105,7 +109,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         return {};
       }
     };
-  }, { platform, cached, launchUrl, startFailure });
+  }, { platform, cached, launchUrl, startFailure, unlockFailure });
 }
 
 (async () => {
@@ -158,6 +162,23 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         console.log(`PASS cached ${platform}: ${action}`);
         await context.close();
       }
+    }
+    for (const code of ['AUTH_LOCAL_REJECTED', 'AUTH_APP_INACTIVE', 'AUTH_SESSION_CHANGED', 'AUTH_CACHE_ACCOUNT_MISSING']) {
+      const context = await browser.newContext({ viewport: { width: 393, height: 852 } });
+      await installNative(context, 'ios', true, '', null, code);
+      const page = await context.newPage();
+      await page.goto(base);
+      await page.getByRole('button', { name: 'Sblocca sessione', exact: true }).click();
+      await page.getByText(`Codice assistenza: IOS-unlock-${code}`, { exact: true }).waitFor();
+      assert.equal(await page.getByRole('heading', { name: 'Bentornato', exact: true }).count(), 1);
+      assert.equal((await page.locator('body').innerText()).includes('PRIVATE-LOCAL-AUTH'), false);
+      const calls = await page.evaluate(() => window.__nativeCalls);
+      assert.equal(calls.includes('EntraNativeAuth.getAccessToken'), false);
+      assert.equal(calls.includes('EntraNativeAuth.logout'), false);
+      assert.equal(calls.includes('Browser.open'), false);
+      assert.equal(calls.includes('CapacitorHttp.request'), false);
+      console.log(`PASS iOS Bentornato diagnostic ${code}: locked, no cache clear, token or API`);
+      await context.close();
     }
     const cases = [
       ['pixel-9', 412, 915, 'android', 24, 24],
