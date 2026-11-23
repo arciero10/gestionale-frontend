@@ -355,7 +355,6 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
-// Retains the native plugin in builds made before Capacitor regenerates packageClassList.
 private extension NativeAuthDiagnostic {
     var bridgeData: JSObject { ["platform": "ios", "phase": phase, "code": code, "serverCodes": serverCodes] }
 }

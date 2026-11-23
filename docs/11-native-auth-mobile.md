@@ -32,6 +32,9 @@ Il workflow macOS esegue anche sei XCTest Swift sulla classificazione diagnostic
 non sono test di login reale contro Entra. La causa specifica del device rimane
 da stabilire; una build diagnostica non certifica un fix del login iPhone.
 
+L'utente ha autorizzato esplicitamente la pubblicazione diagnostica 1005 per
+raccogliere il codice assistenza sul dispositivo reale, senza cambiare policy.
+
 ## Post-OTP completion and diagnostics (22 November 2026)
 
 Android/iOS Native Authentication does not use the SPA getAllAccounts cache or
