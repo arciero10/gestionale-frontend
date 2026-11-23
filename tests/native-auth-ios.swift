@@ -28,4 +28,3 @@ final class NativeAuthDiagnosticTests: XCTestCase {
         XCTAssertEqual(Set(d.data.keys), Set(["platform", "phase", "code", "serverCodes"]))
     }
 }
-

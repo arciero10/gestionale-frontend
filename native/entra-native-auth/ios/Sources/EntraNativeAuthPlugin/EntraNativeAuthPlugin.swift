@@ -137,7 +137,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             signInRejected: startError?.isInvalidCredentials == true || startError?.isInvalidUsername == true || startError?.isUserNotFound == true,
             accountConflict: error.localizedDescription.lowercased().contains("already signed in"))
         report(diagnostic)
-        if error.isBrowserRequired { flow?.state = nil; finish(["step": "fallback", "diagnostic": diagnostic.data]); return }
+        if error.isBrowserRequired { flow?.state = nil; finish(["step": "fallback", "diagnostic": diagnostic.bridgeData]); return }
         if !cancelled, let call = pending {
             call.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data)
         }
@@ -149,7 +149,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     func requireDifferentMethod() {
         let diagnostic = NativeAuthDiagnostic(phase: phase, methodUnavailable: true)
         report(diagnostic)
-        finish(["step": "fallback", "diagnostic": diagnostic.data])
+        finish(["step": "fallback", "diagnostic": diagnostic.bridgeData])
     }
 
     func authenticated(_ result: MSALNativeAuthUserAccountResult, epoch: Int?) {
@@ -353,6 +353,11 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         if application?.getNativeAuthUserAccount() != nil { reject(call, "CACHE_CLEAR_FAILED"); return }
         call.resolve(["step": "login"])
     }
+}
+
+// Retains the native plugin in builds made before Capacitor regenerates packageClassList.
+private extension NativeAuthDiagnostic {
+    var bridgeData: JSObject { ["platform": "ios", "phase": phase, "code": code, "serverCodes": serverCodes] }
 }
 
 // Retains the native plugin in builds made before Capacitor regenerates packageClassList.
