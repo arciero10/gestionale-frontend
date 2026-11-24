@@ -1,5 +1,6 @@
 const phases = new Set(['configuration', 'start', 'challenge', 'resend', 'token', 'unlock', 'logout', 'restore']);
 const messages: Record<string, string> = {
+  AUTH_UNLOCK_FAILED: 'Sblocco non completato. Riprova o comunica il codice assistenza.',
   AUTH_LOCAL_UNAVAILABLE: 'Sblocco dispositivo non disponibile. Verifica Face ID e il codice del dispositivo.',
   AUTH_LOCAL_CANCELLED: 'Sblocco annullato o interrotto. La sessione e conservata: puoi riprovare.',
   AUTH_LOCAL_REJECTED: 'Lo sblocco del dispositivo non e riuscito. Puoi riprovare.',

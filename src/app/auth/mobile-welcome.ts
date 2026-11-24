@@ -9,6 +9,8 @@ import { DOCUMENT } from '@angular/common';
 })
 export class MobileWelcome implements OnInit, OnDestroy {
   @Input() pendingInvitation = false;
+  @Input() busy = false;
+  @Input() feedback: string | null = null;
   @Output() readonly access = new EventEmitter<void>();
   private readonly document = inject(DOCUMENT);
   private viewport: HTMLMetaElement | null = null;

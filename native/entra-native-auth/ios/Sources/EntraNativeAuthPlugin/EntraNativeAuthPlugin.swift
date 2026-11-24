@@ -25,6 +25,9 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     private var activationTimeout: DispatchWorkItem?
     private var generation = 0
     private var unlocked = false
+    private let fullAuthentication = FullAuthenticationPolicy()
+    private var privacyView: UIView?
+    private var privacyObservers: [NSObjectProtocol] = []
     private var phase = "configuration"
     private var phaseStarted = Date()
     private let diagnostics = Logger(subsystem: "it.panteleia.eventidicomunita", category: "NativeAuth")
@@ -43,6 +46,10 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     public override func load() {
         MSALGlobalConfig.loggerConfig.logLevel = .nothing
+        privacyObservers = [
+            NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.concealSnapshot() },
+            NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.privacyView?.removeFromSuperview(); self?.privacyView = nil }
+        ]
         backgroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -54,10 +61,23 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     deinit {
+        privacyObservers.forEach { NotificationCenter.default.removeObserver($0) }
         if let observer = backgroundObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = activationObserver { NotificationCenter.default.removeObserver(observer) }
         activationTimeout?.cancel()
         context?.invalidate()
+    }
+
+    private func concealSnapshot() {
+        guard privacyView == nil,
+              let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap({ $0.windows }).first(where: { $0.isKeyWindow }) else { return }
+        let cover = UIView(frame: window.bounds)
+        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        cover.backgroundColor = .systemBackground
+        let label = UILabel(frame: cover.bounds)
+        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        label.textAlignment = .center; label.text = "Eventi di Comunità"
+        cover.addSubview(label); window.addSubview(cover); privacyView = cover
     }
 
     private func main(_ action: @escaping () -> Void) { DispatchQueue.main.async(execute: action) }
@@ -73,6 +93,9 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc public func configure(_ call: CAPPluginCall) { main { [self] in
         startPhase("configuration")
+        let days = call.getInt("reauthenticationDays") ?? 30
+        guard (1...30).contains(days) else { reject(call, "INVALID_CONFIGURATION"); return }
+        fullAuthentication.days = days
         guard !busy else { reject(call, "BUSY"); return }
         guard let client = call.getString("clientId"), UUID(uuidString: client) != nil,
               let tenant = call.getString("tenantSubdomain"),
@@ -125,7 +148,8 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     func finish(_ result: JSObject) {
         let step = result["step"] as? String ?? "missing"
         if ["login", "code", "password", "attributes", "authenticated", "complete", "fallback", "unlock"].contains(step) {
-            diagnostics.info("phase=\(self.phase, privacy: .public) outcome=\(step, privacy: .public)")
+            let elapsed = Int(Date().timeIntervalSince(phaseStarted) * 1000)
+            diagnostics.info("phase=\(self.phase, privacy: .public) outcome=\(step, privacy: .public) elapsedMs=\(elapsed)")
         }
         if !cancelled { pending?.resolve(result) }
         pending = nil
@@ -161,6 +185,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     func authenticated(_ result: MSALNativeAuthUserAccountResult, epoch: Int?) {
         flow?.state = nil
         guard !cancelled else { result.signOut(); finish(["step": "login"]); return }
+        fullAuthentication.record(subject: result.account.identifier ?? "")
         guard epoch == generation, UIApplication.shared.applicationState == .active else {
             unlocked = false
             finish(["step": "unlock"])
@@ -357,10 +382,15 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         guard !busy else { reject(call, "BUSY"); return }
         unlocked = false
         diagnostics.info("phase=restore accountPresent=\(application?.getNativeAuthUserAccount() != nil)")
-        call.resolve(["step": application?.getNativeAuthUserAccount() == nil ? "login" : "unlock"])
+        let account = application?.getNativeAuthUserAccount()
+        let reusable = account.map { fullAuthentication.valid(subject: $0.account.identifier ?? "") } ?? false
+        call.resolve(["step": reusable ? "unlock" : "login"])
     } }
     @objc public func unlock(_ call: CAPPluginCall) { main { [self] in
         startPhase("unlock")
+        guard let account = application?.getNativeAuthUserAccount(), fullAuthentication.valid(subject: account.account.identifier ?? "") else {
+            call.resolve(["step": "login"]); return
+        }
         gated(call) { [self] in
             unlocked = application?.getNativeAuthUserAccount() != nil
             guard unlocked else {
@@ -390,6 +420,9 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         do {
             guard let application, let account = application.getNativeAuthUserAccount() else {
                 rejectLocal(call, .cacheMissing); pending = nil; busy = false; return
+            }
+            guard fullAuthentication.valid(subject: account.account.identifier ?? "") else {
+                rejectLocal(call, .interactionRequired); pending = nil; busy = false; return
             }
             // MSAL 2.17 account.getAccessToken recreates a PCA with the default Keychain group.
             // Use the same SDK silent acquisition on OUR configured PCA/cache instead.
@@ -474,6 +507,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc public func cancel(_ call: CAPPluginCall) { main { [self] in stop(); call.resolve(["step": "login"]) } }
     @objc public func logout(_ call: CAPPluginCall) { main { [self] in
+        fullAuthentication.clear()
         startPhase("logout")
         stop()
         drainLogout(call, remaining: 200)

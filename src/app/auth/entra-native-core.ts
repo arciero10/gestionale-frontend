@@ -8,7 +8,7 @@ export interface NativeOutcome {
 export interface NativeStart { flow: NativeFlow; email: string; password?: string; method: 'password' | 'otp' }
 export interface NativeSubmission { code?: string; password?: string; attributes?: Record<string, string> }
 export interface NativeAuthBridge {
-  configure(options: { clientId: string; tenantSubdomain: string; authority: string; scopes: string[] }): Promise<unknown>;
+  configure(options: { clientId: string; tenantSubdomain: string; authority: string; scopes: string[]; reauthenticationDays?: number }): Promise<unknown>;
   start(options: NativeStart): Promise<NativeOutcome>;
   submit(options: NativeSubmission): Promise<NativeOutcome>;
   resend(): Promise<NativeOutcome>;

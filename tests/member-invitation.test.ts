@@ -47,7 +47,6 @@ test('late invitation result cannot belong to another member',async()=>{
 test('Emmanuel invitation visibility follows account, permission, pending and email',()=>{
   const actor={authenticated:true,linkedToCommunity:true,communityId:91,role:'RESPONSIBLE',permissions:['EDIT_MEMBRI']} as CurrentUserContext;
   const detail={member:{personId:15,firstName:'Emmanuel',lastName:'Baciarini',role:'MEMBER',email:'embak85@gmail.com',invitationStatus:null},accountLinked:false,canEdit:true,canInvite:true} as CommunityMemberDetail;
-  console.log('INVITE VISIBILITY TEST',JSON.stringify({email:detail.member.email,accountLinked:detail.accountLinked,canInvite:detail.canInvite,invitationStatus:detail.member.invitationStatus,role:actor.role,permissions:actor.permissions}));
   assert.equal(memberInvitationAction(detail,actor),'INVITE');
   assert.equal(memberInvitationAction({...detail,canInvite:true},actor),'INVITE');
   assert.equal(memberInvitationAction({...detail,canInvite:false},actor),'FORBIDDEN');

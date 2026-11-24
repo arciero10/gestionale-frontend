@@ -4,6 +4,7 @@ export const MSAL_EXTERNAL_TENANT_NAME = 'eventidicomunita';
 export const MSAL_AUTHORITY = `https://${MSAL_EXTERNAL_TENANT_NAME}.ciamlogin.com/${MSAL_TENANT_ID}`;
 export const IOS_REDIRECT_URI = 'msauth.it.panteleia.eventidicomunita://auth';
 export const MOBILE_PACKAGE = 'it.panteleia.eventidicomunita';
+export const MOBILE_REAUTHENTICATION_DAYS = 30;
 
 export function authPlatform(platform: string): 'web' | 'native' {
   return platform === 'ios' || platform === 'android' ? 'native' : 'web';

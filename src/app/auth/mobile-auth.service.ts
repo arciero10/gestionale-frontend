@@ -4,7 +4,7 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core';
 import { getApiConfiguration } from './api-config';
-import { authPlatform, MSAL_CLIENT_ID, MSAL_EXTERNAL_TENANT_NAME, MSAL_AUTHORITY } from './entra-settings';
+import { authPlatform, MSAL_CLIENT_ID, MSAL_EXTERNAL_TENANT_NAME, MSAL_AUTHORITY, MOBILE_REAUTHENTICATION_DAYS } from './entra-settings';
 import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, NativeSubmission } from './entra-native-core';
 import { loadNativeAuthRedirect, NativeAuthConfigError } from './native-auth-config';
 import { MobileAuthError, MobileAuthSession } from './mobile-auth-core';
@@ -30,9 +30,13 @@ export class MobileAuthService {
   readonly diagnostic = signal<ReturnType<typeof nativeAuthDiagnostic>>(null);
   readonly nativeOutcome = signal<NativeOutcome>({ step: 'login' });
   readonly requestedFlow = signal<'signin' | 'signup' | null>(null);
+  readonly accessing = signal(false);
+  readonly lockGeneration = signal(0);
+  private accessAttempt: Promise<boolean> | null = null;
   private readonly sdk = registerPlugin<NativeAuthBridge>('EntraNativeAuth');
   private readonly sdkSession = new EntraNativeSession(this.sdk);
   private sdkInitialization: Promise<void> | null = null;
+  private nativeLifecycle: Promise<unknown> | null = null;
   private browserMode = false;
   private tokenPromise: Promise<string> | null = null;
   private session: MobileAuthSession | null = null;
@@ -45,13 +49,21 @@ export class MobileAuthService {
     if (!this.native) return Promise.resolve();
     return this.sdkInitialization ??= (async () => {
       await this.sdk.configure({ clientId: MSAL_CLIENT_ID, tenantSubdomain: MSAL_EXTERNAL_TENANT_NAME,
-        authority: MSAL_AUTHORITY, scopes: [getApiConfiguration().apiScope] });
-      await App.addListener('appStateChange', ({ isActive }) => {
-        if (!isActive && !this.browserMode && this.signedIn()) {
+        authority: MSAL_AUTHORITY, scopes: [getApiConfiguration().apiScope], reauthenticationDays: MOBILE_REAUTHENTICATION_DAYS });
+      await (this.nativeLifecycle ??= App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive && !this.browserMode && !this.accessing() &&
+            (this.signedIn() || (!this.requestedFlow() && ['unlock', 'login'].includes(this.nativeOutcome().step)))) {
+          const wasSignedIn = this.signedIn();
           this.signedIn.set(false);
-          void this.sdkSession.lock().finally(() => this.nativeOutcome.set(this.sdkSession.outcome));
+          this.sequence++;
+          this.requestedFlow.set(null);
+          this.error.set(null); this.diagnostic.set(null);
+          this.lockGeneration.update(value => value + 1);
+          if (wasSignedIn) void this.sdkSession.lock().catch(() => {
+            this.error.set('Sessione bloccata. Riprova lo sblocco.');
+          }).finally(() => this.nativeOutcome.set(this.sdkSession.outcome));
         }
-      });
+      }).catch(error => { this.nativeLifecycle = null; throw error; }));
       this.applyOutcome(await this.sdkSession.restore());
     })().catch(error => { this.sdkInitialization = null; throw error; });
   }
@@ -66,7 +78,7 @@ export class MobileAuthService {
   async startNative(options: NativeStart): Promise<void> {
     await this.initialize();
     const flow = this.requestedFlow();
-    await this.logout(true);
+    this.clearApplicationSession(true);
     this.requestedFlow.set(flow ?? 'signin');
     this.browserMode = false;
     this.error.set(null);
@@ -82,8 +94,45 @@ export class MobileAuthService {
   async resendNative(): Promise<void> { this.applyOutcome(await this.sdkSession.resend()); }
   async unlockNative(): Promise<void> {
     const outcome = await this.sdkSession.unlock();
-    if (outcome.step === 'authenticated') await this.accessToken();
     this.applyOutcome(outcome);
+  }
+  accessFromWelcome(): Promise<boolean> {
+    return this.accessAttempt ??= this.performWelcomeAccess().finally(() => { this.accessAttempt = null; });
+  }
+  private async performWelcomeAccess(): Promise<boolean> {
+    this.accessing.set(true); this.error.set(null); this.diagnostic.set(null);
+    let restored = false;
+    try {
+      await this.initialize();
+      restored = true;
+      if (this.sdkSession.signedIn) {
+        if (this.signedIn()) return true;
+        await this.sdkSession.cancel();
+        this.applyOutcome(this.sdkSession.outcome);
+      }
+      if (this.sdkSession.outcome.step === 'unlock') {
+        await this.unlockNative();
+        if (this.signedIn()) return true;
+      }
+      this.requestLogin();
+      return false;
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (['AUTH_LOCAL_UNAVAILABLE', 'UNLOCK_UNAVAILABLE', 'UNLOCK_REQUIRED', 'AUTH_CACHE_ACCOUNT_MISSING', 'AUTH_TOKEN_INTERACTION_REQUIRED', 'AUTH_TOKEN_EXPIRED', 'SESSION_EXPIRED'].includes(code ?? '')) {
+        try { await this.sdkSession.cancel(); }
+        catch { this.error.set('Operazione interrotta. Riprova. Codice assistenza: NATIVE-unlock-CANCEL_FAILED'); return false; }
+        this.applyOutcome(this.sdkSession.outcome);
+        this.requestLogin();
+      } else {
+        const diagnostic = nativeAuthDiagnostic(error) ?? nativeAuthDiagnostic({
+          code: restored ? code === 'CANCELLED' ? 'AUTH_LOCAL_CANCELLED' : 'AUTH_UNLOCK_FAILED' : 'AUTH_CONFIGURATION',
+          data: { platform: Capacitor.getPlatform(), phase: restored ? 'unlock' : 'configuration' }
+        });
+        this.diagnostic.set(diagnostic);
+        this.error.set(diagnostic?.message ?? (code === 'CANCELLED' ? 'Sblocco annullato. Puoi riprovare.' : 'Sblocco non completato. Riprova.'));
+      }
+      return false;
+    } finally { this.accessing.set(false); }
   }
   async cancelNative(): Promise<void> {
     this.requestedFlow.set(null);
@@ -152,12 +201,15 @@ export class MobileAuthService {
       return token;
     }).catch(async error => {
       console.info('[AUTH native] API access token obtained', false);
-      const diagnostic = nativeAuthDiagnostic(error);
+      const diagnostic = nativeAuthDiagnostic(error) ?? nativeAuthDiagnostic({ code: 'AUTH_TOKEN_FAILED',
+        data: { platform: Capacitor.getPlatform(), phase: 'token' } });
       this.diagnostic.set(diagnostic);
       this.error.set(diagnostic?.message ?? MOBILE_AUTH_MESSAGES.token);
       if (diagnostic) console.info('[AUTH diagnostic]', { code: diagnostic.code, phase: diagnostic.phase, serverCodes: diagnostic.serverCodes });
       if (error?.code === 'SESSION_EXPIRED') {
-        await this.logout();
+        this.signedIn.set(false);
+        this.diagnostic.set({ code: 'AUTH_TOKEN_EXPIRED', reference: 'NATIVE-token-AUTH_TOKEN_EXPIRED',
+          message: MOBILE_AUTH_MESSAGES.expired, phase: 'token', serverCodes: [] });
         this.error.set(MOBILE_AUTH_MESSAGES.expired);
       }
       throw error;
@@ -168,6 +220,15 @@ export class MobileAuthService {
 
   logout(preserveLoginPanel = false): Promise<void> {
     if (this.logoutPromise) return this.logoutPromise;
+    this.clearApplicationSession(preserveLoginPanel);
+    this.logoutPromise = this.sdkSession.logout().catch(() => {
+      this.error.set('Disconnessione non completata. Riprova prima di accedere con un altro account.');
+      throw new Error(this.error()!);
+    }).finally(() => { this.logoutPromise = null; });
+    return this.logoutPromise;
+  }
+
+  private clearApplicationSession(preserveLoginPanel: boolean): void {
     this.session?.logout();
     this.sequence++;
     this.tokenPromise = null;
@@ -178,10 +239,5 @@ export class MobileAuthService {
     this.requestedFlow.set(preserveLoginPanel ? this.requestedFlow() ?? 'signin' : null);
     this.diagnostic.set(null);
     this.nativeOutcome.set({ step: 'login' });
-    this.logoutPromise = this.sdkSession.logout().catch(() => {
-      this.error.set('Disconnessione non completata. Riprova prima di accedere con un altro account.');
-      throw new Error(this.error()!);
-    }).finally(() => { this.logoutPromise = null; });
-    return this.logoutPromise;
   }
 }

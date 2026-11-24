@@ -11,7 +11,8 @@
   <div class="welcome-breathing-room" aria-hidden="true"></div>
 
   <section class="welcome-access" aria-label="Accesso all'app">
-    <button type="button" class="welcome-button welcome-primary" (click)="access.emit()">{{ pendingInvitation ? 'Continua' : 'Accedi' }}</button>
+    <button type="button" class="welcome-button welcome-primary" [disabled]="busy" (click)="access.emit()">{{ pendingInvitation ? 'Continua' : 'Accedi' }}</button>
+    @if (feedback) { <p class="welcome-helper" role="status">{{ feedback }}</p> }
     @if (pendingInvitation) { <p class="welcome-helper">Accedi con l’indirizzo email<br />a cui hai ricevuto l’invito</p> }
     @else { <p class="welcome-helper">Accesso tramite codice inviato via email</p> }
   </section>

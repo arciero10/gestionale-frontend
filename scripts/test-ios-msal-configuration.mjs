@@ -2,6 +2,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+test('full authentication age is recorded only by SDK sign-in completion, never unlock or refresh', () => {
+  const ios=readFileSync(new URL('../native/entra-native-auth/ios/Sources/EntraNativeAuthPlugin/EntraNativeAuthPlugin.swift',import.meta.url),'utf8');
+  const android=readFileSync(new URL('../native/entra-native-auth/android/src/main/java/it/panteleia/entranativeauth/EntraNativeAuthPlugin.kt',import.meta.url),'utf8');
+  assert.equal((ios.match(/fullAuthentication\.record\(/g)||[]).length,1);
+  assert.equal((android.match(/fullAuthentication\.record\(/g)||[]).length,1);
+  assert.ok(ios.includes('(1...30).contains(days)'));
+  assert.ok(android.includes('require(it in 1..30)'));
+});
+
 test('iOS silent token acquisition reuses the configured PCA and private cache', () => {
   const source = readFileSync(new URL('../native/entra-native-auth/ios/Sources/EntraNativeAuthPlugin/EntraNativeAuthPlugin.swift', import.meta.url), 'utf8');
   assert.ok(source.includes('config.cacheConfig.keychainSharingGroup = bundle'));

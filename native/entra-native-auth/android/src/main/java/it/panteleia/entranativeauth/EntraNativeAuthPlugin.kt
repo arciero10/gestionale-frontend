@@ -1,6 +1,8 @@
 package it.panteleia.entranativeauth
 
 import android.os.Build
+import android.app.KeyguardManager
+import android.content.Context
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -27,14 +29,17 @@ class EntraNativeAuthPlugin : Plugin() {
     private var busy = false
     private var foreground = true
     private var generation = 0
+    private var lockEpoch = 0
     private var prompt: BiometricPrompt? = null
     private var nativeClientId = ""
     private var subdomain = ""
+    private val fullAuthentication by lazy { FullAuthenticationPolicy(context) }
 
     private fun run(call: PluginCall, operation: suspend () -> JSObject) {
         if (busy) { call.reject("Operazione in corso", "BUSY"); return }
         busy = true
         val version = generation
+        val started = android.os.SystemClock.elapsedRealtime()
         jobs.launch {
             try {
                 val result = operation()
@@ -52,11 +57,16 @@ class EntraNativeAuthPlugin : Plugin() {
                 val code = if (error.message == "An account is already signed in.") "ACCOUNT_ALREADY_SIGNED_IN"
                     else if (error.message == "SESSION_EXPIRED") "SESSION_EXPIRED" else "NATIVE_AUTH_FAILED"
                 call.reject("Accesso non completato. Verifica i dati e la connessione.", code)
-            } finally { busy = false }
+            } finally {
+                busy = false
+                if (call.methodName in setOf("configure", "restore", "start", "submit", "getAccessToken", "logout"))
+                    android.util.Log.i("NativeAuthTiming", "phase=${call.methodName} elapsedMs=${android.os.SystemClock.elapsedRealtime()-started}")
+            }
         }
     }
 
     @PluginMethod fun configure(call: PluginCall) = run(call) {
+        fullAuthentication.days = (call.getInt("reauthenticationDays") ?: 30).also { require(it in 1..30) }
         if (client == null) {
             val clientId = requireNotNull(call.getString("clientId"))
             val subdomain = requireNotNull(call.getString("tenantSubdomain"))
@@ -133,6 +143,7 @@ class EntraNativeAuthPlugin : Plugin() {
         if (result is NativeError) throw IllegalArgumentException()
         if (result is SignInResult.Complete) {
             account = result.resultValue
+            fullAuthentication.record(result.resultValue.getAccount().id)
             state = null
             unlocked = foreground
             return JSObject().put("step", if (unlocked) "authenticated" else "unlock")
@@ -162,13 +173,17 @@ class EntraNativeAuthPlugin : Plugin() {
     @PluginMethod fun restore(call: PluginCall) = run(call) {
         unlocked = false
         account = (requireNotNull(client).getCurrentAccount() as? GetAccountResult.AccountFound)?.resultValue
-        JSObject().put("step", if (account == null) "login" else "unlock")
+        val secure = (context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure
+        JSObject().put("step", if (secure && account?.let { fullAuthentication.valid(it.getAccount().id) } == true) "unlock" else "login")
     }
 
     @PluginMethod fun unlock(call: PluginCall) {
+        if (account?.let { fullAuthentication.valid(it.getAccount().id) } != true) { call.resolve(JSObject().put("step", "login")); return }
         if (busy || account == null) { call.reject("Accedi nuovamente", "UNLOCK_REQUIRED"); return }
         busy = true
+        unlocked = false
         val version = generation
+        val lockVersion = lockEpoch
         activity.runOnUiThread {
             val authenticators = (if (Build.VERSION.SDK_INT >= 30) BiometricManager.Authenticators.BIOMETRIC_STRONG
                 else BiometricManager.Authenticators.BIOMETRIC_WEAK) or BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -180,12 +195,14 @@ class EntraNativeAuthPlugin : Plugin() {
             prompt = BiometricPrompt(activity, ContextCompat.getMainExecutor(context), object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     busy = false
-                    if (version != generation || !foreground) { call.reject("Sblocco annullato", "CANCELLED"); return }
+                    prompt = null
+                    if (version != generation || lockVersion != lockEpoch || !foreground) { call.reject("Sblocco annullato", "CANCELLED"); return }
                     unlocked = true
                     call.resolve(JSObject().put("step", "authenticated"))
                 }
                 override fun onAuthenticationError(code: Int, message: CharSequence) {
                     busy = false
+                    prompt = null
                     call.reject("Sblocco annullato. Puoi accedere nuovamente.", "CANCELLED")
                 }
             })
@@ -195,10 +212,12 @@ class EntraNativeAuthPlugin : Plugin() {
     }
 
     @PluginMethod fun getAccessToken(call: PluginCall) = run(call) {
-        check(unlocked && foreground)
+        val lockVersion = lockEpoch
+        check(unlocked && foreground && lockVersion == lockEpoch)
         val current = requireNotNull(account)
+        if (!fullAuthentication.valid(current.getAccount().id)) throw IllegalStateException("SESSION_EXPIRED")
         val result = current.getAccessToken(NativeAuthGetAccessTokenParameters().apply { scopes = this@EntraNativeAuthPlugin.scopes })
-        check(unlocked && foreground)
+        check(unlocked && foreground && lockVersion == lockEpoch)
         if (result is NativeError && result.error in listOf("invalid_grant", "interaction_required", "login_required"))
             throw IllegalStateException("SESSION_EXPIRED")
         if (result !is GetAccessTokenResult.Complete) throw IllegalStateException()
@@ -206,9 +225,13 @@ class EntraNativeAuthPlugin : Plugin() {
     }
 
     @PluginMethod fun lock(call: PluginCall) { lockSession(); call.resolve() }
-    private fun lockSession() { unlocked = false }
+    private fun lockSession() { unlocked = false; lockEpoch++; prompt?.cancelAuthentication() }
     override fun handleOnStart() { foreground = true }
-    override fun handleOnStop() { foreground = false; lockSession() }
+    override fun handleOnStop() {
+        foreground = false
+        // A system device-credential activity may stop our Activity while the OS owns the prompt.
+        if (prompt != null && busy) unlocked = false else lockSession()
+    }
     @PluginMethod fun cancel(call: PluginCall) {
         generation++
         state = null
@@ -217,13 +240,15 @@ class EntraNativeAuthPlugin : Plugin() {
         call.resolve()
     }
     @PluginMethod fun logout(call: PluginCall) {
+        fullAuthentication.clear()
         generation++
         state = null
         unlocked = false
         prompt?.cancelAuthentication()
         jobs.launch {
             // Drain any in-flight SDK operation before clearing its cache.
-            while (busy) delay(25)
+                val drained = withTimeoutOrNull(10000) { while (busy) delay(25); true } ?: false
+                if (!drained) { call.reject("Disconnessione non completata", "CACHE_CLEAR_FAILED"); return@launch }
             run(call) {
                 clearAccount()
                 JSObject().put("step", "login")
@@ -231,6 +256,7 @@ class EntraNativeAuthPlugin : Plugin() {
         }
     }
     private suspend fun clearAccount() {
+        fullAuthentication.clear()
         val current = (client?.getCurrentAccount() as? GetAccountResult.AccountFound)?.resultValue ?: account
         if (current != null && current.signOut() !is SignOutResult.Complete) throw IllegalStateException()
         account = null

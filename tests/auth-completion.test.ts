@@ -16,7 +16,7 @@ const context={authenticated:true,linkedToCommunity:true,communityId:91,permissi
 for (const platform of ['ios', 'android', 'web']) test(`${platform} root never exposes protected content during loading or profile/auth errors`, () => {
   const app:any=Object.create(App.prototype);
   const state=signal('ready');
-  Object.assign(app,{mobileAuth:{native:platform!=='web'}, authenticated:signal(false),msalReady:signal(true),
+  Object.assign(app,{mobileAuth:{native:platform!=='web',signedIn:()=>app.authenticated()}, authenticated:signal(false),msalReady:signal(true),
     authErrorMessage:signal(null),forceShowOutlet:signal(true),currentPath:signal('/mobile/home'),
     currentUser:{state,context:()=>context}});
   assert.equal(app.canRenderRoute(),false);
@@ -31,6 +31,7 @@ for (const platform of ['ios', 'android', 'web']) test(`${platform} root never e
   app.authErrorMessage.set(null);state.set('error');assert.equal(app.showAuthError(),true);assert.equal(app.canRenderRoute(),false);
   state.set('loading');assert.equal(app.showLoading(),true);assert.equal(app.canRenderRoute(),false);
   state.set('ready');assert.equal(app.canRenderRoute(),true);
+  if(platform!=='web') {app.mobileAuth.signedIn=()=>false;assert.equal(app.canRenderRoute(),false);}
   app.currentPath.set('/area-strutture/dashboard');app.authenticated.set(false);state.set('error');
   assert.equal(app.showAuthError(),false);assert.equal(app.canRenderRoute(),true);
 });

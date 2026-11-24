@@ -86,6 +86,17 @@ class SdkMock implements NativeAuthBridge {
   getAccessToken = async () => { assert.ok(this.unlocked); return { accessToken: 'api-access-token' }; };
 }
 
+test('stress: 100 unlocks, 500 lifecycle cycles and 20 process restores never sign in again or expose locked tokens', async () => {
+  const sdk=new SdkMock();sdk.cached=true;
+  let session=new EntraNativeSession(sdk);
+  await session.restore();
+  for(let i=0;i<100;i++){await session.unlock();assert.equal(await session.accessToken(),'api-access-token');await session.lock();await assert.rejects(session.accessToken());}
+  for(let i=0;i<500;i++){await session.lock();await session.unlock();assert.equal(session.signedIn,true);}
+  for(let i=0;i<20;i++){session=new EntraNativeSession(sdk);assert.equal((await session.restore()).step,'unlock');await assert.rejects(session.accessToken());await session.unlock();}
+  assert.equal(sdk.calls.filter(c=>c==='start').length,0);
+  await session.logout();assert.equal((await new EntraNativeSession(sdk).restore()).step,'login');
+});
+
 test('native password flow uses SDK, exposes only access token and no retained credentials', async () => {
   const sdk = new SdkMock(), session = new EntraNativeSession(sdk);
   await session.start({ flow: 'signin', method: 'password', email: 'user@example.test', password: 'test-only' });
@@ -105,6 +116,20 @@ test('native OTP challenge and resend never open a browser', async () => {
   sdk.next = { step: 'authenticated' };
   await session.submit({ code: '000000' });
   assert.ok(session.signedIn);
+});
+
+test('rejected or expired OTP never authenticates and can be resent without changing account', async () => {
+  for (const code of ['AUTH_CHALLENGE_REJECTED','AUTH_CHALLENGE_FAILED']) {
+    const sdk=new SdkMock(),session=new EntraNativeSession(sdk);
+    sdk.next={step:'code'};await session.start({flow:'signin',method:'otp',email:'fixture@example.test'});
+    const submit=sdk.submit;
+    sdk.submit=async()=>{throw Object.assign(new Error('Challenge unavailable'),{code});};
+    await assert.rejects(session.submit({code:'000000'}));
+    assert.equal(session.signedIn,false);assert.equal(session.outcome.step,'code');
+    await assert.rejects(session.accessToken());
+    await session.resend();sdk.submit=submit;sdk.next={step:'authenticated'};
+    await session.submit({code:'000000'});assert.equal(session.signedIn,true);
+  }
 });
 test('native signup follows OTP, password and required attributes', async () => {
   const sdk = new SdkMock(), session = new EntraNativeSession(sdk);

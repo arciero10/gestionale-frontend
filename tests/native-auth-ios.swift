@@ -3,6 +3,19 @@ import XCTest
 @testable import NativeAuthDiagnostics
 
 final class NativeAuthDiagnosticTests: XCTestCase {
+    func testFullAuthenticationAgeCannotBeExtendedByUnlockOrTransferredToAnotherAccount() throws {
+        let receipt=FullAuthenticationReceipt(subject:"A",authenticatedAt:1000,lastSeen:1000)
+        XCTAssertTrue(receipt.valid(subject:"A",now:1001,days:30))
+        XCTAssertFalse(receipt.valid(subject:"B",now:1001,days:30))
+        XCTAssertFalse(receipt.valid(subject:"A",now:999,days:30))
+        var unlocked=receipt
+        unlocked.lastSeen=1000+29*86400
+        XCTAssertFalse(unlocked.valid(subject:"A",now:1000+30*86400,days:30))
+        for _ in 0..<20 {
+            let restored=try JSONDecoder().decode(FullAuthenticationReceipt.self,from:JSONEncoder().encode(unlocked))
+            XCTAssertEqual(restored.authenticatedAt,1000)
+        }
+    }
     func testProfileTransportClassificationNeverIncludesNSErrorDescription() {
         for (code, category) in [(-1001,"TIMEOUT"),(-1200,"TLS"),(-1202,"TLS"),(-1022,"TLS"),(-1009,"CONNECTIVITY"),(-1004,"CONNECTIVITY")] {
             let error=NSError(domain:NSURLErrorDomain,code:code,userInfo:[NSLocalizedDescriptionKey:"PRIVATE"])

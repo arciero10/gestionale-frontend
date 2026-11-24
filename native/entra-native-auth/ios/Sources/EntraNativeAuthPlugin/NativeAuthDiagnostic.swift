@@ -1,5 +1,15 @@
 import Foundation
 
+struct FullAuthenticationReceipt: Codable {
+    let subject: String
+    let authenticatedAt: TimeInterval
+    var lastSeen: TimeInterval
+    func valid(subject: String, now: TimeInterval, days: Int) -> Bool {
+        self.subject == subject && !subject.isEmpty && now >= lastSeen &&
+            authenticatedAt > 0 && authenticatedAt <= lastSeen && now - authenticatedAt < Double(days) * 86400
+    }
+}
+
 enum NativeProfileTransport {
     static func category(_ error: NSError?) -> String {
         guard let error, error.domain == NSURLErrorDomain else { return "NETWORK" }

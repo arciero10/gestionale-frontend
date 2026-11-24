@@ -56,6 +56,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
   await context.addInitScript(({ platform, cached, launchUrl, startFailure, unlockFailure, tokenFailure }) => {
     window.CapacitorCustomPlatform = { name: platform };
     window.__nativeCalls = [];
+    window.__nativeHttpPaths = [];
     const methods = {
       App: ['getLaunchUrl', 'addListener', 'removeListener'],
       Browser: ['open', 'close', 'addListener', 'removeListener'],
@@ -64,11 +65,11 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
     };
     window.Capacitor = {
       PluginHeaders: Object.entries(methods).map(([name, names]) => ({ name, methods: names.map(name => ({ name, rtype: name === 'addListener' ? 'callback' : 'promise' })) })),
-      nativeCallback: (plugin,method,options,callback) => { if(plugin==='App'&&method==='addListener'&&options.eventName==='appUrlOpen')window.__appUrlOpen=callback;if(plugin==='App'&&method==='addListener'&&options.eventName==='backButton')window.__androidBack=callback;return 'listener'; },
+      nativeCallback: (plugin,method,options,callback) => { if(plugin==='App'&&method==='addListener'&&options.eventName==='appUrlOpen')window.__appUrlOpen=callback;if(plugin==='App'&&method==='addListener'&&options.eventName==='appStateChange')window.__appState=callback;if(plugin==='App'&&method==='addListener'&&options.eventName==='backButton')window.__androidBack=callback;return 'listener'; },
       nativePromise: async (plugin, method, options) => {
         window.__nativeCalls.push(`${plugin}.${method}`);
         if (plugin === 'EntraNativeAuth' && method !== 'requestProfile') {
-          if (method === 'restore') return { step: cached ? 'unlock' : 'login' };
+          if (method === 'restore') return { step: cached && !window.__requiresReauth ? 'unlock' : 'login' };
           if (method === 'unlock') {
             if (unlockFailure) throw Object.assign(new Error('PRIVATE-LOCAL-AUTH'), { code: unlockFailure,
               data: { platform: 'ios', phase: 'unlock' } });
@@ -102,6 +103,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         }
         if (plugin === 'App' && method === 'getLaunchUrl') return launchUrl ? {url:launchUrl} : undefined;
         if ((plugin === 'CapacitorHttp' || method === 'requestProfile') && options.url.includes('/api/')) {
+          window.__nativeHttpPaths.push(new URL(options.url).pathname);
           if (method === 'requestProfile' && window.__profileTransportError) throw { data: { profileFailure: window.__profileTransportError } };
           const response = await fetch(options.url, { method: options.method, headers: options.headers,
             ...(options.data === undefined ? {} : { body: JSON.stringify(options.data) }) });
@@ -135,10 +137,26 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         const page = await context.newPage(), errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(base);
-        await page.getByRole('heading', { name: 'Bentornato', exact: true }).waitFor();
+        await page.locator('app-mobile-welcome h1').waitFor();
+        assert.equal(await page.getByRole('heading', { name: 'Bentornato', exact: true }).count(),0);
         if (action === 'unlock') {
-          await page.getByRole('button', { name: 'Sblocca sessione', exact: true }).click();
+          const started = Date.now();
+          await page.evaluate(() => { const button=document.querySelector('app-mobile-welcome button');button.click();button.click(); });
           await page.waitForURL('**/mobile/home');
+          await page.locator('app-mobile-home .macro-areas').waitFor();
+          const metric=await page.evaluate(()=>({prompts:window.__nativeCalls.filter(c=>c==='EntraNativeAuth.unlock').length,
+            profileRequests:window.__nativeHttpPaths.filter(p=>p==='/api/me').length, totalApiRequests:window.__nativeHttpPaths.length}));
+          assert.equal(metric.prompts,1);assert.equal(metric.profileRequests,1);
+          console.log('[AUTH mock benchmark]',JSON.stringify({platform,elapsedMs:Date.now()-started,...metric}));
+          await page.evaluate(()=>window.__appState({isActive:false}));
+          await page.locator('app-mobile-welcome h1').waitFor();
+          assert.equal(await page.locator('app-mobile-home,app-mobile-shell').count(),0,'Background removes private UI');
+          await page.evaluate(()=>window.__appState({isActive:true}));
+          assert.equal(await page.locator('app-mobile-welcome').count(),1);
+          await page.getByRole('button',{name:'Accedi',exact:true}).click();
+          await page.waitForURL('**/mobile/home');
+          assert.equal(await page.evaluate(()=>window.__nativeCalls.includes('EntraNativeAuth.start')),false);
+          assert.equal(await page.evaluate(()=>window.__nativeCalls.filter(c=>c==='EntraNativeAuth.configure').length),1);
           assert.equal(await page.evaluate(() => window.__nativeCalls.includes('EntraNativeAuth.logout')), false);
           assert.equal(await page.getByRole('button',{name:'Indietro',exact:true}).count(),0);
           await page.locator('.retreat-card').click();await page.waitForURL('**/mobile/retreats');
@@ -153,7 +171,13 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
           await page.locator('.retreat-card').click();await page.getByRole('button',{name:'Indietro',exact:true}).click();await page.waitForURL('**/mobile/home');
           if(platform==='android'){await page.evaluate(()=>window.__androidBack({canGoBack:true}));assert.equal(new URL(page.url()).pathname,'/mobile/home');}
         } else {
-          await page.getByRole('button', { name: 'Accedi con un altro account', exact: true }).click();
+          await page.getByRole('button', { name: 'Accedi', exact: true }).click();
+          await page.waitForURL('**/mobile/home');
+          await page.getByRole('link', {name:'Apri profilo',exact:true}).click();
+          await page.getByRole('link', {name:/Il mio profilo/}).click();
+          await page.getByRole('button', {name:"Esci dall'app",exact:true}).click();
+          await page.locator('app-mobile-welcome h1').waitFor();
+          await page.getByRole('button', { name: 'Accedi', exact: true }).click();
           await page.locator('#native-email').fill('b@example.test');
           if (await page.locator('#native-password').count())
             await page.getByRole('button', { name: 'Accedi con codice via email', exact: true }).click();
@@ -168,14 +192,14 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         await context.close();
       }
     }
-    for (const code of ['AUTH_LOCAL_REJECTED', 'AUTH_APP_INACTIVE', 'AUTH_SESSION_CHANGED', 'AUTH_CACHE_ACCOUNT_MISSING']) {
+    for (const code of ['AUTH_LOCAL_REJECTED', 'AUTH_APP_INACTIVE', 'AUTH_SESSION_CHANGED']) {
       const context = await browser.newContext({ viewport: { width: 393, height: 852 } });
       await installNative(context, 'ios', true, '', null, code);
       const page = await context.newPage();
       await page.goto(base);
-      await page.getByRole('button', { name: 'Sblocca sessione', exact: true }).click();
-      await page.getByText(`Codice assistenza: IOS-unlock-${code}`, { exact: true }).waitFor();
-      assert.equal(await page.getByRole('heading', { name: 'Bentornato', exact: true }).count(), 1);
+      await page.getByRole('button', { name: 'Accedi', exact: true }).click();
+      await page.getByText(new RegExp(`Codice assistenza: IOS-unlock-${code}`)).waitFor();
+      assert.equal(await page.locator('app-mobile-welcome').count(), 1);
       assert.equal((await page.locator('body').innerText()).includes('PRIVATE-LOCAL-AUTH'), false);
       const calls = await page.evaluate(() => window.__nativeCalls);
       assert.equal(calls.includes('EntraNativeAuth.getAccessToken'), false);
@@ -239,7 +263,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       if (failure === 'TIMEOUT' || failure === 'TLS') await context.addInitScript(kind => { window.__profileTransportError=kind; },failure);
       await context.route('**/api/**', route => route.fulfill({status:failure.startsWith('HTTP_')?Number(failure.slice(5)):200,json:{}}));
       const page=await context.newPage();await page.goto(base);
-      await page.getByRole('button',{name:'Sblocca sessione',exact:true}).click();
+      await page.getByRole('button',{name:'Accedi',exact:true}).click();
       await page.getByRole('heading',{name:'Accesso non completato',exact:true}).waitFor();
       await page.getByText(new RegExp(`IOS-PROFILE-${failure}`)).waitFor();
       assert.equal(await page.locator('router-outlet,app-mobile-shell,app-mobile-home,app-layout,app-convivenze').count(),0,'No protected outlet or stale page under error');
@@ -249,6 +273,20 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       await page.getByRole('heading',{name:'Accesso non completato',exact:true}).waitFor();
       assert.equal(await page.evaluate(()=>window.__nativeCalls.includes('EntraNativeAuth.start')),false,'Retry profile never repeats OTP');
       console.log(`PASS iOS ${failure}: exclusive root error, no protected content, retry without OTP`);
+      await context.close();
+    }
+    for (const reason of ['expired-policy','local-unavailable','provider-reauthentication']) {
+      const context=await browser.newContext({viewport:{width:393,height:852}});
+      await installNative(context,'ios',true,'',null,reason==='local-unavailable'?'AUTH_LOCAL_UNAVAILABLE':null,
+        reason==='provider-reauthentication'?'AUTH_TOKEN_INTERACTION_REQUIRED':null);
+      if(reason==='expired-policy')await context.addInitScript(()=>{window.__requiresReauth=true;});
+      const page=await context.newPage();await page.goto(base);
+      await page.getByRole('button',{name:'Accedi',exact:true}).click();
+      await page.locator('#native-email').waitFor();
+      assert.equal(await page.locator('app-mobile-home').count(),0);
+      assert.equal(await page.getByRole('heading',{name:'Bentornato',exact:true}).count(),0);
+      assert.equal(await page.evaluate(()=>window.__nativeCalls.includes('Browser.open')),false);
+      console.log(`PASS ${reason}: Microsoft form without local-auth bypass`);
       await context.close();
     }
     const cases = [

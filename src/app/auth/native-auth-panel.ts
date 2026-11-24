@@ -100,6 +100,11 @@ export class NativeAuthPanel {
     this.supportCode.set(null);
     try {
       await operation();
+      if (this.step() === 'unlock') {
+        this.mobile.requestedFlow.set(null);
+        this.closed.emit();
+        return;
+      }
       const outcomeDiagnostic = nativeAuthDiagnostic({ data: this.mobile.nativeOutcome().diagnostic });
       if (outcomeDiagnostic) this.supportCode.set(outcomeDiagnostic.reference);
       if (this.step() === 'complete') {

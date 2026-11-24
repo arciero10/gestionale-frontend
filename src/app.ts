@@ -48,10 +48,10 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
 
     @else if (showLogin()) {
       @if (isNativeWelcome()) {
-        @if (mobileAuth.requestedFlow() || mobileAuth.nativeOutcome().step === 'unlock') {
+        @if (mobileAuth.requestedFlow()) {
           <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" [invitationLogin]="mobileAuth.requestedFlow() === 'signin' || !!invitationLinks.pendingId()" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
         } @else {
-          <app-mobile-welcome [pendingInvitation]="!!invitationLinks.pendingId()" (access)="login()"></app-mobile-welcome>
+          <app-mobile-welcome [pendingInvitation]="!!invitationLinks.pendingId()" [busy]="mobileAuth.accessing()" [feedback]="mobileAuth.error() ? mobileAuth.error() + (mobileAuth.diagnostic() ? ' Codice assistenza: ' + mobileAuth.diagnostic()?.reference : '') : null" (access)="login()"></app-mobile-welcome>
         }
       } @else {
       <main class="login-page">
@@ -411,7 +411,16 @@ export class App {
       this.msalReady.set(true);
       void this.mobileAuth.initialize().catch(() => { /* Welcome remains available for retry. */ });
       if (this.isInternalRoute()) void this.router.navigateByUrl('/', { replaceUrl: true });
+      let lastLockGeneration = 0;
       effect(() => {
+        const lock = this.mobileAuth.lockGeneration();
+        if (lock !== lastLockGeneration) {
+          lastLockGeneration = lock;
+          this.authenticated.set(false); this.forceShowOutlet.set(false);
+          this.currentUser.reset(); this.authErrorMessage.set(null); this.msalReady.set(true);
+          void this.router.navigateByUrl('/', { replaceUrl: true });
+          return;
+        }
         if (!this.mobileAuth.signedIn() && this.authenticated()) {
           this.authenticated.set(false);
           this.forceShowOutlet.set(false);
@@ -542,10 +551,10 @@ export class App {
     }
 
     if (this.currentPath() === '/') {
-      return !this.authenticated();
+      return !this.authenticated() || (this.mobileAuth.native && !this.mobileAuth.signedIn());
     }
 
-    return !this.authenticated() && !this.isPublicRoute();
+    return (!this.authenticated() || (this.mobileAuth.native && !this.mobileAuth.signedIn())) && !this.isPublicRoute();
   }
 
   showAuthError(): boolean {
@@ -555,7 +564,7 @@ export class App {
   canRenderRoute(): boolean {
     if (this.showLoading() || this.showAuthError()) return false;
     if (this.isPublicRoute()) return true;
-    return this.authenticated() && (!getApiConfiguration().apiScope ||
+    return this.authenticated() && (!this.mobileAuth.native || this.mobileAuth.signedIn()) && (!getApiConfiguration().apiScope ||
       (this.currentUser.state() === 'ready' && this.currentUser.context()?.authenticated === true));
   }
 
@@ -575,7 +584,8 @@ export class App {
 
   private startMicrosoftAuth(intent: 'login' | 'register'): void {
     if (this.mobileAuth.native) {
-      this.mobileAuth.requestLogin(intent === 'register' ? 'signup' : 'signin');
+      if (intent === 'register') this.mobileAuth.requestLogin('signup');
+      else void this.mobileAuth.accessFromWelcome().then(unlocked => { if (unlocked) void this.completeNativeLogin(); });
       return;
     }
     console.log(`[LOGIN] click ${intent === 'register' ? 'Registrati' : 'Accedi'}`);
@@ -625,17 +635,30 @@ export class App {
   protected closeNativeLogin(): void { this.mobileAuth.requestedFlow.set(null); }
 
   protected async completeNativeLogin(): Promise<void> {
+    const sessionKey = this.mobileAuth.sessionKey;
     this.authErrorMessage.set(null);
     this.forceShowOutlet.set(false);
     this.msalReady.set(false);
     try {
       await this.authService.loginNative();
+      if (sessionKey !== this.mobileAuth.sessionKey) return;
       this.authenticated.set(true);
       this.forceShowOutlet.set(true);
     } catch (error) {
+      if (sessionKey !== this.mobileAuth.sessionKey) return;
       this.authenticated.set(false);
+      if (['AUTH_TOKEN_INTERACTION_REQUIRED', 'AUTH_TOKEN_EXPIRED', 'SESSION_EXPIRED'].includes(this.mobileAuth.diagnostic()?.code ?? '')) {
+        try {
+          await this.mobileAuth.logout(true);
+          this.mobileAuth.requestLogin();
+          this.authErrorMessage.set(null);
+        } catch {
+          this.authErrorMessage.set('Disconnessione non completata. Riprova. Codice assistenza: NATIVE-logout-CACHE_CLEAR_FAILED');
+        } finally { this.msalReady.set(true); }
+        return;
+      }
       this.authErrorMessage.set(this.mobileAuth.error() ?? (error instanceof Error ? error.message : 'Accesso non completato. Riprova.'));
-    } finally { this.msalReady.set(true); }
+    } finally { if (sessionKey === this.mobileAuth.sessionKey) this.msalReady.set(true); }
   }
 
   private clearAuthState(): void {
