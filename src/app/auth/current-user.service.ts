@@ -4,6 +4,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom, timeout, retry, timer, throwError, mergeMap, of } from 'rxjs';
 import { getApiConfiguration } from './api-config';
 import { backendUserContext, CurrentUserContext } from './current-user-context';
+import { profileFailureCode } from './profile-diagnostics';
 
 @Injectable({ providedIn: 'root' })
 export class CurrentUserService {
@@ -13,6 +14,7 @@ export class CurrentUserService {
     private generation = 0;
     readonly context = backendUserContext.asReadonly();
     readonly state = signal<'disabled' | 'loading' | 'ready' | 'error'>('disabled');
+    readonly failure = signal<string | null>(null);
 
     load(accountKey: string): Promise<void> {
         const api = getApiConfiguration();
@@ -30,6 +32,7 @@ export class CurrentUserService {
                 // Retry only completed, recoverable GET failures. Never replay an invalid token,
                 // malformed profile or timed-out native request that may still be in flight.
                 if (this.generation !== generation || !(error instanceof HttpErrorResponse) || ![0,502,503,504].includes(error.status)) return throwError(() => error);
+                if (error.error?.profileFailure === 'TLS') return throwError(() => error);
                 console.info('[AUTH timing] profile retry', { attempt: 2, httpStatus: error.status, elapsedMs: Math.round(performance.now()-startedAt) });
                 return timer(200).pipe(mergeMap(() => this.generation === generation ? of(0) : throwError(() => error)));
             } })
@@ -41,7 +44,7 @@ export class CurrentUserService {
                 if (this.accountKey !== accountKey || this.generation !== generation) return;
                 if (!context || context.authenticated !== true || !Array.isArray(context.permissions) ||
                     (context.linkedToCommunity && (!Number.isInteger(context.communityId) || context.communityId! <= 0)))
-                    throw new Error('Contesto backend non valido.');
+                    throw Object.assign(new Error('Contesto backend non valido.'), { profileFailure: 'PAYLOAD' });
                 backendUserContext.set(context);
                 this.state.set('ready');
                 console.info('[AUTH timing] profile ready', { elapsedMs: Math.round(performance.now()-startedAt) });
@@ -50,6 +53,8 @@ export class CurrentUserService {
                 if (this.accountKey !== accountKey || this.generation !== generation) return;
                 backendUserContext.set(null);
                 this.state.set('error');
+                this.failure.set(profileFailureCode(error));
+                console.info('[AUTH profile] failed', { code: this.failure() });
                 console.info('[AUTH timing] profile failed', { elapsedMs: Math.round(performance.now()-startedAt), httpStatus: error instanceof HttpErrorResponse ? error.status : null });
                 console.warn('[API] Impossibile recuperare /api/me. Nessuna associazione locale usata come contesto DB.');
             });
@@ -62,6 +67,7 @@ export class CurrentUserService {
         this.pending = null;
         backendUserContext.set(null);
         this.state.set('disabled');
+        this.failure.set(null);
     }
 
     async refresh(): Promise<void> {

@@ -88,9 +88,10 @@ export class AuthService {
     if (currentUser.state() !== 'ready' || !currentUser.context()?.authenticated) {
       // A transient API/transport failure is not a failed Entra login.
       // The interceptor still signs out on an actual HTTP 401.
+      const failure = currentUser.failure?.() ?? 'UNAVAILABLE';
       currentUser.reset();
       throw new Error('Impossibile verificare il profilo. Controlla la connessione e riprova.' +
-        (Capacitor.getPlatform() === 'ios' ? ' Codice assistenza: IOS-PROFILE-UNAVAILABLE' : ''));
+        (Capacitor.getPlatform() === 'ios' ? ` Codice assistenza: IOS-PROFILE-${failure}` : ''));
     }
     const target = pendingInvitationRoute() || postLoginDestination(true, currentUser.context()?.linkedToCommunity === true);
     console.info('[AUTH native] route selected', target);

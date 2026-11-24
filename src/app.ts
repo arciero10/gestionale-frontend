@@ -33,11 +33,11 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
       </main>
     }
 
-    @if (!showLoading() && showAuthError()) {
+    @else if (showAuthError()) {
       <main class="auth-loading-page">
         <section class="auth-loading-card error">
           <h2>Accesso non completato</h2>
-          <p>{{ authErrorMessage() }}</p>
+          <p>{{ authErrorMessage() || 'Impossibile verificare il profilo. Riprova.' }}</p>
           @if (mobileAuth.native && mobileAuth.diagnostic(); as diagnostic) {
             <p>Codice assistenza: {{ diagnostic.reference }}</p>
           }
@@ -46,7 +46,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
       </main>
     }
 
-    @if (!showLoading() && showLogin()) {
+    @else if (showLogin()) {
       @if (isNativeWelcome()) {
         @if (mobileAuth.requestedFlow() || mobileAuth.nativeOutcome().step === 'unlock') {
           <app-native-auth-panel [flow]="mobileAuth.requestedFlow() ?? 'signin'" [invitationLogin]="mobileAuth.requestedFlow() === 'signin' || !!invitationLinks.pendingId()" (authenticated)="completeNativeLogin()" (closed)="closeNativeLogin()"></app-native-auth-panel>
@@ -77,7 +77,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
       }
     }
 
-    @if (!showLoading() && (isPublicRoute() || !showLogin())) {
+    @else if (canRenderRoute()) {
       <router-outlet></router-outlet>
     }
   `,
@@ -524,16 +524,15 @@ export class App {
 
   isInternalRoute(): boolean {
     const path = this.currentPath();
-    return path === '/gestionale-cn' || path.startsWith('/gestionale-cn/') || path === '/profile' || path.startsWith('/profile/');
+    return path === '/mobile' || path.startsWith('/mobile/') || path === '/gestionale-cn' || path.startsWith('/gestionale-cn/') || path === '/profile' || path.startsWith('/profile/');
   }
 
   showLoading(): boolean {
-    if (this.forceShowOutlet()) return false;
-    return !this.msalReady() && (this.currentPath() === '/' || this.isInternalRoute());
+    if (this.isPublicRoute()) return false;
+    return !this.msalReady() || (this.authenticated() && this.currentUser.state() === 'loading');
   }
 
   showLogin(): boolean {
-    if (this.forceShowOutlet()) return false;
     if (!this.msalReady()) {
       return false;
     }
@@ -546,11 +545,18 @@ export class App {
       return !this.authenticated();
     }
 
-    return !this.authenticated() && !this.isPublicRoute() && !this.isInternalRoute();
+    return !this.authenticated() && !this.isPublicRoute();
   }
 
   showAuthError(): boolean {
-    return Boolean(this.authErrorMessage()) && !this.authenticated() && (this.currentPath() === '/' || this.isInternalRoute());
+    return !this.isPublicRoute() && (Boolean(this.authErrorMessage()) || this.currentUser.state() === 'error');
+  }
+
+  canRenderRoute(): boolean {
+    if (this.showLoading() || this.showAuthError()) return false;
+    if (this.isPublicRoute()) return true;
+    return this.authenticated() && (!getApiConfiguration().apiScope ||
+      (this.currentUser.state() === 'ready' && this.currentUser.context()?.authenticated === true));
   }
 
   login(): void {

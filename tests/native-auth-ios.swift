@@ -3,6 +3,13 @@ import XCTest
 @testable import NativeAuthDiagnostics
 
 final class NativeAuthDiagnosticTests: XCTestCase {
+    func testProfileTransportClassificationNeverIncludesNSErrorDescription() {
+        for (code, category) in [(-1001,"TIMEOUT"),(-1200,"TLS"),(-1202,"TLS"),(-1022,"TLS"),(-1009,"CONNECTIVITY"),(-1004,"CONNECTIVITY")] {
+            let error=NSError(domain:NSURLErrorDomain,code:code,userInfo:[NSLocalizedDescriptionKey:"PRIVATE"])
+            XCTAssertEqual(NativeProfileTransport.category(error),category)
+        }
+        XCTAssertEqual(NativeProfileTransport.category(nil),"NETWORK")
+    }
     func testNumericSdkFailureContainsNoErrorDescription() {
         let diagnostic = NativeAuthDiagnostic(phase: "token", localFailure: .keychain, sdkCode: -34018)
         XCTAssertEqual(diagnostic.code, "AUTH_KEYCHAIN_FAILED")

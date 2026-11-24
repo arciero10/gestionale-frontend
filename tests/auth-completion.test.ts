@@ -12,6 +12,28 @@ import {MobileAuthService} from '../src/app/auth/mobile-auth.service';
 import {App} from '../src/app';
 
 const context={authenticated:true,linkedToCommunity:true,communityId:91,permissions:[],status:'LINKED'};
+
+for (const platform of ['ios', 'android', 'web']) test(`${platform} root never exposes protected content during loading or profile/auth errors`, () => {
+  const app:any=Object.create(App.prototype);
+  const state=signal('ready');
+  Object.assign(app,{mobileAuth:{native:platform!=='web'}, authenticated:signal(false),msalReady:signal(true),
+    authErrorMessage:signal(null),forceShowOutlet:signal(true),currentPath:signal('/mobile/home'),
+    currentUser:{state,context:()=>context}});
+  assert.equal(app.canRenderRoute(),false);
+  assert.equal(app.showLogin(),true);
+  app.msalReady.set(false);assert.equal(app.showLoading(),true);assert.equal(app.canRenderRoute(),false);
+  app.msalReady.set(true);app.authErrorMessage.set('Profile failure');
+  assert.equal(app.showAuthError(),true);assert.equal(app.canRenderRoute(),false);
+  app.currentPath.set('/gestionale-cn/convivenze');
+  assert.equal(app.showAuthError(),true);assert.equal(app.canRenderRoute(),false);
+  app.currentPath.set('/mobile/home');
+  app.authenticated.set(true);assert.equal(app.canRenderRoute(),false);
+  app.authErrorMessage.set(null);state.set('error');assert.equal(app.showAuthError(),true);assert.equal(app.canRenderRoute(),false);
+  state.set('loading');assert.equal(app.showLoading(),true);assert.equal(app.canRenderRoute(),false);
+  state.set('ready');assert.equal(app.canRenderRoute(),true);
+  app.currentPath.set('/area-strutture/dashboard');app.authenticated.set(false);state.set('error');
+  assert.equal(app.showAuthError(),false);assert.equal(app.canRenderRoute(),true);
+});
 function profile(t:any, response:()=>Observable<any>) {
   const previous=Capacitor.isNativePlatform;Capacitor.isNativePlatform=()=>true;
   const injector=createEnvironmentInjector([{provide:HttpClient,useValue:{get:response}}],null as any);
@@ -34,6 +56,7 @@ test('slow profile stays loading without duplicate requests',async t=>{
 for(const status of [400,401,403,500])test(`HTTP ${status} is a real error, never automatically replayed`,async t=>{
   let requests=0;const service=profile(t,()=>defer(()=>{requests++;return throwError(()=>new HttpErrorResponse({status}));}));
   await service.load('session');assert.equal(requests,1);assert.equal(service.state(),'error');assert.equal(service.context(),null);
+  assert.equal(service.failure(),`HTTP_${status}`);
 });
 test('repeated transient errors are bounded to two attempts',async t=>{
   let requests=0;const service=profile(t,()=>defer(()=>{requests++;return throwError(()=>new HttpErrorResponse({status:503}));}));
@@ -46,6 +69,7 @@ test('logout cancels a scheduled retry and cannot restore the old profile',async
 test('malformed successful profile is not retried or accepted',async t=>{
   let requests=0;const service=profile(t,()=>{requests++;return of({status:200,body:{authenticated:true,linkedToCommunity:true,communityId:0}});});
   await service.load('session');assert.equal(requests,1);assert.equal(service.state(),'error');
+  assert.equal(service.failure(),'PAYLOAD');
 });
 test('native completion is single-flight and cannot navigate after logout',async t=>{
   let release!:()=>void;const gate=new Promise<void>(r=>release=r);let loads=0,navigations=0;

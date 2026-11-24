@@ -1,5 +1,17 @@
 import Foundation
 
+enum NativeProfileTransport {
+    static func category(_ error: NSError?) -> String {
+        guard let error, error.domain == NSURLErrorDomain else { return "NETWORK" }
+        switch error.code {
+        case -1001: return "TIMEOUT"
+        case -1206 ... -1200, -1022: return "TLS"
+        case -1009, -1003, -1004, -1005, -1006: return "CONNECTIVITY"
+        default: return "NETWORK"
+        }
+    }
+}
+
 enum NativeUnlockDecision: Equatable {
     case allow, awaitActivation, deny
     static func evaluate(verified: Bool, cancelled: Bool, sameSession: Bool, active: Bool) -> Self {

@@ -8,6 +8,19 @@ import { EntraNativeSession, NativeAuthBridge, NativeOutcome, NativeStart, Nativ
 import { postLoginDestination } from '../src/app/auth/post-login-route';
 import { COMMUNITY_ONBOARDING_ROLES } from '../src/app/auth/community-roles';
 import { nativeAuthDiagnostic } from '../src/app/auth/native-auth-diagnostics';
+import { apiTokenMetadata, profileFailureCode } from '../src/app/auth/profile-diagnostics';
+
+test('profile diagnostics separate HTTP, transport, timeout and payload without exposing JWT claims', () => {
+  for (const status of [401,403,500,503]) assert.equal(profileFailureCode({status}), `HTTP_${status}`);
+  for (const kind of ['TLS','TIMEOUT','CONNECTIVITY','PAYLOAD']) assert.equal(profileFailureCode({status:0,error:{profileFailure:kind}}),kind);
+  assert.equal(profileFailureCode({name:'TimeoutError'}),'TIMEOUT');
+  const scope='api://71a9f6da-a231-4285-b475-37d2e65b8fe1/access_as_user';
+  const token='fixture.'+Buffer.from(JSON.stringify({aud:'71a9f6da-a231-4285-b475-37d2e65b8fe1',scp:'access_as_user',exp:Date.now()/1000+60,email:'PRIVATE'})).toString('base64url')+'.fixture';
+  const metadata=apiTokenMetadata(token,scope);
+  assert.equal(metadata.audienceMatches,true);assert.equal(metadata.scopePresent,true);assert.equal(metadata.expired,false);
+  assert.equal(JSON.stringify(metadata).includes('PRIVATE'),false);
+  assert.equal(apiTokenMetadata('not-a-jwt',scope).jwt,false);
+});
 
 test('iOS unlock diagnostics distinguish local authentication, lifecycle, cache and token without secrets', () => {
   for (const code of ['AUTH_LOCAL_UNAVAILABLE', 'AUTH_LOCAL_CANCELLED', 'AUTH_LOCAL_REJECTED',

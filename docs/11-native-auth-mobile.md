@@ -1,5 +1,33 @@
 # Native Authentication mobile
 
+## iOS 1009: exclusive root states and profile diagnostics
+
+Root previously rendered the error and outlet independently. showLogin=false
+on error inadvertently enabled the outlet and could show a stale protected
+page below the error. Loading/error/login/outlet now form one exclusive chain;
+private outlet requires backend authenticated context. Public pages remain
+anonymous. Root unit and browser tests cover failures and stale force flags.
+
+The old IOS-PROFILE-UNAVAILABLE discarded HTTP status and native NSError.
+Codes now distinguish HTTP_401/403/5xx, PAYLOAD, TIMEOUT, TLS, CONNECTIVITY,
+NETWORK and TOKEN. Capacitor iOS uses connectTimeout as its entire request
+timeout (previously 4 seconds), unlike separate Android timeouts. iOS profile
+now uses a 12-second native bound below the outer 14-second deadline.
+
+requestProfile wraps the SAME Capacitor HttpRequestHandler and only sanitizes
+NSError to category/numeric code, never its localized message. It permits
+only GET at the configured Azure TEST /api/me host/path, requires an unlocked
+session, and retains redirect disabling. Android transport stays unchanged.
+Profile 401 denies UI but retains SDK cache for explicit retry/signout.
+Only boolean JWT metadata (audience/scope/expiry match) is logged; decoding
+does not validate the token or grant authorization. The backend remains the
+sole JWT validator. No credentials or profile bodies are logged.
+
+The actual HTTP result from the real 1008 device cannot be recovered from its
+generic reference. The confirmed defects are overlapping root rendering and
+lost diagnostics/incorrect iOS timeout semantics; do not claim device repair
+until the next real iPhone test.
+
 ## iOS 1008: token acquisition cache alignment
 
 MSAL 2.17 MSALNativeAuthUserAccountResult+Internal.swift creates a new config

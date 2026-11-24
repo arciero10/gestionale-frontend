@@ -9,7 +9,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "EntraNativeAuthPlugin"
     public let jsName = "EntraNativeAuth"
     public let pluginMethods: [CAPPluginMethod] = [
-        "configure", "start", "submit", "resend", "getAccessToken", "restore", "unlock", "lock", "logout", "cancel"
+        "configure", "start", "submit", "resend", "getAccessToken", "restore", "unlock", "lock", "logout", "cancel", "requestProfile"
     ].map { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
 
     private var application: MSALNativeAuthPublicClientApplication?
@@ -424,6 +424,27 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         if let pending { pending.reject("Native authentication could not complete.", diagnostic.code, nil, diagnostic.data) }
         pending = nil; busy = false
     }
+
+    @objc public func requestProfile(_ call: CAPPluginCall) { main { [self] in
+        guard unlocked, UIApplication.shared.applicationState == .active else {
+            rejectLocal(call, .locked); return
+        }
+        guard let raw = call.getString("url"), let url = URLComponents(string: raw),
+              url.scheme == "https", url.host == "ca-gestionale-api.wonderfulglacier-d0f085b1.italynorth.azurecontainerapps.io",
+              url.path == "/api/me", url.port == nil, url.user == nil, url.password == nil,
+              url.query == nil, url.fragment == nil else { reject(call, "INVALID_CONFIGURATION"); return }
+        // Reuse Capacitor's transport, but keep safe NSError metadata that its JS API drops.
+        let wrapped: CAPPluginCall = CAPPluginCall(callbackId: call.callbackId, methodName: "requestProfile", options: call.options,
+            success: { result, _ in call.resolve((result as CAPPluginCallResult?)?.data ?? [:]) }, error: { failure in
+                let error = (failure as CAPPluginCallError?)?.error as NSError?
+                let category = NativeProfileTransport.category(error)
+                var data: [String: Any] = ["profileFailure": category]
+                if let error, error.domain == NSURLErrorDomain { data["nativeCode"] = error.code }
+                call.reject("Profile transport failed.", "PROFILE_" + category, nil, data)
+            })
+        do { try HttpRequestHandler.request(wrapped, "GET", bridge?.config) }
+        catch { wrapped.reject("Profile transport failed.", nil, error) }
+    } }
 
     func token(_ value: String, epoch: Int?) {
         if cancelled { application?.getNativeAuthUserAccount()?.signOut() }

@@ -60,14 +60,14 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       App: ['getLaunchUrl', 'addListener', 'removeListener'],
       Browser: ['open', 'close', 'addListener', 'removeListener'],
       CapacitorHttp: ['request'],
-      EntraNativeAuth: ['configure', 'start', 'submit', 'resend', 'restore', 'unlock', 'lock', 'cancel', 'logout', 'getAccessToken']
+      EntraNativeAuth: ['configure', 'start', 'submit', 'resend', 'restore', 'unlock', 'lock', 'cancel', 'logout', 'getAccessToken', 'requestProfile']
     };
     window.Capacitor = {
       PluginHeaders: Object.entries(methods).map(([name, names]) => ({ name, methods: names.map(name => ({ name, rtype: name === 'addListener' ? 'callback' : 'promise' })) })),
       nativeCallback: (plugin,method,options,callback) => { if(plugin==='App'&&method==='addListener'&&options.eventName==='appUrlOpen')window.__appUrlOpen=callback;if(plugin==='App'&&method==='addListener'&&options.eventName==='backButton')window.__androidBack=callback;return 'listener'; },
       nativePromise: async (plugin, method, options) => {
         window.__nativeCalls.push(`${plugin}.${method}`);
-        if (plugin === 'EntraNativeAuth') {
+        if (plugin === 'EntraNativeAuth' && method !== 'requestProfile') {
           if (method === 'restore') return { step: cached ? 'unlock' : 'login' };
           if (method === 'unlock') {
             if (unlockFailure) throw Object.assign(new Error('PRIVATE-LOCAL-AUTH'), { code: unlockFailure,
@@ -101,7 +101,8 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
           return { step: method === 'resend' ? 'code' : 'login' };
         }
         if (plugin === 'App' && method === 'getLaunchUrl') return launchUrl ? {url:launchUrl} : undefined;
-        if (plugin === 'CapacitorHttp' && options.url.includes('/api/')) {
+        if ((plugin === 'CapacitorHttp' || method === 'requestProfile') && options.url.includes('/api/')) {
+          if (method === 'requestProfile' && window.__profileTransportError) throw { data: { profileFailure: window.__profileTransportError } };
           const response = await fetch(options.url, { method: options.method, headers: options.headers,
             ...(options.data === undefined ? {} : { body: JSON.stringify(options.data) }) });
           return { status: response.status, data: response.status===204?null:await response.json(), headers: {} };
@@ -230,6 +231,24 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       assert.equal(profileReads, 1);
       assert.equal(await page.locator('app-native-auth-panel').count(), 0);
       console.log(`PASS ${platform} OTP -> verified /api/me -> same Home V5 cards, routes and images`);
+      await context.close();
+    }
+    for (const failure of ['HTTP_401','HTTP_403','HTTP_500','PAYLOAD','TIMEOUT','TLS']) {
+      const context = await browser.newContext({ viewport: { width: 393, height: 852 } });
+      await installNative(context, 'ios', true);
+      if (failure === 'TIMEOUT' || failure === 'TLS') await context.addInitScript(kind => { window.__profileTransportError=kind; },failure);
+      await context.route('**/api/**', route => route.fulfill({status:failure.startsWith('HTTP_')?Number(failure.slice(5)):200,json:{}}));
+      const page=await context.newPage();await page.goto(base);
+      await page.getByRole('button',{name:'Sblocca sessione',exact:true}).click();
+      await page.getByRole('heading',{name:'Accesso non completato',exact:true}).waitFor();
+      await page.getByText(new RegExp(`IOS-PROFILE-${failure}`)).waitFor();
+      assert.equal(await page.locator('router-outlet,app-mobile-shell,app-mobile-home,app-layout,app-convivenze').count(),0,'No protected outlet or stale page under error');
+      assert.equal(await page.locator('.auth-loading-page').count(),1,'Exactly one root state');
+      assert.equal(await page.evaluate(()=>window.__nativeCalls.includes('EntraNativeAuth.logout')),false);
+      await page.getByRole('button',{name:'Riprova accesso',exact:true}).click();
+      await page.getByRole('heading',{name:'Accesso non completato',exact:true}).waitFor();
+      assert.equal(await page.evaluate(()=>window.__nativeCalls.includes('EntraNativeAuth.start')),false,'Retry profile never repeats OTP');
+      console.log(`PASS iOS ${failure}: exclusive root error, no protected content, retry without OTP`);
       await context.close();
     }
     const cases = [
