@@ -30,18 +30,21 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     private var privacyObservers: [NSObjectProtocol] = []
     private var phase = "configuration"
     private var phaseStarted = Date()
+    private var traceId = UUID().uuidString
+    private var accessTimings = NativeAccessTimings()
     private let diagnostics = Logger(subsystem: "it.panteleia.eventidicomunita", category: "NativeAuth")
 
-    private func startPhase(_ value: String) {
+    private func startPhase(_ value: String, call: CAPPluginCall? = nil) {
+        if let raw = call?.getString("correlationId"), let id = UUID(uuidString: raw) { traceId = id.uuidString }
         phase = value
         phaseStarted = Date()
-        diagnostics.info("phase=\(value, privacy: .public) event=started")
+        diagnostics.info("trace=\(self.traceId, privacy: .public) phase=\(value, privacy: .public) event=started")
     }
 
     private func report(_ diagnostic: NativeAuthDiagnostic) {
         let elapsed = Int(Date().timeIntervalSince(phaseStarted) * 1000)
         let codes = diagnostic.serverCodes.map(String.init).joined(separator: ",")
-        diagnostics.info("phase=\(diagnostic.phase, privacy: .public) code=\(diagnostic.code, privacy: .public) serverCodes=\(codes, privacy: .public) elapsedMs=\(elapsed)")
+        diagnostics.info("trace=\(self.traceId, privacy: .public) phase=\(diagnostic.phase, privacy: .public) code=\(diagnostic.code, privacy: .public) serverCodes=\(codes, privacy: .public) elapsedMs=\(elapsed)")
     }
 
     public override func load() {
@@ -146,10 +149,12 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     func finish(_ result: JSObject) {
+        var result = result
+        if phase == "unlock" { result["timings"] = accessTimings.values.mapValues { $0 as JSValue } }
         let step = result["step"] as? String ?? "missing"
         if ["login", "code", "password", "attributes", "authenticated", "complete", "fallback", "unlock"].contains(step) {
             let elapsed = Int(Date().timeIntervalSince(phaseStarted) * 1000)
-            diagnostics.info("phase=\(self.phase, privacy: .public) outcome=\(step, privacy: .public) elapsedMs=\(elapsed)")
+            diagnostics.info("trace=\(self.traceId, privacy: .public) phase=\(self.phase, privacy: .public) outcome=\(step, privacy: .public) elapsedMs=\(elapsed)")
         }
         if !cancelled { pending?.resolve(result) }
         pending = nil
@@ -310,9 +315,11 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             if !cancelled { rejectLocal(call, .sessionChanged) }
             pending = nil; busy = false
         case .allow:
+            accessTimings.end("activationWaitMs")
             diagnostics.info("phase=unlock event=local_auth_verified")
             action()
         case .awaitActivation:
+            accessTimings.begin("activationWaitMs")
             // Face ID may reply before UIKit reactivates the app. Never authorize while inactive.
             diagnostics.info("phase=unlock event=awaiting_activation")
             activationObserver = NotificationCenter.default.addObserver(
@@ -358,9 +365,11 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         guard local.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             pending = nil; busy = false; context = nil; rejectLocal(call, localFailure(error)); return
         }
+        accessTimings.begin("localAuthenticationMs")
         local.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock your account") { [weak self] success, evaluationError in
             DispatchQueue.main.async {
                 guard let self else { return }
+                self.accessTimings.end("localAuthenticationMs")
                 guard success, !self.cancelled, epoch == self.generation else {
                     if !self.cancelled {
                         let failure: NativeAuthLocalFailure = !success ? self.localFailure(evaluationError)
@@ -377,17 +386,21 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc public func restore(_ call: CAPPluginCall) { main { [self] in
-        startPhase("restore")
+        startPhase("restore", call: call)
+        accessTimings = NativeAccessTimings()
+        accessTimings.begin("cacheMs")
         guard application != nil else { reject(call, "NOT_CONFIGURED"); return }
         guard !busy else { reject(call, "BUSY"); return }
         unlocked = false
         diagnostics.info("phase=restore accountPresent=\(application?.getNativeAuthUserAccount() != nil)")
         let account = application?.getNativeAuthUserAccount()
         let reusable = account.map { fullAuthentication.valid(subject: $0.account.identifier ?? "") } ?? false
-        call.resolve(["step": reusable ? "unlock" : "login"])
+        accessTimings.end("cacheMs")
+        call.resolve(["step": reusable ? "unlock" : "login", "timings": accessTimings.values.mapValues { $0 as JSValue }])
     } }
     @objc public func unlock(_ call: CAPPluginCall) { main { [self] in
-        startPhase("unlock")
+        startPhase("unlock", call: call)
+        accessTimings = NativeAccessTimings()
         guard let account = application?.getNativeAuthUserAccount(), fullAuthentication.valid(subject: account.account.identifier ?? "") else {
             call.resolve(["step": "login"]); return
         }
@@ -415,7 +428,7 @@ public final class EntraNativeAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             rejectLocal(call, unlocked ? .inactive : .locked); return
         }
         guard begin(call) else { return }
-        startPhase("token")
+        startPhase("token", call: call)
         let epoch = generation
         do {
             guard let application, let account = application.getNativeAuthUserAccount() else {

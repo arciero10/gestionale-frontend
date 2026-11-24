@@ -1,7 +1,9 @@
+import { accessTrace } from './access-trace';
 export type NativeFlow = 'signin' | 'signup' | 'reset';
 export type NativeStep = 'login' | 'code' | 'password' | 'attributes' | 'authenticated' | 'complete' | 'fallback' | 'unlock';
 export interface NativeOutcome {
   step: NativeStep;
+  timings?: Record<string, number>;
   diagnostic?: Record<string, unknown>;
   attributes?: { name: string; label?: string; required: boolean }[];
 }
@@ -12,12 +14,12 @@ export interface NativeAuthBridge {
   start(options: NativeStart): Promise<NativeOutcome>;
   submit(options: NativeSubmission): Promise<NativeOutcome>;
   resend(): Promise<NativeOutcome>;
-  restore(): Promise<NativeOutcome>;
-  unlock(): Promise<NativeOutcome>;
+  restore(options?: { correlationId: string }): Promise<NativeOutcome>;
+  unlock(options?: { correlationId: string }): Promise<NativeOutcome>;
   lock(): Promise<void>;
   cancel(): Promise<void>;
   logout(): Promise<unknown>;
-  getAccessToken(): Promise<{ accessToken: string }>;
+  getAccessToken(options?: { correlationId: string }): Promise<{ accessToken: string }>;
 }
 
 // No credentials or tokens retained here: native SDKs own their protected cache.
@@ -37,7 +39,7 @@ export class EntraNativeSession {
     this.outcome = outcome;
     return outcome;
   }
-  restore(): Promise<NativeOutcome> { return this.transition(() => this.bridge.restore(), 'restore'); }
+  restore(): Promise<NativeOutcome> { return this.transition(() => this.bridge.restore({correlationId:accessTrace.correlationId}), 'restore'); }
   async start(options: NativeStart): Promise<NativeOutcome> {
     // Cancelling a challenge does not remove an SDK account from secure storage.
     const signingOut = this.logout();
@@ -58,11 +60,11 @@ export class EntraNativeSession {
   }
   submit(options: NativeSubmission): Promise<NativeOutcome> { return this.transition(() => this.bridge.submit(options), 'challenge'); }
   resend(): Promise<NativeOutcome> { return this.transition(() => this.bridge.resend(), 'resend'); }
-  unlock(): Promise<NativeOutcome> { return this.transition(() => this.bridge.unlock(), 'unlock'); }
+  unlock(): Promise<NativeOutcome> { return this.transition(() => this.bridge.unlock({correlationId:accessTrace.correlationId}), 'unlock'); }
   async accessToken(): Promise<string> {
     if (!this.signedIn) throw new Error('Sblocca la sessione o accedi nuovamente.');
     const version = this.version;
-    const result = await this.bridge.getAccessToken();
+    const result = await this.bridge.getAccessToken({correlationId:accessTrace.correlationId});
     if (version !== this.version || !this.signedIn || !result.accessToken) throw new Error('Sessione bloccata.');
     return result.accessToken;
   }

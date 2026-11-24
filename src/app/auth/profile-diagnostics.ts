@@ -1,12 +1,20 @@
 export function profileFailureCode(error: unknown): string {
   const e = error as { status?: unknown; name?: unknown; error?: { profileFailure?: unknown }; profileFailure?: unknown; code?: unknown };
   const kind = e?.error?.profileFailure ?? e?.profileFailure;
-  if (['TIMEOUT', 'TLS', 'CONNECTIVITY', 'NETWORK', 'PAYLOAD'].includes(String(kind))) return String(kind);
+  if (['TIMEOUT', 'TLS', 'CONNECTIVITY', 'NETWORK', 'PAYLOAD', 'CANCELLED'].includes(String(kind))) return String(kind);
   if (e?.name === 'TimeoutError') return 'TIMEOUT';
   if (typeof e?.status === 'number' && e.status >= 100 && e.status <= 599) return `HTTP_${e.status}`;
   if (e?.status === 0) return 'NETWORK';
   if (typeof e?.code === 'string' && e.code.startsWith('AUTH_')) return 'TOKEN';
   return 'CLIENT_RESPONSE';
+}
+
+export function profileTraceCategory(error: unknown): string {
+  const code = profileFailureCode(error);
+  if (code === 'CANCELLED') return 'cancelled';
+  if (/^HTTP_5\d\d$/.test(code)) return 'HTTP_5XX';
+  if (/^HTTP_\d+$/.test(code) && !['HTTP_401','HTTP_403'].includes(code)) return 'HTTP_OTHER';
+  return code;
 }
 
 // Diagnostic only: decoding is NOT JWT validation and never grants access.

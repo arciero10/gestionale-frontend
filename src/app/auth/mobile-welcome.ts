@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
+import { accessTrace } from './access-trace';
 
 @Component({
   selector: 'app-mobile-welcome',
@@ -8,6 +9,7 @@ import { DOCUMENT } from '@angular/common';
   styleUrl: './mobile-welcome.scss'
 })
 export class MobileWelcome implements OnInit, OnDestroy {
+  protected accessDiagnostics(): string { return accessTrace.reports(); }
   @Input() pendingInvitation = false;
   @Input() busy = false;
   @Input() feedback: string | null = null;

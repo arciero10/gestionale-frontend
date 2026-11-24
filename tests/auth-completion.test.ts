@@ -63,6 +63,23 @@ test('repeated transient errors are bounded to two attempts',async t=>{
   let requests=0;const service=profile(t,()=>defer(()=>{requests++;return throwError(()=>new HttpErrorResponse({status:503}));}));
   await service.load('session');assert.equal(requests,2);assert.equal(service.state(),'error');
 });
+
+test('native transport cancellation is not retried as connectivity failure',async t=>{
+  let requests=0;const service=profile(t,()=>defer(()=>{requests++;return throwError(()=>new HttpErrorResponse({status:0,error:{profileFailure:'CANCELLED'}}));}));
+  await service.load('session');assert.equal(requests,1);assert.equal(service.failure(),'CANCELLED');assert.equal(service.context(),null);
+});
+
+test('manual retry after a 403 uses the same session but verifies profile again',async t=>{
+  let requests=0;const service=profile(t,()=>defer(()=>++requests===1?throwError(()=>new HttpErrorResponse({status:403})):of({status:200,body:context})));
+  await service.load('session');assert.equal(requests,1);assert.equal(service.context(),null);
+  await service.load('session');assert.equal(requests,2);assert.equal(service.state(),'ready');
+});
+
+test('background invalidation prevents a late successful profile from granting access',async t=>{
+  const response=new Subject<any>();const service=profile(t,()=>response);
+  const pending=service.load('old-session');service.reset();response.next({status:200,body:context});await pending;
+  assert.equal(service.context(),null);assert.equal(service.state(),'disabled');
+});
 test('logout cancels a scheduled retry and cannot restore the old profile',async t=>{
   let requests=0;const service=profile(t,()=>defer(()=>{requests++;return throwError(()=>new HttpErrorResponse({status:503}));}));
   const first=service.load('session');service.reset();await first;assert.equal(requests,1);assert.equal(service.context(),null);

@@ -3,6 +3,20 @@ import XCTest
 @testable import NativeAuthDiagnostics
 
 final class NativeAuthDiagnosticTests: XCTestCase {
+    func testMonotonicPhaseTimingSeparatesFaceIdAndActivation() {
+        var timing=NativeAccessTimings()
+        timing.begin("localAuthenticationMs",now:100)
+        timing.end("localAuthenticationMs",now:100.5)
+        timing.begin("activationWaitMs",now:100.5)
+        timing.end("activationWaitMs",now:100.75)
+        XCTAssertEqual(timing.values["localAuthenticationMs"],500)
+        XCTAssertEqual(timing.values["activationWaitMs"],250)
+        timing.end("cacheMs",now:101)
+        XCTAssertNil(timing.values["cacheMs"])
+        XCTAssertEqual(NativeProfileTransport.category(NSError(domain:NSURLErrorDomain,code:-999)),"CANCELLED")
+        let nested=NSError(domain:"wrapper",code:0,userInfo:[NSUnderlyingErrorKey:NSError(domain:NSURLErrorDomain,code:-1202,userInfo:[NSLocalizedDescriptionKey:"PRIVATE"])])
+        XCTAssertEqual(NativeProfileTransport.category(nested),"TLS")
+    }
     func testFullAuthenticationAgeCannotBeExtendedByUnlockOrTransferredToAnotherAccount() throws {
         let receipt=FullAuthenticationReceipt(subject:"A",authenticatedAt:1000,lastSeen:1000)
         XCTAssertTrue(receipt.valid(subject:"A",now:1001,days:30))

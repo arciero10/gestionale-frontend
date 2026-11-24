@@ -643,6 +643,12 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         assert.equal(new URL(page.url()).pathname,'/');
         assert.equal(await page.locator('app-mobile-home').count(),0);
         assert.equal(await page.evaluate(()=>window.__nativeCalls.filter(x=>x==='EntraNativeAuth.start').length),1);
+        await page.getByText('Diagnostica accesso',{exact:true}).click();
+        const diagnostics=await page.locator('.auth-loading-card pre').innerText();
+        assert.ok(diagnostics.includes('correlationId'));
+        assert.ok(diagnostics.includes(flow==='profile-denied'?'HTTP_403':'HTTP_5XX'));
+        assert.ok(!diagnostics.includes('user@example.test'));
+        assert.ok(!diagnostics.includes('sdk-api-test-token'));
         console.log(`PASS ${flow}: bounded requests, real error visible, no dashboard or repeated login`);
         await context.close();continue;
       }

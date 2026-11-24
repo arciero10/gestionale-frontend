@@ -10,6 +10,7 @@ import { loadNativeAuthRedirect, NativeAuthConfigError } from './native-auth-con
 import { MobileAuthError, MobileAuthSession } from './mobile-auth-core';
 import { parseInvitationDeepLink } from './invitation-link';
 import { nativeAuthDiagnostic } from './native-auth-diagnostics';
+import { accessTrace } from './access-trace';
 
 export const MOBILE_AUTH_MESSAGES = {
   cancelled: 'Accesso annullato. Puoi riprovare.',
@@ -48,9 +49,12 @@ export class MobileAuthService {
   initialize(): Promise<void> {
     if (!this.native) return Promise.resolve();
     return this.sdkInitialization ??= (async () => {
+      const started = performance.now();
+      if (!accessTrace.correlationId) accessTrace.start();
       await this.sdk.configure({ clientId: MSAL_CLIENT_ID, tenantSubdomain: MSAL_EXTERNAL_TENANT_NAME,
         authority: MSAL_AUTHORITY, scopes: [getApiConfiguration().apiScope], reauthenticationDays: MOBILE_REAUTHENTICATION_DAYS });
       await (this.nativeLifecycle ??= App.addListener('appStateChange', ({ isActive }) => {
+        accessTrace.event(isActive ? 'foreground' : 'background');
         if (!isActive && !this.browserMode && !this.accessing() &&
             (this.signedIn() || (!this.requestedFlow() && ['unlock', 'login'].includes(this.nativeOutcome().step)))) {
           const wasSignedIn = this.signedIn();
@@ -64,7 +68,12 @@ export class MobileAuthService {
           }).finally(() => this.nativeOutcome.set(this.sdkSession.outcome));
         }
       }).catch(error => { this.nativeLifecycle = null; throw error; }));
-      this.applyOutcome(await this.sdkSession.restore());
+      const restoreStarted = performance.now();
+      const restored = await this.sdkSession.restore();
+      accessTrace.native(restored.timings);
+      accessTrace.event('restore', performance.now()-restoreStarted);
+      this.applyOutcome(restored);
+      accessTrace.event('initialize', performance.now()-started);
     })().catch(error => { this.sdkInitialization = null; throw error; });
   }
 
@@ -93,13 +102,19 @@ export class MobileAuthService {
   }
   async resendNative(): Promise<void> { this.applyOutcome(await this.sdkSession.resend()); }
   async unlockNative(): Promise<void> {
-    const outcome = await this.sdkSession.unlock();
-    this.applyOutcome(outcome);
+    const started = performance.now();
+    try {
+      const outcome = await this.sdkSession.unlock();
+      accessTrace.native(outcome.timings);
+      accessTrace.event('unlock', performance.now()-started);
+      this.applyOutcome(outcome);
+    } catch (error) { accessTrace.event('unlock', performance.now()-started, 'failed'); throw error; }
   }
   accessFromWelcome(): Promise<boolean> {
     return this.accessAttempt ??= this.performWelcomeAccess().finally(() => { this.accessAttempt = null; });
   }
   private async performWelcomeAccess(): Promise<boolean> {
+    accessTrace.start();
     this.accessing.set(true); this.error.set(null); this.diagnostic.set(null);
     let restored = false;
     try {
@@ -195,11 +210,18 @@ export class MobileAuthService {
 
   accessToken(): Promise<string> {
     const startedAt = performance.now();
+    const traceId = accessTrace.correlationId;
     if (!this.browserMode) return this.tokenPromise ??= this.sdkSession.accessToken().then(token => {
       this.diagnostic.set(null);
+      accessTrace.event('token', performance.now()-startedAt, 'ok', undefined, traceId);
       console.info('[AUTH timing] API token ready', { elapsedMs: Math.round(performance.now()-startedAt), obtained: Boolean(token) });
       return token;
     }).catch(async error => {
+      const category = ({AUTH_TOKEN_EXPIRED:'TOKEN_EXPIRED',SESSION_EXPIRED:'TOKEN_EXPIRED',
+        AUTH_TOKEN_INTERACTION_REQUIRED:'TOKEN_INTERACTION',AUTH_CACHE_ACCOUNT_MISSING:'TOKEN_UNAVAILABLE',
+        AUTH_APP_INACTIVE:'LIFECYCLE',AUTH_SESSION_CHANGED:'LIFECYCLE',AUTH_SESSION_LOCKED:'LIFECYCLE',
+        AUTH_KEYCHAIN_FAILED:'KEYCHAIN'} as Record<string,string>)[error?.code] ?? 'TOKEN';
+      accessTrace.event('token', performance.now()-startedAt, category, undefined, traceId);
       console.info('[AUTH native] API access token obtained', false);
       const diagnostic = nativeAuthDiagnostic(error) ?? nativeAuthDiagnostic({ code: 'AUTH_TOKEN_FAILED',
         data: { platform: Capacitor.getPlatform(), phase: 'token' } });

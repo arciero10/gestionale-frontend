@@ -7,6 +7,7 @@ import { CurrentUserService } from './app/auth/current-user.service';
 import { MobileAuthService } from './app/auth/mobile-auth.service';
 import { MobileWelcome } from './app/auth/mobile-welcome';
 import { NativeAuthPanel } from './app/auth/native-auth-panel';
+import { accessTrace } from './app/auth/access-trace';
 import { InvitationDeepLinkService } from './app/auth/invitation-deep-link.service';
 import { pendingInvitationRoute, clearSessionPreservingInvitation } from './app/auth/onboarding-invitation';
 import { getApiConfiguration } from './app/auth/api-config';
@@ -42,6 +43,9 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
             <p>Codice assistenza: {{ diagnostic.reference }}</p>
           }
           <button type="button" class="auth-retry-button" (click)="retryLogin()">Riprova accesso</button>
+          @if (mobileAuth.native) {
+            <details><summary>Diagnostica accesso</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;font-size:12px;max-height:35vh;overflow:auto">{{ accessDiagnostics() }}</pre></details>
+          }
         </section>
       </main>
     }
@@ -387,6 +391,7 @@ const GLOBAL_ADMIN_DASHBOARD_URL = '/gestionale-cn/admin/dashboard';
   ]
 })
 export class App {
+  protected accessDiagnostics(): string { return accessTrace.reports(); }
   protected readonly title = signal('Gestionale Comunità');
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
@@ -578,7 +583,7 @@ export class App {
 
   retryLogin(): void {
     this.authErrorMessage.set(null);
-    if (this.mobileAuth.native && this.mobileAuth.signedIn()) { void this.completeNativeLogin(); return; }
+    if (this.mobileAuth.native && this.mobileAuth.signedIn()) { accessTrace.start(); void this.completeNativeLogin(); return; }
     this.login();
   }
 

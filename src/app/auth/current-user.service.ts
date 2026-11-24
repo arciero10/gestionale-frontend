@@ -4,7 +4,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom, timeout, retry, timer, throwError, mergeMap, of } from 'rxjs';
 import { getApiConfiguration } from './api-config';
 import { backendUserContext, CurrentUserContext } from './current-user-context';
-import { profileFailureCode } from './profile-diagnostics';
+import { profileFailureCode, profileTraceCategory } from './profile-diagnostics';
+import { accessTrace } from './access-trace';
 
 @Injectable({ providedIn: 'root' })
 export class CurrentUserService {
@@ -33,20 +34,23 @@ export class CurrentUserService {
                 // malformed profile or timed-out native request that may still be in flight.
                 if (this.generation !== generation || !(error instanceof HttpErrorResponse) || ![0,502,503,504].includes(error.status)) return throwError(() => error);
                 if (error.error?.profileFailure === 'TLS') return throwError(() => error);
+                if (error.error?.profileFailure === 'CANCELLED') return throwError(() => error);
+                accessTrace.event('profile', performance.now()-startedAt, 'retry', error.status);
                 console.info('[AUTH timing] profile retry', { attempt: 2, httpStatus: error.status, elapsedMs: Math.round(performance.now()-startedAt) });
                 return timer(200).pipe(mergeMap(() => this.generation === generation ? of(0) : throwError(() => error)));
             } })
         ))
             .then(response => {
+                const contextStarted = performance.now();
                 const context = response.body;
-                if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me', { httpStatus: response.status, linkedToCommunity: context?.linkedToCommunity === true,
-                    status: ['LINKED', 'UNLINKED', 'IN_ATTESA_APPROVAZIONE', 'ASSOCIATION_REQUIRED', 'SUSPENDED', 'REJECTED'].includes(context?.status ?? '') ? context?.status : 'OTHER' });
+                if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me', { httpStatus: response.status });
                 if (this.accountKey !== accountKey || this.generation !== generation) return;
                 if (!context || context.authenticated !== true || !Array.isArray(context.permissions) ||
                     (context.linkedToCommunity && (!Number.isInteger(context.communityId) || context.communityId! <= 0)))
                     throw Object.assign(new Error('Contesto backend non valido.'), { profileFailure: 'PAYLOAD' });
                 backendUserContext.set(context);
                 this.state.set('ready');
+                accessTrace.event('context', performance.now()-contextStarted, 'ok', response.status);
                 console.info('[AUTH timing] profile ready', { elapsedMs: Math.round(performance.now()-startedAt) });
             }).catch((error: unknown) => {
                 if (Capacitor.isNativePlatform()) console.info('[AUTH native] /api/me failed', { httpStatus: error instanceof HttpErrorResponse ? error.status : null });
@@ -54,6 +58,7 @@ export class CurrentUserService {
                 backendUserContext.set(null);
                 this.state.set('error');
                 this.failure.set(profileFailureCode(error));
+                accessTrace.event('profile', performance.now()-startedAt, profileTraceCategory(error), error instanceof HttpErrorResponse ? error.status : undefined);
                 console.info('[AUTH profile] failed', { code: this.failure() });
                 console.info('[AUTH timing] profile failed', { elapsedMs: Math.round(performance.now()-startedAt), httpStatus: error instanceof HttpErrorResponse ? error.status : null });
                 console.warn('[API] Impossibile recuperare /api/me. Nessuna associazione locale usata come contesto DB.');
@@ -62,6 +67,7 @@ export class CurrentUserService {
     }
 
     reset(): void {
+        if (this.state() === 'loading') accessTrace.event('profile', 0, 'cancelled');
         this.generation++;
         this.accountKey = null;
         this.pending = null;

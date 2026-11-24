@@ -2,10 +2,11 @@ import { Injectable, Injector, inject } from '@angular/core';
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpHeaders, HttpInterceptor, HttpRequest, HttpResponse } from '@angular/common/http';
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core';
 import { MsalInterceptor } from '@azure/msal-angular';
-import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, defer, finalize, from, switchMap, throwError } from 'rxjs';
 import { MobileAuthService } from './mobile-auth.service';
 import { getApiConfiguration } from './api-config';
-import { apiTokenMetadata } from './profile-diagnostics';
+import { apiTokenMetadata, profileTraceCategory } from './profile-diagnostics';
+import { accessTrace } from './access-trace';
 import { nativeAuthDiagnostic } from './native-auth-diagnostics';
 
 @Injectable()
@@ -21,10 +22,14 @@ export class PlatformAuthInterceptor implements HttpInterceptor {
     if (target.origin !== api.origin || !target.pathname.startsWith(api.pathname.replace(/\/$/, '') + '/')) return next.handle(request);
     // Public endpoints remain usable anonymously; the server protects private APIs.
     if (!this.mobile.signedIn()) return this.sendNative(request.clone({ headers: request.headers.delete('Authorization') }), next);
-    return from(this.mobile.accessToken()).pipe(
+    return defer(() => from(this.mobile.accessToken())).pipe(
       switchMap(token => {
-        if (request.method === 'GET' && target.pathname.endsWith('/api/me'))
-          console.info('[AUTH profile] token metadata', apiTokenMetadata(token, getApiConfiguration().apiScope));
+        if (request.method === 'GET' && target.pathname.endsWith('/api/me')) {
+          const metadata = apiTokenMetadata(token, getApiConfiguration().apiScope);
+          console.info('[AUTH profile] token metadata', metadata);
+          accessTrace.event('token', 0, !metadata.jwt ? 'TOKEN_FORMAT' : metadata.audienceMatches === false ? 'TOKEN_AUDIENCE' :
+            metadata.scopePresent === false ? 'TOKEN_SCOPE' : metadata.expired === true ? 'TOKEN_EXPIRED' : 'ok');
+        }
         return this.sendNative(request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }), next);
       }),
       catchError(error => {
@@ -44,16 +49,33 @@ export class PlatformAuthInterceptor implements HttpInterceptor {
     const profile = request.method === 'GET' && new URL(request.url).pathname.endsWith('/api/me');
     const iosProfile = profile && Capacitor.getPlatform() === 'ios';
     const send = iosProfile ? this.iosProfile.requestProfile : CapacitorHttp.request;
-    return from(send({ url: request.urlWithParams, method: request.method, headers,
+    return defer(() => {
+      const started = performance.now();
+      const correlationId = accessTrace.correlationId;
+      let completed = false;
+      const record = (outcome: string, status?: number) => {
+        if (correlationId === accessTrace.correlationId) accessTrace.event(profile ? 'profile' : 'http', performance.now()-started, outcome, status);
+      };
+      record('started');
+      return from(send({ url: request.urlWithParams, method: request.method, headers,
+      ...(iosProfile ? { correlationId } : {}),
       ...(request.body === null ? {} : { data: request.body }), responseType: 'json',
       disableRedirects: true, connectTimeout: iosProfile ? 12000 : profile ? 4000 : 15000, readTimeout: iosProfile ? 12000 : profile ? 8000 : 15000 })).pipe(
       catchError(error => {
-        if (nativeAuthDiagnostic(error)) return throwError(() => error);
+        completed = true;
+        const diagnostic = nativeAuthDiagnostic(error);
+        if (diagnostic) {
+          record(['AUTH_APP_INACTIVE','AUTH_SESSION_CHANGED','AUTH_SESSION_LOCKED'].includes(diagnostic.code) ? 'LIFECYCLE' : 'TOKEN');
+          return throwError(() => error);
+        }
         const category = error?.data?.profileFailure;
-        const profileFailure = ['TIMEOUT', 'TLS', 'CONNECTIVITY', 'NETWORK'].includes(category) ? category : 'NETWORK';
+        const profileFailure = ['TIMEOUT', 'TLS', 'CONNECTIVITY', 'NETWORK', 'CANCELLED'].includes(category) ? category : 'NETWORK';
+        record(profileFailure === 'CANCELLED' ? 'cancelled' : profileFailure);
         return throwError(() => new HttpErrorResponse({ status: 0, statusText: 'Native transport failure', url: request.url, error: { profileFailure } }));
       }),
       switchMap(result => {
+        completed = true;
+        record(result.status >= 200 && result.status < 300 ? 'ok' : profileTraceCategory({status:result.status}), result.status);
         if (result.status < 200 || result.status >= 300) return throwError(() => new HttpErrorResponse({ status: result.status, url: request.url, error: result.data }));
         let body = result.data;
         if (profile && typeof body === 'string') {
@@ -61,6 +83,7 @@ export class PlatformAuthInterceptor implements HttpInterceptor {
           catch { return throwError(() => new HttpErrorResponse({ status: result.status, url: request.url, error: { profileFailure: 'PAYLOAD' } })); }
         }
         return from([new HttpResponse({ status: result.status, body, headers: new HttpHeaders(result.headers), url: request.url })]);
-      }));
+      }), finalize(() => { if (!completed) record('cancelled'); }));
+    });
   }
 }

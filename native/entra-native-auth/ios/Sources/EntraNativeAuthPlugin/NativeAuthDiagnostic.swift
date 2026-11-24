@@ -1,5 +1,15 @@
 import Foundation
 
+struct NativeAccessTimings {
+    private var starts: [String: TimeInterval] = [:]
+    private(set) var values: [String: Int] = [:]
+    mutating func begin(_ phase: String, now: TimeInterval = ProcessInfo.processInfo.systemUptime) { starts[phase] = now }
+    mutating func end(_ phase: String, now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        guard let start = starts.removeValue(forKey: phase) else { return }
+        values[phase] = max(0, Int((now-start)*1000))
+    }
+}
+
 struct FullAuthenticationReceipt: Codable {
     let subject: String
     let authenticatedAt: TimeInterval
@@ -12,13 +22,21 @@ struct FullAuthenticationReceipt: Codable {
 
 enum NativeProfileTransport {
     static func category(_ error: NSError?) -> String {
-        guard let error, error.domain == NSURLErrorDomain else { return "NETWORK" }
-        switch error.code {
-        case -1001: return "TIMEOUT"
-        case -1206 ... -1200, -1022: return "TLS"
-        case -1009, -1003, -1004, -1005, -1006: return "CONNECTIVITY"
-        default: return "NETWORK"
+        var current = error
+        for _ in 0..<4 {
+            guard let value = current else { break }
+            if value.domain == NSURLErrorDomain {
+                switch value.code {
+                case -999: return "CANCELLED"
+                case -1001: return "TIMEOUT"
+                case -1206 ... -1200, -1022: return "TLS"
+                case -1009, -1003, -1004, -1005, -1006: return "CONNECTIVITY"
+                default: return "NETWORK"
+                }
+            }
+            current = value.userInfo[NSUnderlyingErrorKey] as? NSError
         }
+        return "NETWORK"
     }
 }
 

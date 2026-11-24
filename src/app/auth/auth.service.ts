@@ -7,6 +7,7 @@ import { CurrentUserService } from './current-user.service';
 import { backendUserContext } from './current-user-context';
 import { postLoginDestination } from './post-login-route';
 import { pendingInvitationRoute } from './onboarding-invitation';
+import { accessTrace } from './access-trace';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -87,16 +88,19 @@ export class AuthService {
     if (!this.mobile.signedIn() || this.mobile.sessionKey !== key) throw new Error('Sessione cambiata. Accedi o sblocca nuovamente.');
     if (currentUser.state() !== 'ready' || !currentUser.context()?.authenticated) {
       // A transient API/transport failure is not a failed Entra login.
-      // The interceptor still signs out on an actual HTTP 401.
+      // Profile HTTP 401/403 fail closed without removing the cached SDK account.
       const failure = currentUser.failure?.() ?? 'UNAVAILABLE';
       currentUser.reset();
       throw new Error('Impossibile verificare il profilo. Controlla la connessione e riprova.' +
         (Capacitor.getPlatform() === 'ios' ? ` Codice assistenza: IOS-PROFILE-${failure}` : ''));
     }
     const target = pendingInvitationRoute() || postLoginDestination(true, currentUser.context()?.linkedToCommunity === true);
-    console.info('[AUTH native] route selected', target);
+    const navigationStarted = performance.now();
+    accessTrace.event('navigation', 0, 'started');
     if (!await this.injector.get(Router).navigateByUrl(target, { replaceUrl: true }))
       throw new Error('Impossibile aprire il profilo. Riprova.');
+    accessTrace.event('navigation', performance.now()-navigationStarted);
+    accessTrace.finish();
     console.info('[AUTH timing] native login completed', { elapsedMs: Math.round(performance.now()-startedAt) });
   }
 

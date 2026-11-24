@@ -9,6 +9,23 @@ import { postLoginDestination } from '../src/app/auth/post-login-route';
 import { COMMUNITY_ONBOARDING_ROLES } from '../src/app/auth/community-roles';
 import { nativeAuthDiagnostic } from '../src/app/auth/native-auth-diagnostics';
 import { apiTokenMetadata, profileFailureCode } from '../src/app/auth/profile-diagnostics';
+import { AccessTrace } from '../src/app/auth/access-trace';
+
+test('access diagnostics are bounded, correlated and reject PII from SDK metadata', () => {
+  const trace = new AccessTrace(); const id = trace.start();
+  assert.match(id,/^[a-f0-9-]{36}$/i);
+  trace.native({localAuthenticationMs:125,activationWaitMs:4,email:'PRIVATE',token:'PRIVATE'});
+  trace.event('profile',42,'HTTP_403',403);
+  trace.event('http',10,'PRIVATE');
+  trace.event('PRIVATE' as any,0,'PRIVATE');
+  const first = JSON.parse(trace.report());
+  assert.equal(first.events.find((e:any)=>e.phase==='local_auth').elapsedMs,125);
+  assert.equal(first.events.find((e:any)=>e.phase==='profile').httpStatus,403);
+  assert.equal(trace.report().includes('PRIVATE'),false);
+  trace.start(); assert.ok(trace.reports().includes(id));
+  for(let i=0;i<100;i++)trace.event('http',1);
+  assert.equal(JSON.parse(trace.report()).events.length,80);
+});
 
 test('profile diagnostics separate HTTP, transport, timeout and payload without exposing JWT claims', () => {
   for (const status of [401,403,500,503]) assert.equal(profileFailureCode({status}), `HTTP_${status}`);
