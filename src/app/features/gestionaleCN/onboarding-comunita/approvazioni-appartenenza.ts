@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import {PlatformInvitationsAdmin} from '../../mobile/platform-invitations-admin';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
@@ -12,11 +13,12 @@ import { CurrentUserService } from '../../../auth/current-user.service';
 
 @Component({
     selector: 'app-approvazioni-appartenenza', standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, SelectModule],
+    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, PlatformInvitationsAdmin],
     template: `
         @if (enabled && authorized) {
             <section class="access-approvals">
                 <header><h2>Richieste di appartenenza</h2><button pButton type="button" label="Aggiorna" icon="pi pi-refresh" [disabled]="busy" (click)="load()"></button></header>
+                <app-platform-invitations-admin />
                 @if (feedback) { <p role="status">{{ feedback }}</p> }
                 @if (loading) { <p>Caricamento richieste...</p> }
                 @else if (!requests.length) { <p>Nessuna richiesta di appartenenza.</p> }
@@ -26,6 +28,7 @@ import { CurrentUserService } from '../../../auth/current-user.service';
                         @if (request.email) { <span>{{request.email}}</span> }
                         <span>{{ request.communityNumber }}ª Comunità · {{ request.parishName }}</span>
                         <span>Ruolo richiesto: {{ request.requestedRole }} · {{ request.status }}</span>
+                        @if(request.referentName){<p>Referente segnalato, da verificare: {{request.referentName}} · {{request.referentContact}}</p>}
                         @if (request.status === 'IN_ATTESA_APPROVAZIONE') {
                             @if (request.candidates?.length) { <div><strong>Possibile corrispondenza</strong>@for(candidate of request.candidates;track candidate.id){<p>{{candidate.name}} · {{candidate.reasons.includes('FUZZY_NAME')?'Nome simile, da verificare':'Dati compatibili, da verificare'}}</p>}</div> }
                             <div class="actions"><button type="button" pButton label="Collega a persona esistente" [disabled]="busy || !request.existingPeople.length" (click)="decisions[request.id] = 'EXISTING'"></button><button type="button" pButton label="Crea nuova persona" [disabled]="busy" (click)="decisions[request.id] = 'NEW'; selectedPeople[request.id] = undefined"></button></div>

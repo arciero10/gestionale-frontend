@@ -10,6 +10,15 @@ import { COMMUNITY_ONBOARDING_ROLES } from '../src/app/auth/community-roles';
 import { nativeAuthDiagnostic } from '../src/app/auth/native-auth-diagnostics';
 import { apiTokenMetadata, profileFailureCode } from '../src/app/auth/profile-diagnostics';
 import { AccessTrace } from '../src/app/auth/access-trace';
+import {rememberPlatformInvitation,readPlatformInvitation,clearPlatformInvitation,platformTokenFromURL} from '../src/app/auth/platform-invitation';
+
+test('platform invitation secrets stay out of URLs used by the router and storage',()=>{
+  const token='A'.repeat(64);clearPlatformInvitation();
+  assert.equal(platformTokenFromURL('https://test.eventidicomunita.it/invite/platform#token='+token),token);
+  for(const url of ['https://foreign.example/invite/platform#token='+token,'https://test.eventidicomunita.it/invite/platform?token='+token,'https://test.eventidicomunita.it/invite/platform#token=bad'])assert.equal(platformTokenFromURL(url),'');
+  assert.equal(rememberPlatformInvitation('invalid'),false);assert.equal(rememberPlatformInvitation(token),true);assert.equal(readPlatformInvitation(),token);
+  clearPlatformInvitation();assert.equal(readPlatformInvitation(),'');
+});
 
 test('access diagnostics are bounded, correlated and reject PII from SDK metadata', () => {
   const trace = new AccessTrace(); const id = trace.start();

@@ -589,6 +589,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
             canAddMember: communityManager, canManageMarriage: communityManager, assignableRoles: ['MEMBER', 'CO_RESPONSIBLE'] } });
           return;
         }
+        if(apiPath==='/api/platform-invitations/access'){await route.fulfill({headers,json:{inviteOnly:false,admitted:true}});return;}
         if (new URL(route.request().url()).pathname.endsWith('/me')) {
           assert.equal(route.request().headers().authorization, 'Bearer sdk-api-test-token');
           meCalls++;
@@ -1181,6 +1182,65 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       await page.getByRole('button',{name:'Accedi a Eventi di Comunità',exact:true}).waitFor();assert.equal(apiReads,0);assert.equal(new URL(page.url()).pathname,`/invite/${first}`);
       for(const path of ['/.well-known/assetlinks.json','/.well-known/apple-app-site-association']){const response=await page.request.get(base+path);assert.equal(response.status(),200);assert.match(response.headers()['content-type'],/application\/json/);await response.json();}
       await page.screenshot({path:path.join(output,'deep-link-web-fallback.png'),fullPage:true});await web.close();console.log('PASS invite fallback web: public route, no Person metadata before login, association files JSON');
+    }
+    for(const platform of ['ios','android'])for(const [number,role,label] of [[6,'CO_RESPONSIBLE','Corresponsabile'],[4,'MEMBER','Fratello / Sorella (nessun carisma)']]){
+      const context=await browser.newContext({viewport:{width:390,height:844}});
+      const token='C'.repeat(64);await installNative(context,platform,false,'https://test.eventidicomunita.it/invite/platform#token='+token);
+      let admitted=false,pending=null,inspections=0,referrals=0;
+      const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+      await context.route('**/api/**',async route=>{
+        const url=new URL(route.request().url());const path=url.pathname;
+        if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+        assert.equal(route.request().headers().authorization,'Bearer sdk-api-test-token');
+        const me={authenticated:true,linkedToCommunity:false,permissions:[],userId:77,status:pending?'IN_ATTESA_APPROVAZIONE':'UNLINKED'};
+        let json=[];
+        if(path==='/api/me')json=me;
+        else if(path==='/api/platform-invitations/inspect'){inspections++;assert.equal(route.request().postDataJSON().token,token);json={firstName:'Invited',lastName:'Fixture',status:'PENDING',expiresAt:'2026-12-01T00:00:00Z'};}
+        else if(path==='/api/platform-invitations/accept'){assert.equal(route.request().postDataJSON().confirm,true);admitted=true;json={admitted:true,linkedToCommunity:false};}
+        else if(path==='/api/platform-invitations/access')json={inviteOnly:true,admitted};
+        else if(path==='/api/onboarding/parishes')json=[{id:11,name:'Parrocchia di collaudo',address:''}];
+        else if(path==='/api/onboarding/current')json=pending;
+        else if(path==='/api/onboarding/complete'){
+          const body=route.request().postDataJSON();assert.equal(body.role,role);assert.equal(body.parishId,11);assert.equal(body.communityNumber,number);
+          pending={firstName:body.firstName,lastName:body.lastName,phone:'',parishId:11,parishName:'Parrocchia di collaudo',communityNumber:number,requestedRole:role,requestedStage:body.stage,status:'IN_ATTESA_APPROVAZIONE',responsibleAvailable:false};
+          json={status:pending.status,requestId:17,context:me};
+        }else if(path==='/api/onboarding/referent'){referrals++;json={status:'RECORDED'};}
+        await route.fulfill({headers,json});
+      });
+      const page=await context.newPage();await page.goto(base);
+      await page.getByRole('button',{name:'Continua',exact:true}).click();
+      await page.getByLabel('Email',{exact:true}).fill('fixture@example.test');await page.locator('app-native-auth-panel button[type="submit"]').click();
+      assert.equal(inspections,0,'No nomination metadata before JWT');
+      await page.getByLabel('Codice di verifica').fill('000000');await page.locator('app-native-auth-panel button[type="submit"]').click();
+      await page.getByRole('heading',{name:'Invited Fixture'}).waitFor();
+      await page.getByLabel('Confermo di voler procedere con il mio invito personale').check();
+      await page.getByRole('button',{name:'Continua con la richiesta',exact:true}).click();await page.waitForURL('**/mobile/onboarding');
+      await page.getByLabel('Nome',{exact:true}).fill('Invited');await page.getByLabel('Cognome',{exact:true}).fill('Fixture');
+      await page.locator('#backendParish').click();await page.getByRole('option',{name:'Parrocchia di collaudo',exact:true}).click();
+      await page.getByLabel("La mia comunità non compare nell'elenco").check();
+      await page.locator('#backendCommunity').click();await page.getByRole('option',{name:String(number),exact:true}).click();
+      await page.locator('#backendRole').click();await page.getByRole('option',{name:label,exact:true}).click();
+      await page.locator('#backendStage').click();await page.getByRole('option',{name:'Precatecumenato',exact:true}).click();
+      await page.locator('input[name="backendPrivacy"]').check();await page.getByRole('button',{name:'Conferma comunità',exact:true}).click();
+      await page.getByRole('heading',{name:'In attesa di approvazione',exact:true}).waitFor();
+      assert.equal(await page.locator('app-mobile-home').count(),0);
+      await page.getByText('Segnala un referente per la verifica',{exact:true}).click();
+      await page.getByLabel('Nome referente',{exact:true}).fill('Referente da verificare');await page.getByLabel('Contatto del referente',{exact:true}).fill('referent@example.test');
+      await page.getByRole('button',{name:'Segnala referente',exact:true}).click();await page.getByText('Referente segnalato. Nessun ruolo è stato assegnato.',{exact:true}).waitFor();assert.equal(referrals,1);
+      assert.equal(await page.evaluate(token=>JSON.stringify({...sessionStorage,...localStorage}).includes(token),token),false);
+      assert.equal(new URL(page.url()).hash,'');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await context.close();console.log(`PASS platform invite ${platform}: ${role}, approval pending, no roles or directory, referent recorded`);
+    }
+    {
+      const context=await browser.newContext();let reads=0;
+      await context.route('**/api/**',async route=>{reads++;await route.fulfill({json:{}});});
+      const page=await context.newPage(),token='D'.repeat(64);
+      await page.goto(base+'/invite/platform#token='+token);
+      await page.getByRole('heading',{name:'Invito a Eventi di Comunità',exact:true}).waitFor();
+      assert.equal(new URL(page.url()).hash,'');assert.equal(reads,0);
+      assert.equal(await page.evaluate(token=>JSON.stringify({...sessionStorage,...localStorage}).includes(token),token),false);
+      assert.equal(await page.getByText('Invited Fixture',{exact:true}).count(),0);
+      await context.close();console.log('PASS platform web: fragment stripped before routing, no secret in storage or personal metadata before authentication');
     }
   } finally {
     if (browser) await browser.close();

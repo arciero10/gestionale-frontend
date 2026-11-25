@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { invitationPath, parseInvitationDeepLink, PUBLIC_INVITATION_ID } from './invitation-link';
 import { readAccessInvitation, rememberAccessInvitation, clearAccessInvitation } from './onboarding-invitation';
+import {platformTokenFromURL,rememberPlatformInvitation,clearPlatformInvitation,readPlatformInvitation,PLATFORM_INVITATION_PATH} from './platform-invitation';
 
 export const INVITATION_LINK_PLATFORM = new InjectionToken('InvitationLinkPlatform', {providedIn:'root',factory:()=>({
   native:Capacitor.isNativePlatform(),
@@ -16,7 +17,7 @@ export class InvitationDeepLinkService {
   private readonly router = inject(Router);
   private readonly zone = inject(NgZone);
   private readonly platform = inject(INVITATION_LINK_PLATFORM);
-  readonly pendingId = signal(readAccessInvitation());
+  readonly pendingId = signal(readPlatformInvitation()?'platform':readAccessInvitation());
   private initialization: Promise<void> | null = null;
   initialize(): Promise<void> {
     if (!this.platform.native) return Promise.resolve();
@@ -31,8 +32,11 @@ export class InvitationDeepLinkService {
     if (readAccessInvitation() !== id) rememberAccessInvitation(id);
     this.pendingId.set(id); return true;
   }
-  clear():void { clearAccessInvitation(); this.pendingId.set(''); }
+  clear():void { clearAccessInvitation();clearPlatformInvitation();this.pendingId.set(''); }
   async handle(raw:string):Promise<boolean> {
+    const token=platformTokenFromURL(raw);
+    if(token){rememberPlatformInvitation(token);clearAccessInvitation();this.pendingId.set('platform-'+globalThis.crypto.randomUUID());
+      return this.zone.run(async()=>{if(this.router.url.split('?')[0]!==PLATFORM_INVITATION_PATH)await this.router.navigateByUrl(PLATFORM_INVITATION_PATH);return true;});}
     const id = parseInvitationDeepLink(raw);
     if (!id) return false;
     this.remember(id);

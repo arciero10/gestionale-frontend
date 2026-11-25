@@ -1,4 +1,5 @@
 import { invitationIdFromLocation, invitationPath, PUBLIC_INVITATION_ID } from './invitation-link';
+import {readPlatformInvitation,PLATFORM_INVITATION_PATH} from './platform-invitation';
 const KEY = 'onboarding.invitation';
 const ACCESS_KEY = 'community.access-invite';
 export function rememberAccessInvitation(id: string): void {
@@ -12,7 +13,7 @@ export function readAccessInvitation(): string {
     } catch { return ''; }
 }
 export function clearAccessInvitation(): void { try { sessionStorage.removeItem(ACCESS_KEY); } catch { /* UI hint only. */ } }
-export function pendingInvitationRoute(): string { return invitationPath(readAccessInvitation()); }
+export function pendingInvitationRoute(): string { return readPlatformInvitation()?PLATFORM_INVITATION_PATH:invitationPath(readAccessInvitation()); }
 export function clearSessionPreservingInvitation(): void {
     const pending = readAccessInvitation() ? sessionStorage.getItem(ACCESS_KEY) : null;
     sessionStorage.clear();

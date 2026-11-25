@@ -1,0 +1,35 @@
+name: TestFlight - approved external builds
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['iOS - build e TestFlight manuale']
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '17 */6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: testflight-external-distribution
+  cancel-in-progress: false
+jobs:
+  distribute:
+    if: ${{ vars.IOS_EXTERNAL_DISTRIBUTION_ENABLED == 'true' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify review gates
+        run: node --test tests/testflight-external.test.mjs
+      - name: Associate only Apple-approved builds with the existing external group
+        env:
+          IOS_EXTERNAL_DISTRIBUTION_ENABLED: ${{ vars.IOS_EXTERNAL_DISTRIBUTION_ENABLED }}
+          IOS_EXTERNAL_MIN_BUILD: ${{ vars.IOS_EXTERNAL_MIN_BUILD }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: node scripts/testflight-external.mjs --apply

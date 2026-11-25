@@ -3,7 +3,9 @@ import { appConfig } from './app.config';
 import { App } from './app';
 import { loadApiConfiguration } from './app/auth/api-config';
 import { rememberOnboardingInvitation } from './app/auth/onboarding-invitation';
+import {capturePlatformInvitation} from './app/auth/platform-invitation';
 
+capturePlatformInvitation();
 rememberOnboardingInvitation();
 loadApiConfiguration().then(() => bootstrapApplication(App, appConfig))
   .catch((err) => console.error(err));

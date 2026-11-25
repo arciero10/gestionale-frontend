@@ -12,6 +12,7 @@ export interface CompleteOnboardingRequest {
     role: string; phone: string; stage: string; privacyConsent: boolean; invitationToken?: string;
 }
 export interface CommunityAccessRequest {
+    referentName?:string;referentContact?:string;
     email?: string; candidates?: Array<{id: number; name: string; reasons: string[]}>;
     id: number; firstName: string; lastName: string; parishId: number; parishName: string;
     communityNumber: number; requestedRole: string; requestedStage: string; status: string; submittedAt: string;
@@ -22,6 +23,7 @@ export interface OnboardingResult { status: string; requestId: number; context: 
 export interface CommunityInvitation { id: number; publicId: string; personId: number; status: string; expiresAt: string; emailStatus?: 'NOT_SENT' | 'SENT' | 'FAILED' | 'BLOCKED_BY_TEST_MODE'; emailSentAt?: string; emailLastAttemptAt?: string; emailAttemptCount?: number }
 export interface CreatedInvitation extends CommunityInvitation { invitationUrl: string; deliveryStatus: string; mail: { to: string; subject: string; body: string } }
 export interface OwnOnboardingRequest {
+    referentName?:string;referentContact?:string;responsibleAvailable?:boolean;
     firstName: string; lastName: string; phone: string; parishId: number; communityNumber: number;
     requestedRole: string; requestedStage: string; status: string; parishName?: string;
 }
@@ -47,6 +49,7 @@ export class OnboardingApiService {
     getCurrentRequest(): Promise<OwnOnboardingRequest | null> {
         return firstValueFrom(this.http.get<OwnOnboardingRequest | null>(`${this.url}/current`).pipe(timeout(15000)));
     }
+    reportReferent(name:string,contact:string):Promise<unknown>{return firstValueFrom(this.http.post(`${this.url}/referent`,{name,contact}).pipe(timeout(15000)));}
     complete(payload: CompleteOnboardingRequest): Promise<OnboardingResult> {
         return firstValueFrom(this.http.post<OnboardingResult>(`${this.url}/complete`, payload).pipe(timeout(20000)));
     }

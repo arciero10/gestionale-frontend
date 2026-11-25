@@ -20,6 +20,7 @@ import { Capacitor } from '@capacitor/core';
 import { postLoginDestination } from '../../../auth/post-login-route';
 import { readAccessInvitation } from '../../../auth/onboarding-invitation';
 import { CommunityInvitationAcceptance } from '../../mobile/community-invitation-acceptance';
+import {PlatformInvitationsApi} from '../../../auth/platform-invitations-api.service';
 
 const PARROCCHIA_MANUALE_ID = -1;
 type ModalitaOnboarding = 'guidata' | 'ricerca';
@@ -99,12 +100,20 @@ interface OnboardingPayload {
                             <p><strong>Ruolo richiesto:</strong> {{ roleLabel(richiestaCorrente?.requestedRole ?? 'MEMBER') }}</p>
                             <p><strong>Stato:</strong> In attesa di approvazione</p>
                             <button pButton type="button" label="Verifica approvazione" icon="pi pi-refresh" [disabled]="saving" (click)="verificaApprovazione()"></button>
+                            @if(richiestaCorrente?.responsibleAvailable===false){<p>Non risulta un Responsabile con account attivo. La verifica resta affidata all'amministrazione superiore.</p>}
+                            <details><summary>Segnala un referente per la verifica</summary><p>Il contatto indicato non riceve ruoli o permessi automaticamente.</p>
+                                <div class="field"><label for="referentName">Nome referente</label><input pInputText id="referentName" [(ngModel)]="referentName" maxlength="100"/></div>
+                                <div class="field"><label for="referentContact">Contatto del referente</label><input pInputText id="referentContact" [(ngModel)]="referentContact" maxlength="256"/></div>
+                                <button pButton type="button" label="Segnala referente" [disabled]="saving||!referentName.trim()||!referentContact.trim()" (click)="reportReferent()"></button>
+                            </details>
                         </section>
                     }
                     @if (richiestaCorrente?.status === 'RESPINTA') {
                         <p role="alert" class="privacy-consent">La richiesta è stata rifiutata. Puoi correggere i dati qui sotto e ripresentarla.</p>
                     }
-                    @if (loadingRequest) { <p role="status">Caricamento profilo...</p> } @else {
+                    @if (loadingRequest||admissionChecking) { <p role="status">Caricamento profilo...</p> }
+                    @else if(!platformAdmitted){<p role="status">Per richiedere l'appartenenza serve un invito personale alla piattaforma. Accedi e riapri il link ricevuto.</p><button pButton type="button" label="Riprova verifica invito" (click)="checkAdmission()"></button>}
+                    @else {
                     <form class="community-form" novalidate (ngSubmit)="confermaBackend()">
                         <div class="field" data-validation-field="nome" [class.field-error]="hasFieldError('nome')">
                             <label for="backendFirstName">Nome</label>
@@ -127,12 +136,15 @@ interface OnboardingPayload {
                         </div>
                         <div class="field" data-validation-field="numeroComunita" [class.field-error]="hasFieldError('numeroComunita')">
                             <label for="backendCommunity">Numero comunità</label>
-                            @if (ruoloComunitario === 'responsabile') {
+                            @if (ruoloComunitario === 'responsabile' || communityNotListed) {
                                 <p-select inputId="backendCommunity" name="backendCommunity" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
-                                <small>Il primo censimento richiede l'approvazione dell'amministrazione superiore.</small>
+                                <small>La comunità indicata sarà verificata dall'amministrazione superiore. La richiesta non abilita ruoli o accesso ai dati.</small>
                             } @else {
                                 <p-select inputId="backendCommunity" name="backendCommunity" [options]="backendCommunities" optionLabel="number" optionValue="number" [(ngModel)]="numeroComunita" [loading]="loadingCommunities" placeholder="Seleziona una comunità censita"></p-select>
                                 @if (backendParishId && !loadingCommunities && !backendCommunities.length) { <small>Nessuna comunità censita. Contatta il responsabile.</small> }
+                            }
+                            @if (ruoloComunitario !== 'responsabile') {
+                                <label class="checkbox-line"><input type="checkbox" name="communityNotListed" [(ngModel)]="communityNotListed" (ngModelChange)="numeroComunita = 0" />La mia comunità non compare nell'elenco</label>
                             }
                             <small class="field-error-message">{{ getFieldErrorMessage('numeroComunita') }}</small>
                         </div>
@@ -840,6 +852,11 @@ export class OnboardingComunita implements OnInit {
     lastName = '';
     backendParishes: BackendParish[] = [];
     backendCommunities: BackendCommunity[] = [];
+    communityNotListed = false;
+    private readonly platformInvitations=inject(PlatformInvitationsApi);
+    admissionChecking=true;platformAdmitted=false;referentName='';referentContact='';
+    async checkAdmission():Promise<void>{this.admissionChecking=true;try{const result=await this.platformInvitations.access();this.platformAdmitted=result.admitted===true;}catch(error:any){this.platformAdmitted=false;this.feedbackType='error';this.feedbackMessage='Verifica invito non disponibile. Riprova senza modificare i dati.';}finally{this.admissionChecking=false;}}
+    async reportReferent():Promise<void>{if(this.saving)return;this.saving=true;try{await this.onboardingApi.reportReferent(this.referentName.trim(),this.referentContact.trim());this.feedbackType='success';this.feedbackMessage='Referente segnalato. Nessun ruolo è stato assegnato.';}catch{this.feedbackType='error';this.feedbackMessage='Segnalazione non salvata. Riprova.';}finally{this.saving=false;}}
     loadingCommunities = false;
     richiestaCorrente: OwnOnboardingRequest | null = null;
     readonly roleLabel = communityRoleLabel;
@@ -854,6 +871,7 @@ export class OnboardingComunita implements OnInit {
 
     ngOnInit(): void {
         if (this.useBackend) {
+            void this.checkAdmission();
             this.pendingApproval = this.currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE';
             void this.caricaParrocchieBackend();
             void this.caricaRichiestaCorrente();
@@ -865,6 +883,7 @@ export class OnboardingComunita implements OnInit {
             const request = await this.onboardingApi.getCurrentRequest();
             if (!request) return;
             this.richiestaCorrente = request;
+            this.referentName=request.referentName??'';this.referentContact=request.referentContact??'';
             this.firstName = request.firstName;
             this.lastName = request.lastName;
             this.telefono = request.phone;
@@ -878,6 +897,7 @@ export class OnboardingComunita implements OnInit {
             if (this.tappeCammino.includes(request.requestedStage as TappaCammino)) this.tappaCammino = request.requestedStage as TappaCammino;
             this.pendingApproval = request.status === 'IN_ATTESA_APPROVAZIONE';
             await this.caricaComunitaBackend();
+            this.communityNotListed = this.numeroComunita > 0 && !this.backendCommunities.some(c => c.number === this.numeroComunita);
         } catch {
             this.feedbackType = 'error';
             this.feedbackMessage = 'Impossibile recuperare la richiesta precedente. Riprova più tardi.';
@@ -895,7 +915,7 @@ export class OnboardingComunita implements OnInit {
         } finally { this.loadingParishes = false; }
     }
 
-    cambiaParrocchiaBackend(): void { this.numeroComunita = 0; void this.caricaComunitaBackend(); }
+    cambiaParrocchiaBackend(): void { this.numeroComunita = 0; this.communityNotListed = false; void this.caricaComunitaBackend(); }
     async caricaComunitaBackend(): Promise<void> {
         const parishId = this.backendParishId;
         this.backendCommunities = [];
@@ -910,7 +930,7 @@ export class OnboardingComunita implements OnInit {
     }
 
     async confermaBackend(): Promise<void> {
-        if (this.saving) return;
+        if (this.saving||!this.platformAdmitted) return;
         this.submitAttempted = true;
         this.validationErrors = [];
         const required = (field: string, label: string, valid: boolean) => {
@@ -919,8 +939,8 @@ export class OnboardingComunita implements OnInit {
         required('nome', 'Nome', Boolean(this.firstName.trim()));
         required('cognome', 'Cognome', Boolean(this.lastName.trim()));
         required('parrocchia', 'Parrocchia', this.backendParishes.some(p => p.id === this.backendParishId));
-        required('numeroComunita', 'Numero comunità', Number.isInteger(this.numeroComunita) && this.numeroComunita > 0);
-        if (this.ruoloComunitario !== 'responsabile') required('numeroComunita', 'Comunità censita', this.backendCommunities.some(c => c.number === this.numeroComunita));
+        required('numeroComunita', 'Numero comunità', Number.isInteger(this.numeroComunita) && this.numeroComunita > 0 && this.numeroComunita <= 100);
+        if (this.ruoloComunitario !== 'responsabile' && !this.communityNotListed) required('numeroComunita', 'Comunità censita', this.backendCommunities.some(c => c.number === this.numeroComunita));
         required('carisma', 'Ruolo richiesto', COMMUNITY_ONBOARDING_ROLES.some(r => r.value === this.ruoloComunitario));
         required('tappaCammino', 'Tappa del Cammino', this.tappeCammino.includes(this.tappaCammino));
         required('privacyConsenso', 'Privacy e consenso', this.privacyConsenso);

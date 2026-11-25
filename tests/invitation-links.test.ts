@@ -7,6 +7,7 @@ import {Router} from '@angular/router';
 import {InvitationDeepLinkService,INVITATION_LINK_PLATFORM} from '../src/app/auth/invitation-deep-link.service';
 import {parseInvitationDeepLink,invitationIdFromLocation,invitationPath} from '../src/app/auth/invitation-link';
 import {rememberAccessInvitation,readAccessInvitation,clearSessionPreservingInvitation,pendingInvitationRoute} from '../src/app/auth/onboarding-invitation';
+import {readPlatformInvitation,clearPlatformInvitation} from '../src/app/auth/platform-invitation';
 
 const id='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa', second='bbbbbbbb-1234-4321-8123-bbbbbbbbbbbb';
 test('SWA AASA MIME rewrite has matching extensionless and JSON assets',()=>{
@@ -42,4 +43,16 @@ test('cold start and warm appUrlOpen use one listener, ignore auth callbacks and
   callback(`https://test.eventidicomunita.it/invite/${second}`);await Promise.resolve();assert.equal(readAccessInvitation(),second);assert.equal(router.url,`/invite/${second}`);
   assert.equal(await service.handle('msauth://it.panteleia.eventidicomunita/callback'),false);assert.equal(paths.length,2);
   service.clear();assert.equal(readAccessInvitation(),'');assert.equal(service.pendingId(),'');injector.destroy();
+});
+
+test('platform cold/warm links keep the secret memory-only and route without a token',async()=>{
+  const map=storage();clearPlatformInvitation();const token='B'.repeat(64);let callback!:(url:string)=>void;
+  const paths:string[]=[];const router={url:'/',navigateByUrl:async(path:string)=>{paths.push(path);router.url=path;return true;}};
+  const injector=createEnvironmentInjector([{provide:Router,useValue:router},{provide:NgZone,useValue:{run:(fn:()=>unknown)=>fn()}},
+    {provide:INVITATION_LINK_PLATFORM,useValue:{native:true,listen:async(fn:any)=>{callback=fn;},launch:async()=>({url:'https://test.eventidicomunita.it/invite/platform#token='+token})}}],null as any);
+  const service=runInInjectionContext(injector,()=>new InvitationDeepLinkService());await service.initialize();
+  assert.equal(readPlatformInvitation(),token);assert.equal(pendingInvitationRoute(),'/invite/platform');assert.deepEqual(paths,['/invite/platform']);
+  assert.ok(!JSON.stringify([...map]).includes(token));
+  assert.equal(await service.handle('https://foreign.example/invite/platform#token='+token),false);
+  service.clear();assert.equal(readPlatformInvitation(),'');injector.destroy();
 });
