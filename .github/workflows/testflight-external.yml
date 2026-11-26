@@ -1,12 +1,11 @@
 name: TestFlight - approved external builds
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ['iOS - build e TestFlight manuale']
-    types: [completed]
-    branches: [main]
-  schedule:
-    - cron: '17 */6 * * *'
+    inputs:
+      confirm_distribution:
+        description: Explicitly distribute only Apple-approved beta builds
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -14,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   distribute:
-    if: ${{ vars.IOS_EXTERNAL_DISTRIBUTION_ENABLED == 'true' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_distribution && github.ref == 'refs/heads/main' && vars.IOS_EXTERNAL_DISTRIBUTION_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
