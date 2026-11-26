@@ -34,6 +34,7 @@ jobs:
         run: |
           node --test .github/scripts/test-deployment-gate.mjs
           npm run test:auth-mobile
+          node scripts/test-platform-role.mjs
           npm run test:invitation-links
           node scripts/test-auth-completion.mjs
           node scripts/test-ios-msal-configuration.mjs

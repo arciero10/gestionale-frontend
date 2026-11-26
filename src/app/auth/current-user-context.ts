@@ -17,6 +17,7 @@ export interface CurrentUserContext {
     displayName: string | null;
     memberCount?: number;
     isOnboardingAdmin?: boolean;
+    platformRoles?: string[];
 }
 
 export const backendUserContext = signal<CurrentUserContext | null>(null);

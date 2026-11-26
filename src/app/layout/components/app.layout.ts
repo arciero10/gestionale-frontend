@@ -5,6 +5,7 @@ import { filter, Subscription } from 'rxjs';
 import { AppSidebar } from './app.sidebar';
 import { LayoutService } from '@/layout/service/layout.service';
 import { CurrentUserService } from '@/auth/current-user.service';
+import { communityAssociationNotice } from '@/auth/platform-role';
 import { inject } from '@angular/core';
 
 @Component({
@@ -15,8 +16,8 @@ import { inject } from '@angular/core';
         @if (isOnboardingRoute()) {
             <div class="onboarding-layout" [style.--page-background-image]="pageBackgroundStyle()">
                 <div class="onboarding-layout-content">
-                    @if (currentUser.state() === 'ready' && !currentUser.context()?.linkedToCommunity) {
-                        <div role="status" class="user-association-status">{{ currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE' ? 'Richiesta di appartenenza in attesa di approvazione.' : 'Il tuo account deve ancora essere associato a una comunità.' }}</div>
+                    @if (associationNotice()) {
+                        <div role="status" class="user-association-status">{{ associationNotice() }}</div>
                     }
                     @if (currentUser.state() === 'error') {
                         <div role="status" class="user-association-status">Il contesto della comunità non è disponibile. Riprova più tardi.</div>
@@ -34,8 +35,8 @@ import { inject } from '@angular/core';
                     [class.layout-page-background]="!isDashboardRoute()"
                 >
                     <div class="layout-content">
-                        @if (currentUser.state() === 'ready' && !currentUser.context()?.linkedToCommunity) {
-                            <div role="status" class="user-association-status">{{ currentUser.context()?.status === 'IN_ATTESA_APPROVAZIONE' ? 'Richiesta di appartenenza in attesa di approvazione.' : 'Il tuo account deve ancora essere associato a una comunità.' }}</div>
+                        @if (associationNotice()) {
+                            <div role="status" class="user-association-status">{{ associationNotice() }}</div>
                         }
                         @if (currentUser.state() === 'error') {
                             <div role="status" class="user-association-status">Il contesto della comunità non è disponibile. Riprova più tardi.</div>
@@ -108,6 +109,8 @@ import { inject } from '@angular/core';
 })
 export class AppLayout implements OnDestroy {
     readonly currentUser = inject(CurrentUserService);
+    readonly associationNotice = computed(() => this.currentUser.state() === 'ready'
+        ? communityAssociationNotice(this.currentUser.context()) : null);
     isDashboardRoute = signal(false);
     isOnboardingRoute = signal(false);
     currentContentBackground = signal('/images/backgrounds/camino-neocatecumenal-jubileo-jovenes-roma-agosto-2025-02-1024x478-1.jpg');

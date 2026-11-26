@@ -13,6 +13,21 @@ import {App} from '../src/app';
 
 const context={authenticated:true,linkedToCommunity:true,communityId:91,permissions:[],status:'LINKED'};
 
+test('post-login global classification uses only a ready backend role, never MSAL email or local profile',()=>{
+  const app:any=Object.create(App.prototype);
+  const state=signal('ready');
+  let backend:any={...context,linkedToCommunity:false,communityId:null,platformRoles:['GLOBAL_ADMIN']};
+  Object.assign(app,{currentUser:{state,context:()=>backend},
+    authService:{state:()=>{throw new Error('EMAIL_LOOKUP_FORBIDDEN');}},
+    injector:{get:()=>{throw new Error('ACCOUNT_EMAIL_LOOKUP_FORBIDDEN');}}});
+  assert.equal(app.isCurrentGlobalAdmin(),true);
+  for(const value of [{...context,role:'GLOBAL_ADMIN'}, {...context,isOnboardingAdmin:true}, {...context,platformRoles:[]}, {...backend,status:'INACTIVE'}]){
+    backend=value;assert.equal(app.isCurrentGlobalAdmin(),false);
+  }
+  backend={...context,platformRoles:['GLOBAL_ADMIN']};
+  for(const value of ['loading','error','disabled']){state.set(value);assert.equal(app.isCurrentGlobalAdmin(),false);}
+});
+
 for (const platform of ['ios', 'android', 'web']) test(`${platform} root never exposes protected content during loading or profile/auth errors`, () => {
   const app:any=Object.create(App.prototype);
   const state=signal('ready');

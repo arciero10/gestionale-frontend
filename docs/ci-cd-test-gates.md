@@ -74,8 +74,8 @@ mode, public ingress, minReplicas=1/maxReplicas=10 and 100 percent current traff
 No public candidate label is an access restriction. Do not switch revision mode,
 add labels, alter ingress or enable authorization flags during this CI/CD task.
 
-A separately approved candidate must have JWT-only admin enforcement and global
-role resolution enabled before it can receive requests. Anonymous, ordinary
+A separately approved candidate must have the final unconditional JWT-only admin
+policy and global role resolution enabled before it can receive requests. Anonymous, ordinary
 account and forwarded-header tests must fail. No user/grant is created by CI.
 Keep Invite Only, identity, OTP and biometric policies unchanged.
 

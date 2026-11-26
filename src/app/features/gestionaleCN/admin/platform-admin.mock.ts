@@ -1,63 +1,15 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { CanMatchFn, Router } from '@angular/router';
-import { AuthService } from '@/auth/auth.service';
-import { Capacitor } from '@capacitor/core';
-
-export const GLOBAL_ADMIN_EMAILS = [
-    'admin@panteleiaets.onmicrosoft.com',
-    'alessandro.arciero@panteleiaets.it',
-    'alessandro.arciero@tiscali.it',
-    'admin@eventidicomunita.it',
-    'supporto@eventidicomunita.it',
-    'alessandro.arciero@panteleia.it',
-    'privacy@panteleia.it'
-];
-
-export const PLATFORM_ADMIN_EMAILS = GLOBAL_ADMIN_EMAILS;
-
-export function isPlatformAdminEmail(email: string | null | undefined): boolean {
-    const normalized = email?.trim().toLowerCase();
-
-    if (!normalized) {
-        return false;
-    }
-
-    return GLOBAL_ADMIN_EMAILS.includes(normalized);
-}
-
-export function isLocalAdminMockEnabled(): boolean {
-    if (Capacitor.isNativePlatform()) return false;
-    if (typeof window === 'undefined') {
-        return false;
-    }
-
-    return ['localhost', '127.0.0.1'].includes(window.location.hostname) || localStorage.getItem('globalAdminMockEnabled') === 'true';
-}
-
-export function isAdminStructuresTestAccessEnabled(): boolean {
-    if (typeof window === 'undefined') {
-        return false;
-    }
-
-    return isLocalAdminMockEnabled() || window.location.hostname === 'test.eventidicomunita.it';
-}
+import { backendUserContext } from '@/auth/current-user-context';
+import { hasVerifiedGlobalAdmin } from '@/auth/platform-role';
 
 @Injectable({ providedIn: 'root' })
 export class PlatformAdminAccess {
-    private readonly authService = inject(AuthService);
-
-    readonly isPlatformAdmin = computed(() => isPlatformAdminEmail(this.authService.state().email) || isLocalAdminMockEnabled());
+    readonly isPlatformAdmin = computed(() => hasVerifiedGlobalAdmin(backendUserContext()));
 }
 
-export const platformAdminGuard: CanMatchFn = (_route, segments) => {
+export const platformAdminGuard: CanMatchFn = () => {
     const access = inject(PlatformAdminAccess);
     const router = inject(Router);
-    const requestedPath = segments.map((segment) => segment.path).join('/');
-
-    if (requestedPath === 'admin/strutture' && isAdminStructuresTestAccessEnabled()) {
-        return true;
-    }
-
     return access.isPlatformAdmin() ? true : router.createUrlTree(['/forbidden']);
 };
-

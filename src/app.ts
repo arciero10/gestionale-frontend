@@ -4,6 +4,7 @@ import { AccountInfo, AuthenticationResult } from '@azure/msal-browser';
 import { MsalService } from '@azure/msal-angular';
 import { AuthService } from './app/auth/auth.service';
 import { CurrentUserService } from './app/auth/current-user.service';
+import { hasVerifiedGlobalAdmin } from './app/auth/platform-role';
 import { MobileAuthService } from './app/auth/mobile-auth.service';
 import { MobileWelcome } from './app/auth/mobile-welcome';
 import { NativeAuthPanel } from './app/auth/native-auth-panel';
@@ -14,7 +15,6 @@ import { getApiConfiguration } from './app/auth/api-config';
 import { MSAL_AUTHORITY } from './app.config';
 import { hasSelectedCommunity } from './app/features/gestionaleCN/data/community-selection.storage';
 import { getAppUserStatus, hasAppUserProfile } from './app/features/gestionaleCN/data/app-user-profile.storage';
-import { isPlatformAdminEmail } from './app/features/gestionaleCN/admin/platform-admin.mock';
 import { filter, firstValueFrom, timeout } from 'rxjs';
 
 const DASHBOARD_URL = '/gestionale-cn/dashboard';
@@ -889,21 +889,7 @@ export class App {
   }
 
   private isCurrentGlobalAdmin(): boolean {
-    const activeAccount = this.msalService.instance.getActiveAccount() ?? this.msalService.instance.getAllAccounts()[0];
-    const candidates = [
-      this.authService.state().email,
-      activeAccount?.username,
-      activeAccount?.idTokenClaims?.['email'] as string | undefined,
-      activeAccount?.idTokenClaims?.['preferred_username'] as string | undefined,
-      activeAccount?.idTokenClaims?.['upn'] as string | undefined
-    ];
-
-    const emails = activeAccount?.idTokenClaims?.['emails'];
-    if (Array.isArray(emails)) {
-      candidates.push(...emails.filter((value): value is string => typeof value === 'string'));
-    }
-
-    return candidates.some((email) => isPlatformAdminEmail(email));
+    return this.currentUser.state() === 'ready' && hasVerifiedGlobalAdmin(this.currentUser.context());
   }
 
   private readRedirectResult(): Promise<AuthenticationResult | null> {
