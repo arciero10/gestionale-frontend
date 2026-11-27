@@ -34,6 +34,12 @@ async function verifyMobileDesign(page) {
   });
   assert.ok(contrasts.every(ratio=>ratio>=4.5), 'Theme text contrast >=4.5:1');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile theme must not overflow');
+  const surfaces = page.locator('.macro-areas>a,.greeting,.area-link,.member-row,.event,app-mobile-admin .row,app-mobile-admin-communities .parish,app-mobile-home .links a');
+  assert.ok(await surfaces.evaluateAll(nodes => nodes.every(n => getComputedStyle(n).borderTopLeftRadius === '22px')), 'Mobile cards consistently use the 22px shell radius');
+  const caption = page.locator('.photo-caption').first();
+  if (await caption.count()) {
+    assert.match(await caption.evaluate(n => getComputedStyle(n).backgroundImage), /0\.82/, 'Home photo overlay remains lighter than the former 0.96 overlay');
+  }
   assert.ok(await page.locator('.mobile-topbar .icon,.mobile-bottom a').evaluateAll(nodes => nodes.every(n => n.getBoundingClientRect().height >= 44)), 'Touch targets >=44px');
   if (await page.locator('.mobile-bottom').count()) {
     assert.equal(await page.locator('.mobile-bottom a').count(), 4);
