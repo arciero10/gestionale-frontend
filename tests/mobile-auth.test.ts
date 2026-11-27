@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import './mobile-admin.test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { authPlatform, IOS_REDIRECT_URI, MSAL_AUTHORITY, validateMobileRedirect } from '../src/app/auth/entra-settings';

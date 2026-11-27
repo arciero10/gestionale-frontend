@@ -7,13 +7,14 @@ import { Subscription } from 'rxjs';
 import { MobileNavigationHistory, operationalMobileUrl } from './mobile-navigation-history';
 import { CurrentUserService } from '../../auth/current-user.service';
 import { AuthService } from '../../auth/auth.service';
+import { hasVerifiedGlobalAdmin } from '../../auth/platform-role';
 
 @Component({
   selector: 'app-mobile-shell', standalone: true, imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="mobile-shell mobile-scene">
       <header class="mobile-topbar">
-        <a class="brand" routerLink="/mobile/home">Eventi di Comunità@if (current.context()?.parishName) { <span>{{ current.context()?.parishName }}</span> }<span>{{ current.context()?.communityName || 'La tua comunità' }}</span></a>
+        <a class="brand" [routerLink]="globalAdmin && !current.context()?.linkedToCommunity ? '/mobile/admin' : '/mobile/home'">Eventi di Comunità@if (current.context()?.parishName) { <span>{{ current.context()?.parishName }}</span> }<span>{{ globalAdmin && !current.context()?.linkedToCommunity ? 'Amministrazione' : current.context()?.communityName || 'La tua comunità' }}</span></a>
         @if (current.context()?.linkedToCommunity) {
           <a class="icon" routerLink="/mobile/avvisi" aria-label="Notifiche"><i class="pi pi-bell" aria-hidden="true"></i></a>
           <a class="avatar icon" routerLink="/mobile/profilo" aria-label="Apri profilo">{{ (current.context()?.displayName || 'P').charAt(0).toLocaleUpperCase('it') }}</a>
@@ -21,6 +22,9 @@ import { AuthService } from '../../auth/auth.service';
           <button class="icon" type="button" (click)="auth.logout()" aria-label="Esci"><i class="pi pi-sign-out" aria-hidden="true"></i></button>
         }
       </header>
+      @if (globalAdmin) {
+        <a class="admin-access" routerLink="/mobile/admin"><i class="pi pi-shield" aria-hidden="true"></i> Amministrazione</a>
+      }
       @if (current.context()?.isOnboardingAdmin && !current.context()?.linkedToCommunity) {
         <a class="admin-access" routerLink="/mobile/approvazioni"><i class="pi pi-check-square" aria-hidden="true"></i> Appartenenze e approvazioni</a>
       }
@@ -51,6 +55,7 @@ export class MobileShell implements OnInit, OnDestroy {
   protected readonly router = inject(Router);
   protected readonly current = inject(CurrentUserService);
   protected readonly auth = inject(AuthService);
+  protected get globalAdmin(): boolean { return this.current.state() === 'ready' && hasVerifiedGlobalAdmin(this.current.context()); }
   private readonly document = inject(DOCUMENT);
   private viewport: HTMLMetaElement | null = null;
   private originalViewport: string | null = null;
@@ -63,14 +68,14 @@ export class MobileShell implements OnInit, OnDestroy {
   private navigatingBack = false;
   private restored = false;
   private touch: {x:number;y:number;at:number} | null = null;
-  protected get showBack(): boolean { return this.current.context()?.linkedToCommunity === true && this.router.url.split(/[?#]/)[0] !== '/mobile/home'; }
+  protected get showBack(): boolean { return (this.globalAdmin || this.current.context()?.linkedToCommunity === true) && !['/mobile/home','/mobile/admin'].includes(this.router.url.split(/[?#]/)[0]); }
   protected async back(): Promise<void> {
-    if (!this.current.context()?.linkedToCommunity || this.navigatingBack) return;
+    if ((!this.current.context()?.linkedToCommunity && !this.globalAdmin) || this.navigatingBack) return;
     const menu = this.element.nativeElement.querySelector('details.admin-menu[open]');
     if (menu) { menu.removeAttribute('open'); return; }
     if (!this.showBack) return;
     this.navigatingBack = true;
-    try { await this.router.navigateByUrl(this.history.back(this.router.url), {replaceUrl:true}); }
+    try { await this.router.navigateByUrl(this.globalAdmin && !this.current.context()?.linkedToCommunity ? '/mobile/admin' : this.history.back(this.router.url), {replaceUrl:true}); }
     finally { this.navigatingBack = false; }
   }
   @HostListener('touchstart', ['$event']) startGesture(event: TouchEvent): void {

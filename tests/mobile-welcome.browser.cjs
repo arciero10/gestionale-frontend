@@ -126,6 +126,39 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
     const base = `http://127.0.0.1:${server.address().port}`;
     browser = await chromium.launch({ headless: true,
       channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) });
+    for(const platform of ['ios','android']){
+      const context=await browser.newContext({viewport:{width:390,height:844}});
+      await installNative(context,platform,false,'https://test.eventidicomunita.it/invite/platform#token='+'C'.repeat(64));
+      const chunk=fs.readdirSync(root).find(name=>name.endsWith('.js')&&fs.readFileSync(path.join(root,name),'utf8').includes('app-platform-invitation-page'));
+      assert.ok(chunk,'Invitation lazy chunk must be present');
+      let release;const held=new Promise(resolve=>release=resolve);
+      await context.route('**/'+chunk,async route=>{await held;await route.continue();});
+      let reads=0;
+      await context.route('**/api/**',async route=>{
+        const api=new URL(route.request().url()).pathname;
+        const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+        if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+        reads++;
+        assert.equal(route.request().headers().authorization,'Bearer sdk-api-test-token');
+        await route.fulfill({headers,json:api==='/api/me'?{authenticated:true,linkedToCommunity:false,status:'UNLINKED',permissions:[],userId:77}:{firstName:'Delayed',lastName:'Fixture',status:'PENDING'}});
+      });
+      const page=await context.newPage();const chunkRequest=page.waitForRequest(request=>new URL(request.url()).pathname.endsWith('/'+chunk));
+      await page.goto(base,{waitUntil:'domcontentloaded'});await chunkRequest;
+      await page.locator('app-mobile-welcome').getByRole('button',{name:'Continua',exact:true}).click();
+      await page.locator('#native-email').waitFor();
+      const chunkResponse=page.waitForResponse(response=>new URL(response.url()).pathname.endsWith('/'+chunk));release();
+      const response=await chunkResponse;await response.finished();
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      assert.equal(new URL(page.url()).pathname,'/invite/platform');
+      assert.equal(await page.locator('#native-email').isVisible(),true,'Late public navigation must not replace an active login');
+      assert.equal(reads,0,'No API or invitation metadata before authenticated JWT');
+      await page.locator('#native-email').fill('fixture@example.test');await page.locator('app-native-auth-panel button[type=submit]').click();
+      await page.locator('#native-code').fill('000000');await page.locator('app-native-auth-panel button[type=submit]').click();
+      await page.getByRole('heading',{name:'Delayed Fixture',exact:true}).waitFor();
+      assert.equal(await page.locator('app-mobile-home').count(),0);assert.equal(await page.locator('.auth-retry-button').count(),0);
+      assert.equal((await page.evaluate(()=>window.__nativeCalls)).filter(x=>x==='EntraNativeAuth.start').length,1);
+      await context.close();console.log(`PASS delayed public invitation ${platform}: actual root race reproduced with a gated lazy navigation; email retained, one OTP flow, verified profile, no redundant navigation`);
+    }
     for (const platform of ['android', 'ios']) {
       for (const action of ['unlock', 'switch']) {
         const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -1218,11 +1251,20 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       await page.getByLabel('Nome',{exact:true}).fill('Invited');await page.getByLabel('Cognome',{exact:true}).fill('Fixture');
       await page.locator('#backendParish').click();await page.getByRole('option',{name:'Parrocchia di collaudo',exact:true}).click();
       await page.getByLabel("La mia comunità non compare nell'elenco").check();
-      await page.locator('#backendCommunity').click();await page.getByRole('option',{name:String(number),exact:true}).click();
+      await page.getByText("La comunità indicata sarà verificata dall'amministrazione superiore. La richiesta non abilita ruoli o accesso ai dati.",{exact:true}).waitFor();
+      await page.locator('#backendCommunity').click();
+      await page.locator('#backendCommunity').press('Home');
+      for(let index=1;index<number;index++)await page.locator('#backendCommunity').press('ArrowDown');
+      await page.locator('#backendCommunity').press('Enter');
+      await page.waitForFunction(expected=>document.querySelector('#backendCommunity')?.textContent?.trim()===String(expected),number);
       await page.locator('#backendRole').click();await page.getByRole('option',{name:label,exact:true}).click();
       await page.locator('#backendStage').click();await page.getByRole('option',{name:'Precatecumenato',exact:true}).click();
       await page.locator('input[name="backendPrivacy"]').check();await page.getByRole('button',{name:'Conferma comunità',exact:true}).click();
-      await page.getByRole('heading',{name:'In attesa di approvazione',exact:true}).waitFor();
+      await page.getByRole('heading',{name:'In attesa di approvazione',exact:true}).waitFor().catch(async error=>{
+        await page.screenshot({path:path.join(output,`platform-pending-failure-${platform}-${number}.png`),fullPage:true});
+        console.log('SYNTHETIC_PENDING_FAILURE',JSON.stringify({path:new URL(page.url()).pathname,pendingStatus:pending?.status??null,headings:await page.locator('h1,h2,[role=alert]').allTextContents()}));
+        throw error;
+      });
       assert.equal(await page.locator('app-mobile-home').count(),0);
       await page.getByText('Segnala un referente per la verifica',{exact:true}).click();
       await page.getByLabel('Nome referente',{exact:true}).fill('Referente da verificare');await page.getByLabel('Contatto del referente',{exact:true}).fill('referent@example.test');
@@ -1241,6 +1283,38 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       assert.equal(await page.evaluate(token=>JSON.stringify({...sessionStorage,...localStorage}).includes(token),token),false);
       assert.equal(await page.getByText('Invited Fixture',{exact:true}).count(),0);
       await context.close();console.log('PASS platform web: fragment stripped before routing, no secret in storage or personal metadata before authentication');
+    }
+    for(const platform of ['ios','android']){
+      const context=await browser.newContext({viewport:{width:platform==='ios'?390:320,height:844}});
+      await installNative(context,platform,true);
+      let writes=0;
+      await context.route('**/api/**',async route=>{
+        const request=route.request(),path=new URL(request.url()).pathname;
+        const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,OPTIONS'};
+        if(request.method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+        if(request.method()!=='GET'){writes++;await route.fulfill({status:403,headers,json:{}});return;}
+        let json={};
+        if(path==='/api/me')json={authenticated:true,status:'UNLINKED',linkedToCommunity:false,userId:2,personId:null,communityId:null,role:null,permissions:[],platformRoles:['GLOBAL_ADMIN'],displayName:'Admin Fixture'};
+        else if(path==='/api/onboarding/parishes')json=[{id:91,name:'Parrocchia sintetica',address:'Indirizzo di collaudo'}];
+        else if(path==='/api/onboarding/parishes/91/communities')json=[{id:601,number:6},{id:301,number:3}];
+        await route.fulfill({headers,json});
+      });
+      const page=await context.newPage();await page.goto(base);
+      await page.getByRole('button',{name:'Accedi',exact:true}).click();await page.waitForURL('**/mobile/admin');
+      await page.getByRole('heading',{name:'Amministrazione',exact:true}).waitFor();
+      assert.equal(await page.locator('app-mobile-admin nav a').count(),8);
+      assert.equal(await page.locator('app-mobile-home').count(),0);
+      await page.getByRole('link',{name:'Parrocchie e comunità',exact:true}).click();
+      await page.getByRole('button',{name:/Parrocchia sintetica/}).click();await page.getByText('3ª Comunità',{exact:true}).waitFor();
+      assert.deepEqual(await page.locator('.communities li').allTextContents(),['3ª Comunità','6ª Comunità']);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      await page.screenshot({path:path.join(output,`admin-communities-${platform}.png`),fullPage:true});
+      await page.getByLabel('Cerca parrocchia').fill('Nessuna corrispondenza');await page.getByText('Nessuna parrocchia trovata.',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'Indietro',exact:true}).click();await page.getByRole('link',{name:'Account e sicurezza',exact:true}).click();
+      await page.getByRole('button',{name:"Esci dall'account",exact:true}).click();await page.getByRole('button',{name:'Accedi',exact:true}).waitFor();
+      assert.equal(await page.locator('app-mobile-admin').count(),0);assert.equal(writes,0);
+      assert.ok((await page.evaluate(()=>window.__nativeCalls)).includes('EntraNativeAuth.logout'));
+      await context.close();console.log(`PASS mobile admin ${platform}: verified backend role, no membership, real API contract fixtures, search, no overflow, native logout, zero writes`);
     }
   } finally {
     if (browser) await browser.close();

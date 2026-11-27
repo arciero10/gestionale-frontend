@@ -10,8 +10,16 @@ import {CurrentUserService} from '../src/app/auth/current-user.service';
 import {AuthService} from '../src/app/auth/auth.service';
 import {MobileAuthService} from '../src/app/auth/mobile-auth.service';
 import {App} from '../src/app';
+import {rememberPlatformInvitation,clearPlatformInvitation} from '../src/app/auth/platform-invitation';
 
 const context={authenticated:true,linkedToCommunity:true,communityId:91,permissions:[],status:'LINKED'};
+
+for(const native of [true,false])test(`pending invite navigation cannot hide an explicitly requested native login: native=${native}`,()=>{
+ const app:any=Object.create(App.prototype);
+ Object.assign(app,{mobileAuth:{native,signedIn:()=>false,requestedFlow:()=> 'signin'},authenticated:signal(false),msalReady:signal(true),authErrorMessage:signal(null),currentPath:signal('/invite/platform'),currentUser:{state:()=> 'disabled'}});
+ assert.equal(app.showLogin(),native);
+ assert.equal(app.canRenderRoute(),!native);
+});
 
 test('post-login global classification uses only a ready backend role, never MSAL email or local profile',()=>{
   const app:any=Object.create(App.prototype);
@@ -31,7 +39,7 @@ test('post-login global classification uses only a ready backend role, never MSA
 for (const platform of ['ios', 'android', 'web']) test(`${platform} root never exposes protected content during loading or profile/auth errors`, () => {
   const app:any=Object.create(App.prototype);
   const state=signal('ready');
-  Object.assign(app,{mobileAuth:{native:platform!=='web',signedIn:()=>app.authenticated()}, authenticated:signal(false),msalReady:signal(true),
+  Object.assign(app,{mobileAuth:{native:platform!=='web',signedIn:()=>app.authenticated(),requestedFlow:()=>null}, authenticated:signal(false),msalReady:signal(true),
     authErrorMessage:signal(null),forceShowOutlet:signal(true),currentPath:signal('/mobile/home'),
     currentUser:{state,context:()=>context}});
   assert.equal(app.canRenderRoute(),false);
@@ -112,6 +120,25 @@ test('native completion is single-flight and cannot navigate after logout',async
   t.after(()=>injector.destroy());const auth=runInInjectionContext(injector,()=>new AuthService());
   const first=auth.loginNative();assert.equal(auth.loginNative(),first);signedIn=false;release();
   await assert.rejects(first,/Sessione cambiata/);assert.equal(loads,1);assert.equal(navigations,0);
+});
+
+test('already-current invitation route completes only after profile verification without duplicate navigation',async t=>{
+ let loads=0,navigations=0;
+ rememberPlatformInvitation('A'.repeat(64));t.after(clearPlatformInvitation);
+ const mobile={native:true,signedIn:()=>true,sessionKey:'session'};
+ const current={load:async()=>{loads++;},state:()=> 'ready',context:()=>({...context,linkedToCommunity:false})};
+ const router={url:'/invite/platform',navigateByUrl:async()=>{navigations++;return false;}};
+ const injector=createEnvironmentInjector([{provide:MobileAuthService,useValue:mobile},{provide:CurrentUserService,useValue:current},{provide:Router,useValue:router}],null as any);
+ t.after(()=>injector.destroy());const auth=runInInjectionContext(injector,()=>new AuthService());
+ await auth.loginNative();assert.equal(loads,1);assert.equal(navigations,0);
+});
+
+test('native login intent ends only after successful profile completion, so public refresh does not recreate invitation components',async()=>{
+ let release!:()=>void;const ready=new Promise<void>(resolve=>release=resolve);
+ const app:any=Object.create(App.prototype);const requestedFlow=signal('signin');
+ Object.assign(app,{mobileAuth:{sessionKey:'session',requestedFlow},authService:{loginNative:()=>ready},authenticated:signal(false),forceShowOutlet:signal(false),msalReady:signal(true),authErrorMessage:signal(null)});
+ const completion=app.completeNativeLogin();assert.equal(requestedFlow(),'signin');assert.equal(app.authenticated(),false);
+ release();await completion;assert.equal(requestedFlow(),null);assert.equal(app.authenticated(),true);assert.equal(app.forceShowOutlet(),true);
 });
 test('web account resolution waits for initialization and a single redirect completion',async()=>{
   let initialize!:()=>void,redirect!: (result:any)=>void;let callbacks=0,queries=0,routes=0;let account:any=null;

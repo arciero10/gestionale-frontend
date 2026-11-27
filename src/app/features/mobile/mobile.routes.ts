@@ -3,6 +3,12 @@ import { CanMatchFn, Router, Routes } from '@angular/router';
 import { MobileAuthService } from '../../auth/mobile-auth.service';
 import { CurrentUserService } from '../../auth/current-user.service';
 import { MobileShell } from './mobile-shell';
+import { hasVerifiedGlobalAdmin } from '../../auth/platform-role';
+
+export const mobileGlobalAdminGuard: CanMatchFn = () => {
+  const current = inject(CurrentUserService);
+  return current.state() === 'ready' && hasVerifiedGlobalAdmin(current.context()) || inject(Router).parseUrl('/forbidden');
+};
 
 export const mobileAccessGuard: CanMatchFn = () => {
   const auth = inject(MobileAuthService), router = inject(Router);
@@ -19,6 +25,10 @@ const section = (path: string, title: string) => ({ path, loadComponent: () => i
 
 export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
+  { path: 'admin', loadComponent: () => import('./mobile-admin').then(c => c.MobileAdmin), canMatch: [mobileGlobalAdminGuard] },
+  { path: 'admin/communities', loadComponent: () => import('./mobile-admin-communities').then(c => c.MobileAdminCommunities), canMatch: [mobileGlobalAdminGuard] },
+  { path: 'admin/:section', loadComponent: () => import('./mobile-admin').then(c => c.MobileAdmin), canMatch: [mobileGlobalAdminGuard] },
+  { path: 'account-security', loadComponent: () => import('./mobile-account-security').then(c => c.MobileAccountSecurity) },
   section('home', 'Home'),
   { path: 'community-life', loadComponent: () => import('./mobile-areas').then(c => c.MobileAreas), data: { area: 'life' }, canMatch: [linkedGuard] },
   { path: 'retreats', loadComponent: () => import('./mobile-areas').then(c => c.MobileAreas), data: { area: 'retreats' }, canMatch: [linkedGuard] },

@@ -17,6 +17,7 @@
   <a class="back" routerLink="/mobile/home"><i class="pi pi-arrow-left" aria-hidden="true"></i> Home</a><h1>{{ title }}</h1>
   @if (section === 'profilo') {
     <nav class="links" aria-label="Impostazioni personali">
+      <a routerLink="/mobile/account-security">Account e sicurezza <i class="pi pi-shield" aria-hidden="true"></i></a>
       <a routerLink="/mobile/account">Il mio profilo <i class="pi pi-user" aria-hidden="true"></i></a>
       @if (canApprove()) { <a routerLink="/mobile/approvazioni">Appartenenze e deleghe <i class="pi pi-check-square" aria-hidden="true"></i></a> }
       @else { <a routerLink="/mobile/account" fragment="membership">Appartenenze e deleghe <i class="pi pi-id-card" aria-hidden="true"></i></a> }

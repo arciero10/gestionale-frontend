@@ -542,7 +542,7 @@ export class App {
   }
 
   showLoading(): boolean {
-    if (this.isPublicRoute()) return false;
+    if (this.isPublicRoute() && !(this.mobileAuth.native && this.mobileAuth.requestedFlow())) return false;
     return !this.msalReady() || (this.authenticated() && this.currentUser.state() === 'loading');
   }
 
@@ -555,6 +555,9 @@ export class App {
       return false;
     }
 
+    // A cold-start invitation can finish routing after the user starts native login.
+    if (this.mobileAuth.native && this.mobileAuth.requestedFlow() && !this.mobileAuth.signedIn()) return true;
+
     if (this.currentPath() === '/') {
       return !this.authenticated() || (this.mobileAuth.native && !this.mobileAuth.signedIn());
     }
@@ -563,11 +566,11 @@ export class App {
   }
 
   showAuthError(): boolean {
-    return !this.isPublicRoute() && (Boolean(this.authErrorMessage()) || this.currentUser.state() === 'error');
+    return (!this.isPublicRoute() || (this.mobileAuth.native && !!this.mobileAuth.requestedFlow())) && (Boolean(this.authErrorMessage()) || this.currentUser.state() === 'error');
   }
 
   canRenderRoute(): boolean {
-    if (this.showLoading() || this.showAuthError()) return false;
+    if (this.showLoading() || this.showAuthError() || this.showLogin()) return false;
     if (this.isPublicRoute()) return true;
     return this.authenticated() && (!this.mobileAuth.native || this.mobileAuth.signedIn()) && (!getApiConfiguration().apiScope ||
       (this.currentUser.state() === 'ready' && this.currentUser.context()?.authenticated === true));
@@ -649,6 +652,7 @@ export class App {
       if (sessionKey !== this.mobileAuth.sessionKey) return;
       this.authenticated.set(true);
       this.forceShowOutlet.set(true);
+      this.mobileAuth.requestedFlow.set(null);
     } catch (error) {
       if (sessionKey !== this.mobileAuth.sessionKey) return;
       this.authenticated.set(false);

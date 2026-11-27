@@ -6,6 +6,7 @@ import { MobileAuthService } from './mobile-auth.service';
 import { CurrentUserService } from './current-user.service';
 import { backendUserContext } from './current-user-context';
 import { postLoginDestination } from './post-login-route';
+import { hasVerifiedGlobalAdmin } from './platform-role';
 import { pendingInvitationRoute } from './onboarding-invitation';
 import { accessTrace } from './access-trace';
 
@@ -94,10 +95,11 @@ export class AuthService {
       throw new Error('Impossibile verificare il profilo. Controlla la connessione e riprova.' +
         (Capacitor.getPlatform() === 'ios' ? ` Codice assistenza: IOS-PROFILE-${failure}` : ''));
     }
-    const target = pendingInvitationRoute() || postLoginDestination(true, currentUser.context()?.linkedToCommunity === true);
+    const target = pendingInvitationRoute() || postLoginDestination(true, currentUser.context()?.linkedToCommunity === true, hasVerifiedGlobalAdmin(currentUser.context()));
     const navigationStarted = performance.now();
     accessTrace.event('navigation', 0, 'started');
-    if (!await this.injector.get(Router).navigateByUrl(target, { replaceUrl: true }))
+    const router = this.injector.get(Router);
+    if (router.url !== target && !await router.navigateByUrl(target, { replaceUrl: true }))
       throw new Error('Impossibile aprire il profilo. Riprova.');
     accessTrace.event('navigation', performance.now()-navigationStarted);
     accessTrace.finish();
