@@ -847,10 +847,10 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
           }
           assert.equal(preparedInvites.length,2);await page.locator('[data-section="Fratelli"] .member-row').first().waitFor();
           await openCommunityMenu(page);await page.getByRole('link',{name:'Richieste accesso',exact:true}).click();
-          const existing=page.locator('.access-approvals article').filter({hasText:'Emmanuel Baciarlini'});
+          const existing=page.locator('.access-approvals article').filter({has:page.locator('strong').filter({hasText:/^Emmanuel Baciarlini$/})});
           await existing.getByRole('combobox').click();await page.getByRole('option',{name:'Emmanuel Baciarini',exact:true}).click();
           await existing.getByRole('button',{name:'Approva accesso',exact:true}).click();await page.getByText('Appartenenza approvata.',{exact:true}).waitFor();
-          const fresh=page.locator('.access-approvals article').filter({hasText:'Nuova Persona'});
+          const fresh=page.locator('.access-approvals article').filter({has:page.locator('strong').filter({hasText:/^Nuova Persona$/})});
           await fresh.getByRole('button',{name:'Crea nuova persona',exact:true}).click();await fresh.getByRole('button',{name:'Approva accesso',exact:true}).click();
           await page.getByText('Appartenenza approvata.',{exact:true}).waitFor();
           assert.ok(accessRequests.every(x=>x.status==='APPROVATA'));
@@ -1288,15 +1288,33 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       const context=await browser.newContext({viewport:{width:platform==='ios'?390:320,height:844}});
       await installNative(context,platform,true);
       let writes=0;
+      const parishes=[{id:91,name:'Parrocchia sintetica',address:'Indirizzo di collaudo',revision:'P1',communityCount:2}];
+      const communities=[{id:301,parishId:91,number:3,revision:'C3'},{id:601,parishId:91,number:6,revision:'C6'}];
+      let rejectNextCommunity=false;
       await context.route('**/api/**',async route=>{
-        const request=route.request(),path=new URL(request.url()).pathname;
-        const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,OPTIONS'};
+        const request=route.request(),url=new URL(request.url()),path=url.pathname;
+        const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS'};
         if(request.method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
-        if(request.method()!=='GET'){writes++;await route.fulfill({status:403,headers,json:{}});return;}
-        let json={};
+        assert.equal(request.headers().authorization,'Bearer sdk-api-test-token');
+        let json={},status=200;
+        if(request.method()!=='GET'){
+          writes++;const body=request.postDataJSON();
+          if(path==='/api/admin/parishes'){
+            if(parishes.some(p=>p.name.toLowerCase()===body.name.toLowerCase()&&(!body.address||!p.address||p.address.toLowerCase()===body.address.toLowerCase()))){await route.fulfill({status:409,headers,json:{message:'Parrocchia già presente o omonima: verifica nome e indirizzo prima di creare un altro record.'}});return;}
+            const row={id:92,name:body.name,address:body.address,revision:'P2',communityCount:0};parishes.push(row);json=row;status=201;
+          }else if(path==='/api/admin/parishes/92'){
+            assert.equal(body.expectedRevision,'P2');Object.assign(parishes[1],{name:body.name,address:body.address,revision:'P3'});json=parishes[1];
+          }else if(path==='/api/admin/parishes/92/communities'){
+            if(rejectNextCommunity){rejectNextCommunity=false;await route.fulfill({status:409,headers,json:{message:'Numero comunità già presente in questa parrocchia.'}});return;}
+            json={id:701,parishId:92,number:body.number,revision:'C1'};communities.push(json);parishes[1].communityCount++;status=201;
+          }else if(path==='/api/admin/parishes/92/communities/701'){
+            assert.equal(body.expectedRevision,'C1');Object.assign(communities.find(c=>c.id===701),{number:body.number,revision:'C2'});json=communities.find(c=>c.id===701);
+          }else throw Error('Unexpected administrative fixture write');
+          await route.fulfill({status,headers,json});return;
+        }
         if(path==='/api/me')json={authenticated:true,status:'UNLINKED',linkedToCommunity:false,userId:2,personId:null,communityId:null,role:null,permissions:[],platformRoles:['GLOBAL_ADMIN'],displayName:'Admin Fixture'};
-        else if(path==='/api/onboarding/parishes')json=[{id:91,name:'Parrocchia sintetica',address:'Indirizzo di collaudo'}];
-        else if(path==='/api/onboarding/parishes/91/communities')json=[{id:601,number:6},{id:301,number:3}];
+        else if(path==='/api/admin/parishes'){const q=(url.searchParams.get('q')||'').toLowerCase();const filter=url.searchParams.get('hasCommunities');const rows=parishes.filter(p=>p.name.toLowerCase().includes(q)&&(filter===null||(p.communityCount>0)===(filter==='true')));json={items:rows,total:rows.length,page:1,pageSize:25};}
+        else if(/^\/api\/admin\/parishes\/\d+\/communities$/.test(path)){const id=Number(path.split('/')[4]);const rows=communities.filter(c=>c.parishId===id).sort((a,b)=>a.number-b.number);json={parish:parishes.find(p=>p.id===id),communities:rows,nextNumber:Math.max(0,...rows.map(c=>c.number))+1};}
         await route.fulfill({headers,json});
       });
       const page=await context.newPage();await page.goto(base);
@@ -1309,12 +1327,32 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       assert.deepEqual(await page.locator('.communities li').allTextContents(),['3ª Comunità','6ª Comunità']);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
       await page.screenshot({path:path.join(output,`admin-communities-${platform}.png`),fullPage:true});
-      await page.getByLabel('Cerca parrocchia').fill('Nessuna corrispondenza');await page.getByText('Nessuna parrocchia trovata.',{exact:true}).waitFor();
+      await page.getByLabel('Cerca parrocchia').fill('Nessuna corrispondenza');await page.getByRole('button',{name:'Cerca',exact:true}).click();await page.getByText('Nessuna parrocchia trovata.',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'Nuova parrocchia',exact:true}).click();
+      await page.getByLabel('Nome parrocchia',{exact:true}).fill('Parrocchia nuova');await page.getByLabel('Indirizzo',{exact:true}).fill('Indirizzo nuovo');
+      await page.getByRole('button',{name:'Rivedi i dati',exact:true}).click();assert.equal(writes,0,'Review must not write');
+      assert.ok(await page.locator('dialog').evaluate(n=>n.scrollWidth<=n.clientWidth));await page.screenshot({path:path.join(output,`admin-editor-${platform}.png`),fullPage:true});
+      await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.getByText('Parrocchia salvata correttamente.',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'Nuova parrocchia',exact:true}).click();await page.getByLabel('Nome parrocchia',{exact:true}).fill('Parrocchia nuova');
+      await page.getByRole('button',{name:'Rivedi i dati',exact:true}).click();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();
+      await page.getByRole('alert').filter({hasText:'Parrocchia già presente o omonima'}).waitFor();await page.getByRole('button',{name:'Torna ai dati',exact:true}).click();assert.equal(await page.getByLabel('Nome parrocchia',{exact:true}).inputValue(),'Parrocchia nuova');await page.getByRole('button',{name:'Annulla',exact:true}).click();
+      await page.getByRole('button',{name:'Modifica parrocchia',exact:true}).click();await page.getByLabel('Nome parrocchia',{exact:true}).fill('Parrocchia aggiornata');
+      await page.getByRole('button',{name:'Rivedi i dati',exact:true}).click();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();
+      await page.getByRole('button',{name:/Parrocchia aggiornata/}).waitFor();await page.getByRole('button',{name:'Aggiungi comunità',exact:true}).click();
+      assert.equal(await page.getByLabel('Numero comunità',{exact:true}).inputValue(),'1');
+      await page.getByRole('button',{name:'Rivedi i dati',exact:true}).click();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.getByText('1ª Comunità',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'Modifica 1ª Comunità',exact:true}).click();await page.getByLabel('Numero comunità',{exact:true}).fill('2');
+      await page.getByRole('button',{name:'Rivedi i dati',exact:true}).click();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.getByText('2ª Comunità',{exact:true}).waitFor();
+      rejectNextCommunity=true;await page.getByRole('button',{name:'Aggiungi comunità',exact:true}).click();await page.getByRole('button',{name:'Rivedi i dati',exact:true}).click();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();
+      await page.getByRole('alert').filter({hasText:'Numero comunità già presente'}).waitFor();await page.getByRole('button',{name:'Torna ai dati',exact:true}).click();assert.equal(await page.getByLabel('Numero comunità',{exact:true}).inputValue(),'3');
+      await page.getByRole('button',{name:'Annulla',exact:true}).click();assert.equal(writes,6);
+      await page.getByLabel('Filtro comunità').selectOption('with');await page.getByRole('button',{name:/Parrocchia aggiornata/}).waitFor();
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(output,`admin-crud-${platform}.png`),fullPage:true});
       await page.getByRole('button',{name:'Indietro',exact:true}).click();await page.getByRole('link',{name:'Account e sicurezza',exact:true}).click();
       await page.getByRole('button',{name:"Esci dall'account",exact:true}).click();await page.getByRole('button',{name:'Accedi',exact:true}).waitFor();
-      assert.equal(await page.locator('app-mobile-admin').count(),0);assert.equal(writes,0);
+      assert.equal(await page.locator('app-mobile-admin').count(),0);assert.equal(writes,6);
       assert.ok((await page.evaluate(()=>window.__nativeCalls)).includes('EntraNativeAuth.logout'));
-      await context.close();console.log(`PASS mobile admin ${platform}: verified backend role, no membership, real API contract fixtures, search, no overflow, native logout, zero writes`);
+      await context.close();console.log(`PASS mobile admin ${platform}: protected CRUD contract fixtures, review before write, revision checks, duplicate preservation, search/filter, no overflow and native logout; no real API writes`);
     }
   } finally {
     if (browser) await browser.close();

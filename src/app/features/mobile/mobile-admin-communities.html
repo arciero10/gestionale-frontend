@@ -1,0 +1,41 @@
+@if(authorized){
+ <header><h1>Parrocchie e comunità</h1><button type="button" (click)="openParish()"><i class="pi pi-plus" aria-hidden="true"></i> Nuova parrocchia</button></header>
+ <form class="search" (ngSubmit)="load()"><label>Cerca parrocchia<input name="query" aria-label="Cerca parrocchia" placeholder="Nome o indirizzo" [(ngModel)]="query" maxlength="200" type="search" [disabled]="loading"/></label><button type="submit" [disabled]="loading" aria-label="Cerca"><i class="pi pi-search" aria-hidden="true"></i></button>
+ <label class="filter">Comunità<select aria-label="Filtro comunità" name="filter" [(ngModel)]="filter" (ngModelChange)="load()" [disabled]="loading"><option value="all">Tutte le parrocchie</option><option value="with">Con comunità</option><option value="without">Senza comunità</option></select></label></form>
+ @if(feedback){<p role="status" class="feedback">{{feedback}}</p>}
+ @if(loading){<p role="status">Caricamento parrocchie...</p>}
+ @if(error){<p role="alert">{{error}}</p><button type="button" (click)="load()" [disabled]="loading">Riprova</button>}
+ <p class="count">{{total}} {{total===1?'parrocchia':'parrocchie'}}</p>
+ @for(parish of parishes;track parish.id){
+  <section class="parish"><div class="parish-heading"><button class="parish-name" type="button" [attr.aria-expanded]="selected===parish.id" (click)="select(parish.id)"><span><strong>{{parish.name}}</strong>@if(parish.address){<small>{{parish.address}}</small>}<small>{{parish.communityCount??0}} comunità</small></span><i [class]="selected===parish.id?'pi pi-angle-down':'pi pi-angle-right'" aria-hidden="true"></i></button><button class="icon" type="button" aria-label="Modifica parrocchia" title="Modifica parrocchia" (click)="openParish(parish)"><i class="pi pi-pencil" aria-hidden="true"></i></button></div>
+   @if(selected===parish.id){<div class="communities">
+    @if(communityLoading){<p role="status">Caricamento comunità...</p>}
+    @else if(communityError){<p role="alert">{{communityError}}</p><button type="button" (click)="select(parish.id)">Riprova</button>}
+    @else{
+     <ul>@for(community of communities;track community.id){<li><span>{{community.number}}ª Comunità</span><button class="icon" type="button" [attr.aria-label]="'Modifica '+community.number+'ª Comunità'" title="Modifica comunità" (click)="openCommunity(community)"><i class="pi pi-pencil" aria-hidden="true"></i></button></li>}@empty{<li>Nessuna comunità censita.</li>}</ul>
+     <button type="button" (click)="openCommunity()" [disabled]="nextNumber>100"><i class="pi pi-plus" aria-hidden="true"></i> Aggiungi comunità</button>
+    }
+   </div>}
+  </section>
+ }@empty{ @if(!loading&&!error){<p role="status">Nessuna parrocchia trovata.</p>} }
+ @if(parishes.length<total){<button class="more" type="button" (click)="load(true)" [disabled]="loading">Carica altre parrocchie</button>}
+}@else{<p role="alert">Accesso amministrativo non autorizzato.</p>}
+<dialog #editorDialog (cancel)="close($event)" aria-labelledby="editor-title">
+ @if(authorized&&editor;as edit){
+  <div class="editor"><header><h2 id="editor-title">{{reviewing?'Conferma modifica':edit.kind==='parish'?(edit.id?'Modifica parrocchia':'Nuova parrocchia'):(edit.id?'Modifica comunità':'Nuova comunità')}}</h2><button class="icon" type="button" aria-label="Chiudi modulo" (click)="close()" [disabled]="busy"><i class="pi pi-times" aria-hidden="true"></i></button></header>
+  @if(reviewing){
+   <dl>@if(edit.kind==='parish'){<dt>Parrocchia</dt><dd>{{edit.name}}</dd><dt>Indirizzo</dt><dd>{{edit.address||'Non indicato'}}</dd>}@else{<dt>Parrocchia</dt><dd>{{edit.parishName}}</dd><dt>Comunità</dt><dd>{{edit.number}}ª Comunità</dd>}</dl>
+   <p>Nessun membro, responsabile o privilegio verrà assegnato. La modifica sarà registrata nel registro attività.</p>
+   <button type="button" (click)="save()" [disabled]="busy"><i class="pi pi-check" aria-hidden="true"></i> {{busy?'Salvataggio...':'Conferma e salva'}}</button><button class="secondary" type="button" (click)="reviewing=false" [disabled]="busy">Torna ai dati</button>
+  }@else{
+   <form #editForm="ngForm" (ngSubmit)="review()">
+    @if(edit.kind==='parish'){<label>Nome parrocchia<input name="name" [(ngModel)]="edit.name" required minlength="2" maxlength="200"/></label><label>Indirizzo<textarea name="address" [(ngModel)]="edit.address" maxlength="500" rows="3"></textarea></label>}
+    @else{<p>{{edit.parishName}}</p><label>Numero comunità<input name="number" type="number" [(ngModel)]="edit.number" min="1" max="100" required step="1"/></label>}
+    <button type="submit" [disabled]="editForm.invalid"><i class="pi pi-arrow-right" aria-hidden="true"></i> Rivedi i dati</button>
+   </form>
+  }
+  @if(saveError){<p role="alert" class="save-error">{{saveError}}</p>}
+  <button class="secondary" type="button" (click)="close()" [disabled]="busy">Annulla</button>
+  </div>
+ }
+</dialog>
