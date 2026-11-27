@@ -1,6 +1,6 @@
 @if(authorized){
  <header><h1>Parrocchie e comunità</h1><button type="button" (click)="openParish()"><i class="pi pi-plus" aria-hidden="true"></i> Nuova parrocchia</button></header>
- <form class="search" (ngSubmit)="load()"><label>Cerca parrocchia<input name="query" aria-label="Cerca parrocchia" placeholder="Nome o indirizzo" [(ngModel)]="query" maxlength="200" type="search" [disabled]="loading"/></label><button type="submit" [disabled]="loading" aria-label="Cerca"><i class="pi pi-search" aria-hidden="true"></i></button>
+ <form class="search" (ngSubmit)="load()"><label>Cerca parrocchia<input name="query" aria-label="Cerca parrocchia" placeholder="Nome, indirizzo o località" [(ngModel)]="query" (ngModelChange)="searchChanged()" maxlength="200" type="search"/></label><button type="submit" [disabled]="loading" aria-label="Cerca"><i class="pi pi-search" aria-hidden="true"></i></button>
  <label class="filter">Comunità<select aria-label="Filtro comunità" name="filter" [(ngModel)]="filter" (ngModelChange)="load()" [disabled]="loading"><option value="all">Tutte le parrocchie</option><option value="with">Con comunità</option><option value="without">Senza comunità</option></select></label></form>
  @if(feedback){<p role="status" class="feedback">{{feedback}}</p>}
  @if(loading){<p role="status">Caricamento parrocchie...</p>}
@@ -13,7 +13,7 @@
     @else if(communityError){<p role="alert">{{communityError}}</p><button type="button" (click)="select(parish.id)">Riprova</button>}
     @else{
      <ul>@for(community of communities;track community.id){<li><span>{{community.number}}ª Comunità</span><button class="icon" type="button" [attr.aria-label]="'Modifica '+community.number+'ª Comunità'" title="Modifica comunità" (click)="openCommunity(community)"><i class="pi pi-pencil" aria-hidden="true"></i></button></li>}@empty{<li>Nessuna comunità censita.</li>}</ul>
-     <button type="button" (click)="openCommunity()" [disabled]="nextNumber>100"><i class="pi pi-plus" aria-hidden="true"></i> Aggiungi comunità</button>
+     <button type="button" (click)="openCommunity()" [disabled]="nextNumber>2147483647"><i class="pi pi-plus" aria-hidden="true"></i> Aggiungi comunità</button>
     }
    </div>}
   </section>
@@ -30,7 +30,7 @@
   }@else{
    <form #editForm="ngForm" (ngSubmit)="review()">
     @if(edit.kind==='parish'){<label>Nome parrocchia<input name="name" [(ngModel)]="edit.name" required minlength="2" maxlength="200"/></label><label>Indirizzo<textarea name="address" [(ngModel)]="edit.address" maxlength="500" rows="3"></textarea></label>}
-    @else{<p>{{edit.parishName}}</p><label>Numero comunità<input name="number" type="number" [(ngModel)]="edit.number" min="1" max="100" required step="1"/></label>}
+    @else{<p>{{edit.parishName}}</p><label>Numero comunità<input name="number" type="number" [(ngModel)]="edit.number" min="1" max="2147483647" required step="1"/></label>}
     <button type="submit" [disabled]="editForm.invalid"><i class="pi pi-arrow-right" aria-hidden="true"></i> Rivedi i dati</button>
    </form>
   }

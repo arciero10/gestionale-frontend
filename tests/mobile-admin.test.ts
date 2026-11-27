@@ -3,7 +3,23 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {postLoginDestination} from '../src/app/auth/post-login-route';
 import {hasVerifiedGlobalAdmin} from '../src/app/auth/platform-role';
+import {matchesParish, normalizedParishText} from '../src/app/auth/parish-search';
 const context:any={authenticated:true,status:'UNLINKED',linkedToCommunity:false,permissions:[],role:null};
+test('parish suggestions match name/locality, accents, apostrophes and common saint abbreviations',()=>{
+ assert.ok(matchesParish('Santa Maria delle Grazie - Roma','s maria grazie roma'));
+ assert.ok(matchesParish("Sant'Agnese",'sant agnese'));
+ assert.ok(matchesParish('Gesù a Roma','gesu roma'));
+ assert.ok(!matchesParish('Santa Maria - Roma','milano'));
+ assert.equal(normalizedParishText('S. Maria'),normalizedParishText('Santa Maria'));
+});
+test('native onboarding never generates fictitious communities and supports an explicit census request',()=>{
+ const page=readFileSync('src/app/features/gestionaleCN/onboarding-comunita/onboarding-comunita.ts','utf8');
+ assert.match(page,/mobileRuntime && communityNotListed/);
+ assert.match(page,/!mobileRuntime && \(ruoloComunitario === 'responsabile'/);
+ assert.match(page,/declaredRoles = COMMUNITY_ONBOARDING_ROLES.slice\(0,3\)/);
+ assert.match(page,/filterMatchMode/);
+ assert.match(page,/selectedBackendAddress/);
+});
 test('verified global admin enters mobile administration without a community',()=>{
  assert.equal(postLoginDestination(true,false,hasVerifiedGlobalAdmin({...context,platformRoles:['GLOBAL_ADMIN']})),'/mobile/admin');
 });

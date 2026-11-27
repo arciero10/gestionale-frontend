@@ -11,6 +11,8 @@ export class MobileAdminCommunities implements OnInit,OnDestroy {
  private readonly current=inject(CurrentUserService);private readonly api=inject(AdminCommunitiesApi);
  @ViewChild('editorDialog',{static:true})private dialog!:ElementRef<HTMLDialogElement>;
  private listGeneration=0;private detailGeneration=0;private destroyed=false;
+ private searchTimer:ReturnType<typeof setTimeout>|null=null;
+ protected searchChanged():void{if(this.searchTimer)clearTimeout(this.searchTimer);this.searchTimer=setTimeout(()=>{this.searchTimer=null;void this.load();},250);}
  protected parishes:AdminParish[]=[];protected communities:AdminCommunity[]=[];
  protected query='';protected filter='all';protected page=1;protected total=0;
  protected selected:number|null=null;protected selectedParish:AdminParish|null=null;protected nextNumber=1;
@@ -30,9 +32,10 @@ export class MobileAdminCommunities implements OnInit,OnDestroy {
   return fallback;
  }
  ngOnInit():void{void this.load();}
- ngOnDestroy():void{this.destroyed=true;this.listGeneration++;this.detailGeneration++;this.dialog.nativeElement.close();this.editor=null;this.parishes=[];this.communities=[];}
+ ngOnDestroy():void{if(this.searchTimer)clearTimeout(this.searchTimer);this.destroyed=true;this.listGeneration++;this.detailGeneration++;this.dialog.nativeElement.close();this.editor=null;this.parishes=[];this.communities=[];}
  protected async load(more=false):Promise<void>{
-  if(!this.authorized||this.destroyed||this.loading)return;
+  if(!this.authorized||this.destroyed||(more&&this.loading))return;
+  if(this.searchTimer){clearTimeout(this.searchTimer);this.searchTimer=null;}
   const generation=++this.listGeneration,actor=this.current.context()?.userId,page=more?this.page+1:1;
   this.loading=true;this.error='';
   try{const data=await this.api.getParishes(this.query,this.filter,page);if(this.canApply(actor)&&generation===this.listGeneration){this.parishes=more?[...new Map([...this.parishes,...data.items].map(p=>[p.id,p])).values()]:data.items;this.total=data.total;this.page=page;}}
@@ -57,7 +60,7 @@ export class MobileAdminCommunities implements OnInit,OnDestroy {
  protected review():void{
   if(!this.editor||!this.authorized)return;
   if(this.editor.kind==='parish'&&this.editor.name.trim().length<2){this.saveError='Inserisci il nome della parrocchia.';return;}
-  if(this.editor.kind==='community'&&(!Number.isInteger(this.editor.number)||this.editor.number<1||this.editor.number>100)){this.saveError='Inserisci un numero intero da 1 a 100.';return;}
+  if(this.editor.kind==='community'&&(!Number.isInteger(this.editor.number)||this.editor.number<1||this.editor.number>2147483647)){this.saveError='Inserisci un numero intero positivo valido.';return;}
   this.saveError='';this.reviewing=true;
  }
  protected async save():Promise<void>{

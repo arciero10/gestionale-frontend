@@ -1222,7 +1222,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       for(const path of ['/.well-known/assetlinks.json','/.well-known/apple-app-site-association']){const response=await page.request.get(base+path);assert.equal(response.status(),200);assert.match(response.headers()['content-type'],/application\/json/);await response.json();}
       await page.screenshot({path:path.join(output,'deep-link-web-fallback.png'),fullPage:true});await web.close();console.log('PASS invite fallback web: public route, no Person metadata before login, association files JSON');
     }
-    for(const platform of ['ios','android'])for(const [number,role,label] of [[6,'CO_RESPONSIBLE','Corresponsabile'],[4,'MEMBER','Fratello / Sorella (nessun carisma)']]){
+    for(const platform of ['ios','android'])for(const [number,role,label] of [[6,'CO_RESPONSIBLE','Corresponsabile'],[4,'MEMBER','Fratello / Sorella (nessun carisma)'],[501,'MEMBER','Fratello / Sorella (nessun carisma)']]){
       const context=await browser.newContext({viewport:{width:390,height:844}});
       const token='C'.repeat(64);await installNative(context,platform,false,'https://test.eventidicomunita.it/invite/platform#token='+token);
       let admitted=false,pending=null,inspections=0,referrals=0;
@@ -1237,7 +1237,7 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         else if(path==='/api/platform-invitations/inspect'){inspections++;assert.equal(route.request().postDataJSON().token,token);json={firstName:'Invited',lastName:'Fixture',status:'PENDING',expiresAt:'2026-12-01T00:00:00Z'};}
         else if(path==='/api/platform-invitations/accept'){assert.equal(route.request().postDataJSON().confirm,true);admitted=true;json={admitted:true,linkedToCommunity:false};}
         else if(path==='/api/platform-invitations/access')json={inviteOnly:true,admitted};
-        else if(path==='/api/onboarding/parishes')json=[{id:11,name:'Parrocchia di collaudo',address:''}];
+        else if(path==='/api/onboarding/parishes')json=[{id:11,name:'Santa Maria delle Grazie',address:'Via Test 1 - Roma'},{id:12,name:'Santa Maria delle Grazie',address:'Via Test 2 - Viterbo'}];
         else if(path==='/api/onboarding/current')json=pending;
         else if(path==='/api/onboarding/complete'){
           const body=route.request().postDataJSON();assert.equal(body.role,role);assert.equal(body.parishId,11);assert.equal(body.communityNumber,number);
@@ -1255,14 +1255,15 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
       await page.getByLabel('Confermo di voler procedere con il mio invito personale').check();
       await page.getByRole('button',{name:'Continua con la richiesta',exact:true}).click();await page.waitForURL('**/mobile/onboarding');
       await page.getByLabel('Nome',{exact:true}).fill('Invited');await page.getByLabel('Cognome',{exact:true}).fill('Fixture');
-      await page.locator('#backendParish').click();await page.getByRole('option',{name:'Parrocchia di collaudo',exact:true}).click();
+      await page.locator('#backendParish').click();await page.locator('.p-select-filter').fill('s maria roma');
+      await page.waitForFunction(()=>document.querySelectorAll('[role="option"]').length===1);
+      assert.match(await page.getByRole('option').innerText(),/Roma/);
+      await page.getByRole('option',{name:'Santa Maria delle Grazie',exact:true}).click();
+      await page.getByText('Via Test 1 - Roma',{exact:true}).waitFor();
       await page.getByLabel("La mia comunità non compare nell'elenco").check();
-      await page.getByText("La comunità indicata sarà verificata dall'amministrazione superiore. La richiesta non abilita ruoli o accesso ai dati.",{exact:true}).waitFor();
-      await page.locator('#backendCommunity').click();
-      await page.locator('#backendCommunity').press('Home');
-      for(let index=1;index<number;index++)await page.locator('#backendCommunity').press('ArrowDown');
-      await page.locator('#backendCommunity').press('Enter');
-      await page.waitForFunction(expected=>document.querySelector('#backendCommunity')?.textContent?.trim()===String(expected),number);
+      await page.getByText('Richiesta di censimento: non crea una comunità né assegna un ruolo.',{exact:true}).waitFor();
+      await page.locator('#backendCommunity').fill(String(number));
+      assert.equal(await page.locator('#backendCommunity').inputValue(),String(number));
       await page.locator('#backendRole').click();await page.getByRole('option',{name:label,exact:true}).click();
       await page.locator('#backendStage').click();await page.getByRole('option',{name:'Precatecumenato',exact:true}).click();
       await page.locator('input[name="backendPrivacy"]').check();await page.getByRole('button',{name:'Conferma comunità',exact:true}).click();

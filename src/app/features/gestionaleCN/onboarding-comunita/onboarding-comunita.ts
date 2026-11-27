@@ -6,6 +6,8 @@ import { AutoCompleteModule } from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { FilterService } from 'primeng/api';
+import { matchesParish } from '../../../auth/parish-search';
 import { DIOCESI_MOCK, NUMERI_COMUNITA, PARROCCHIE_MOCK, SETTORI_MOCK, Parrocchia, creaNomeComunitaVisualizzato, generaNomeComunita } from '../data/anagrafica-ecclesiale.mock';
 import { saveAppUserProfile } from '../data/app-user-profile.storage';
 import { ComunitaFigliaAssociata, saveSelectedCommunity } from '../data/community-selection.storage';
@@ -127,7 +129,10 @@ interface OnboardingPayload {
                         </div>
                         <div class="field" data-validation-field="parrocchia" [class.field-error]="hasFieldError('parrocchia')">
                             <label for="backendParish">Parrocchia</label>
-                            <p-select inputId="backendParish" name="backendParish" [options]="backendParishes" optionLabel="name" optionValue="id" [filter]="true" [loading]="loadingParishes" [(ngModel)]="backendParishId" (onChange)="cambiaParrocchiaBackend()" placeholder="Seleziona la parrocchia" appendTo="body"></p-select>
+                            <p-select inputId="backendParish" name="backendParish" [options]="backendParishes" optionLabel="name" optionValue="id" [filter]="true" [filterBy]="mobileRuntime ? 'searchText' : 'name'" [filterMatchMode]="$any(mobileRuntime ? 'parishNormalized' : 'contains')" [loading]="loadingParishes" [(ngModel)]="backendParishId" (onChange)="cambiaParrocchiaBackend()" placeholder="Seleziona la parrocchia" emptyFilterMessage="Nessuna parrocchia trovata" appendTo="body">
+                              <ng-template #item let-parish><div><strong>{{parish.name}}</strong>@if(mobileRuntime && parish.address){<div>{{parish.address}}</div>}</div></ng-template>
+                            </p-select>
+                            @if(mobileRuntime && selectedBackendAddress){<small>{{selectedBackendAddress}}</small>}
                             <small class="field-error-message">{{ getFieldErrorMessage('parrocchia') }}</small>
                             @if (!loadingParishes && backendParishes.length === 0) {
                                 <p>Nessuna parrocchia disponibile. Contatta la segreteria.</p>
@@ -136,14 +141,17 @@ interface OnboardingPayload {
                         </div>
                         <div class="field" data-validation-field="numeroComunita" [class.field-error]="hasFieldError('numeroComunita')">
                             <label for="backendCommunity">Numero comunità</label>
-                            @if (ruoloComunitario === 'responsabile' || communityNotListed) {
+                            @if (mobileRuntime && communityNotListed) {
+                                <input id="backendCommunity" name="backendCommunity" pInputText type="number" inputmode="numeric" min="1" max="2147483647" step="1" [(ngModel)]="numeroComunita" />
+                                <small>Richiesta di censimento: non crea una comunità né assegna un ruolo.</small>
+                            } @else if (!mobileRuntime && (ruoloComunitario === 'responsabile' || communityNotListed)) {
                                 <p-select inputId="backendCommunity" name="backendCommunity" [options]="numeriComunita" [(ngModel)]="numeroComunita"></p-select>
                                 <small>La comunità indicata sarà verificata dall'amministrazione superiore. La richiesta non abilita ruoli o accesso ai dati.</small>
                             } @else {
                                 <p-select inputId="backendCommunity" name="backendCommunity" [options]="backendCommunities" optionLabel="number" optionValue="number" [(ngModel)]="numeroComunita" [loading]="loadingCommunities" placeholder="Seleziona una comunità censita"></p-select>
                                 @if (backendParishId && !loadingCommunities && !backendCommunities.length) { <small>Nessuna comunità censita. Contatta il responsabile.</small> }
                             }
-                            @if (ruoloComunitario !== 'responsabile') {
+                            @if (mobileRuntime || ruoloComunitario !== 'responsabile') {
                                 <label class="checkbox-line"><input type="checkbox" name="communityNotListed" [(ngModel)]="communityNotListed" (ngModelChange)="numeroComunita = 0" />La mia comunità non compare nell'elenco</label>
                             }
                             <small class="field-error-message">{{ getFieldErrorMessage('numeroComunita') }}</small>
@@ -155,7 +163,7 @@ interface OnboardingPayload {
                         </div>
                         <div class="field" data-validation-field="carisma" [class.field-error]="hasFieldError('carisma')">
                             <label for="backendRole">Ruolo richiesto</label>
-                            <p-select inputId="backendRole" name="backendRole" [options]="carismiOnboarding" optionLabel="label" optionValue="value" [(ngModel)]="ruoloComunitario"></p-select>
+                            <p-select inputId="backendRole" name="backendRole" [options]="mobileRuntime ? declaredRoles : carismiOnboarding" optionLabel="label" optionValue="value" [(ngModel)]="ruoloComunitario"></p-select>
                             <small class="field-error-message">{{ getFieldErrorMessage('carisma') }}</small>
                         </div>
                         <div class="field">
@@ -841,6 +849,11 @@ interface OnboardingPayload {
     ]
 })
 export class OnboardingComunita implements OnInit {
+    readonly mobileRuntime = Capacitor.isNativePlatform();
+    readonly declaredRoles = COMMUNITY_ONBOARDING_ROLES.slice(0,3);
+    private readonly parishFilters = inject(FilterService);
+    constructor(){this.parishFilters.register('parishNormalized',(value:unknown,query:string)=>matchesParish(String(value??''),query??''));}
+    get selectedBackendAddress():string|null{return this.backendParishes.find(p=>p.id===this.backendParishId)?.address??null;}
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly onboardingApi = inject(OnboardingApiService);
@@ -908,7 +921,7 @@ export class OnboardingComunita implements OnInit {
         if (this.loadingParishes) return;
         this.loadingParishes = true;
         try {
-            this.backendParishes = await this.onboardingApi.getParishes();
+            this.backendParishes = (await this.onboardingApi.getParishes()).map(p=>({...p,searchText:p.name+' '+(p.address??'')}));
         } catch {
             this.feedbackType = 'error';
             this.feedbackMessage = 'Impossibile caricare le parrocchie dal gestionale. Riprova.';
@@ -939,8 +952,9 @@ export class OnboardingComunita implements OnInit {
         required('nome', 'Nome', Boolean(this.firstName.trim()));
         required('cognome', 'Cognome', Boolean(this.lastName.trim()));
         required('parrocchia', 'Parrocchia', this.backendParishes.some(p => p.id === this.backendParishId));
-        required('numeroComunita', 'Numero comunità', Number.isInteger(this.numeroComunita) && this.numeroComunita > 0 && this.numeroComunita <= 100);
-        if (this.ruoloComunitario !== 'responsabile' && !this.communityNotListed) required('numeroComunita', 'Comunità censita', this.backendCommunities.some(c => c.number === this.numeroComunita));
+        required('numeroComunita', 'Numero comunità', Number.isInteger(this.numeroComunita) && this.numeroComunita > 0 && this.numeroComunita <= 2147483647);
+        if ((this.mobileRuntime || this.ruoloComunitario !== 'responsabile') && !this.communityNotListed) required('numeroComunita', 'Comunità censita', this.backendCommunities.some(c => c.number === this.numeroComunita));
+        if(this.mobileRuntime && this.communityNotListed) required('numeroComunita','Numero non ancora censito',!this.backendCommunities.some(c=>c.number===this.numeroComunita));
         required('carisma', 'Ruolo richiesto', COMMUNITY_ONBOARDING_ROLES.some(r => r.value === this.ruoloComunitario));
         required('tappaCammino', 'Tappa del Cammino', this.tappeCammino.includes(this.tappaCammino));
         required('privacyConsenso', 'Privacy e consenso', this.privacyConsenso);
