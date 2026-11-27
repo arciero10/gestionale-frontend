@@ -25,7 +25,7 @@ import { hasVerifiedGlobalAdmin } from '../../auth/platform-role';
       @if (globalAdmin) {
         <a class="admin-access" routerLink="/mobile/admin"><i class="pi pi-shield" aria-hidden="true"></i> Amministrazione</a>
       }
-      @if (current.context()?.isOnboardingAdmin && !current.context()?.linkedToCommunity) {
+      @if (globalAdmin && !current.context()?.linkedToCommunity) {
         <a class="admin-access" routerLink="/mobile/approvazioni"><i class="pi pi-check-square" aria-hidden="true"></i> Appartenenze e approvazioni</a>
       }
       <main class="mobile-content">@if (showBack) { <button class="shell-back" type="button" aria-label="Indietro" title="Indietro" (click)="back()"><i class="pi pi-arrow-left" aria-hidden="true"></i> Indietro</button> }<router-outlet /></main>

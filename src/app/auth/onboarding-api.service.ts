@@ -23,6 +23,7 @@ export interface OnboardingResult { status: string; requestId: number; context: 
 export interface CommunityInvitation { id: number; publicId: string; personId: number; status: string; expiresAt: string; emailStatus?: 'NOT_SENT' | 'SENT' | 'FAILED' | 'BLOCKED_BY_TEST_MODE'; emailSentAt?: string; emailLastAttemptAt?: string; emailAttemptCount?: number }
 export interface CreatedInvitation extends CommunityInvitation { invitationUrl: string; deliveryStatus: string; mail: { to: string; subject: string; body: string } }
 export interface OwnOnboardingRequest {
+    queueStatus?:string;applicationAccess?:string;needsCommunityCensus?:boolean;reviewMessage?:string|null;
     referentName?:string;referentContact?:string;responsibleAvailable?:boolean;
     firstName: string; lastName: string; phone: string; parishId: number; communityNumber: number;
     requestedRole: string; requestedStage: string; status: string; parishName?: string;
@@ -36,6 +37,9 @@ export class OnboardingApiService {
     private get url(): string { return `${getApiConfiguration().apiBaseUrl}/onboarding`; }
     getParishes(): Promise<BackendParish[]> {
         return firstValueFrom(this.http.get<BackendParish[]>(`${this.url}/parishes`).pipe(timeout(15000)));
+    }
+    reportMissingParish(name:string,address:string):Promise<{status:string;officialRecordCreated:false}>{
+        return firstValueFrom(this.http.post<{status:string;officialRecordCreated:false}>(`${this.url}/parish-reports`,{name,address}).pipe(timeout(15000)));
     }
     getCommunities(parishId: number): Promise<BackendCommunity[]> {
         return firstValueFrom(this.http.get<BackendCommunity[]>(`${this.url}/parishes/${parishId}/communities`).pipe(timeout(15000)));

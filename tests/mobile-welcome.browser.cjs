@@ -441,12 +441,14 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         await context.close();console.log(`PASS iOS pre-OTP diagnostic ${code}: no browser, token/profile or raw SDK payload`);
       }
     }
-    for (const flow of ['password', 'otp', 'reset', 'linked', 'retry', 'profile-slow', 'profile-down', 'profile-denied', 'pending', 'rejected', 'bootstrap', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
+    for (const flow of ['password', 'otp', 'reset', 'linked', 'retry', 'profile-slow', 'profile-down', 'profile-denied', 'pending', 'rejected', 'bootstrap', 'bootstrap-ios', 'calendar-manager', 'calendar-member', 'directory-manager', 'directory-member', 'invitation'].filter(flow=>!process.env.MOBILE_TEST_FLOW||flow===process.env.MOBILE_TEST_FLOW)) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: process.env.MOBILE_TEST_TIMEZONE || 'Europe/Rome' });
-      await installNative(context, flow === 'directory-member' ? 'ios' : 'android');
+      const bootstrap=flow.startsWith('bootstrap');
+      await installNative(context, flow === 'directory-member' || flow==='bootstrap-ios' ? 'ios' : 'android');
       let meCalls = 0;
       let resubmitted = false;
       let bootstrapApproved = false;
+      let queueReviewed=false,roleChanged=false;
       let communityManager = flow === 'calendar-manager' || flow === 'directory-manager';
       let directoryConfirmed = false;
       const inviteId='aaaaaaaa-1234-4321-8123-aaaaaaaaaaaa';let invitationAccepted=false;
@@ -636,15 +638,27 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
           if(flow === 'profile-slow')await new Promise(r=>setTimeout(r,1200));
           if (flow === 'retry' && meCalls === 1) { await route.fulfill({ status: 503, headers, json: {} }); return; }
           const linked = invitationAccepted || ['linked','retry','profile-slow'].includes(flow) || flow.startsWith('calendar-') || flow.startsWith('directory-') || flow === 'pending' && meCalls > 1;
-          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, isOnboardingAdmin: flow === 'bootstrap', status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI','APPROVE_REQUESTS','CREATE_CONVIVENZA']:[])] : [],
+          await route.fulfill({ headers, json: { authenticated: true, linkedToCommunity: linked, platformRoles: bootstrap ? ['GLOBAL_ADMIN'] : [], isOnboardingAdmin: bootstrap, status: linked ? 'LINKED' : flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : flow === 'rejected' ? 'RESPINTA' : 'UNLINKED', permissions: linked ? ['VIEW_COMUNITA', 'VIEW_MEMBRI', 'VIEW_CONVIVENZE',...(communityManager?['EDIT_MEMBRI','MANAGE_RUOLI','APPROVE_REQUESTS','CREATE_CONVIVENZA']:[])] : [],
             ...(linked ? { userId:1,personId:12,communityId: 91, communityNumber: 3, communityName: '3ª Comunità', parishName: 'Parrocchia di test', displayName: 'Utente di test', role: communityManager ? 'RESPONSIBLE' : 'MEMBER', memberCount: 2 } : {}) } });
-        } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: flow === 'bootstrap' ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : flow==='directory-manager'?accessRequests:[] }); }
+        } else if (route.request().url().endsWith('/onboarding/requests')) { approvalCalls++; await route.fulfill({ headers, json: bootstrap ? [{ id: 101, firstName: 'Primo', lastName: 'Responsabile', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'RESPONSIBLE', requestedStage: 'Precatecumenato', status: bootstrapApproved ? 'APPROVATA' : 'IN_ATTESA_APPROVAZIONE', existingPeople: [], canApprove: true, canReject: true }] : flow==='directory-manager'?accessRequests:[] }); }
         else if (/\/onboarding\/requests\/20[23]\/approve$/.test(apiPath)){
           const id=Number(apiPath.split('/').at(-2));const body=route.request().postDataJSON();if(id===202)assert.equal(body.personId,15);else {assert.equal(body.firstName,'Nuova');assert.equal(body.role,'MEMBER');}accessRequests.find(x=>x.id===id).status='APPROVATA';await route.fulfill({headers,json:{status:'APPROVATA'}});
         }
         else if (route.request().url().endsWith('/onboarding/requests/101/approve')) {
           assert.equal(route.request().method(), 'POST'); bootstrapApproved = true;
           await route.fulfill({ headers, json: { status: 'APPROVATA' } });
+        } else if(apiPath==='/api/admin/membership-requests'){
+          assert.ok(bootstrap);await route.fulfill({headers,json:{items:[{id:301,firstName:'Richiesta',lastName:'Sintetica',parishId:11,parishName:'Parrocchia di test',communityNumber:501,requestedRole:'RESPONSIBLE',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',queueStatus:'GLOBAL_ADMIN_REVIEW',needsCommunityCensus:true,canReview:true,submittedAt:'2026-11-27T10:00:00Z'}],total:1}});
+        } else if(apiPath==='/api/admin/membership-requests/301'){
+          await route.fulfill({headers,json:{id:301,firstName:'Richiesta',lastName:'Sintetica',parishId:11,parishName:'Parrocchia di test',communityNumber:501,requestedRole:'RESPONSIBLE',requestedStage:'Precatecumenato',status:'IN_ATTESA_APPROVAZIONE',canReview:true,candidates:[]}});
+        } else if(apiPath==='/api/admin/membership-requests/301/information'){
+          assert.equal(route.request().postDataJSON().reason,'Verifica aggiuntiva sintetica');queueReviewed=true;await route.fulfill({headers,json:{status:'INFORMATION_REQUESTED'}});
+        } else if(apiPath==='/api/admin/communities/91/members'){
+          await route.fulfill({headers,json:[{personId:77,name:'Incarico Sintetico',role:roleChanged?'MEMBER':'CO_RESPONSIBLE',revision:roleChanged?'second':'first',canChange:true}]});
+        } else if(apiPath==='/api/admin/communities/91/members/77/role'){
+          assert.deepEqual(route.request().postDataJSON(),{role:'MEMBER',reason:'Revoca sintetica verificata',expectedRevision:'first'});roleChanged=true;await route.fulfill({headers,json:{role:'MEMBER'}});
+        } else if(apiPath==='/api/onboarding/delegations'){
+          await route.fulfill({headers,json:{availablePermissions:['APPROVE_MEMBERS'],members:roleChanged?[]:[{personId:77,name:'Incarico Sintetico',permissions:[]}]}});
         } else if (route.request().url().endsWith('/onboarding/parishes')) await route.fulfill({ headers, json: [{ id: 11, name: 'Parrocchia di test', address: '' }] });
         else if (route.request().url().endsWith('/communities')) await route.fulfill({ headers, json: [{ id: 91, number: 3 }] });
         else if (route.request().url().endsWith('/onboarding/current')) await route.fulfill({ headers, json: ['pending', 'rejected'].includes(flow) ? { firstName: 'Test', lastName: 'Member', phone: '', parishId: 11, parishName: 'Parrocchia di test', communityNumber: 3, requestedRole: 'MEMBER', requestedStage: 'Precatecumenato', status: flow === 'pending' || resubmitted ? 'IN_ATTESA_APPROVAZIONE' : 'RESPINTA' } : null });
@@ -696,21 +710,42 @@ async function installNative(context, platform, cached = false, launchUrl = '', 
         await page.getByRole('heading', { name: 'Accedi', exact: true }).waitFor();
         assert.equal(meCalls, 0);
       } else {
-        await page.waitForURL(url => url.pathname === (flow==='invitation'?'/invite/'+inviteId:['linked','retry','profile-slow'].includes(flow) || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
+        await page.waitForURL(url => url.pathname === (flow==='invitation'?'/invite/'+inviteId:bootstrap?'/mobile/admin':['linked','retry','profile-slow'].includes(flow) || flow.startsWith('calendar-') || flow.startsWith('directory-') ? '/mobile/home' : '/mobile/onboarding'));
         assert.equal(meCalls, flow === 'retry' ? 2 : 1);
         if(['retry','otp','profile-slow'].includes(flow)){
           console.log('[AUTH benchmark] OTP submit to route ms:',Math.round(performance.now()-loginStartedAt),'scenario:',flow);
           assert.equal(await page.evaluate(()=>window.__authErrorShown),false,'No transient error screen');
         }
       }
-      if (flow === 'bootstrap') {
+      if (bootstrap) {
         await page.getByRole('link', { name: 'Appartenenze e approvazioni', exact: true }).click();
         await page.waitForURL(url => url.pathname === '/mobile/approvazioni');
+        await page.getByLabel('Motivazione della decisione').fill('Verifica sintetica autorizzata');
         await page.getByRole('button', { name: 'Approva accesso', exact: true }).click();
         await page.getByText('Appartenenza approvata.', { exact: true }).waitFor();
         assert.equal(bootstrapApproved, true);
         assert.equal(await page.locator('.layout-container').count(), 0);
         await verifyMobileDesign(page); await page.screenshot({path:path.join(output,'bootstrap-admin.png'),fullPage:true});
+        await page.getByRole('link',{name:'Amministrazione',exact:true}).last().click();
+        await page.getByRole('link',{name:'Richieste e approvazioni',exact:true}).click();
+        await page.getByRole('button',{name:/Richiesta Sintetica/}).click();
+        await page.getByLabel('Motivazione / elementi verificati').fill('Verifica aggiuntiva sintetica');
+        await page.getByRole('button',{name:'Richiedi informazioni',exact:true}).click();
+        assert.equal(queueReviewed,false,'Decision is never submitted before confirmation');
+        await page.getByRole('button',{name:'Conferma decisione',exact:true}).click();
+        await page.getByText('Decisione registrata.',{exact:true}).waitFor();assert.equal(queueReviewed,true);
+        await page.getByRole('button',{name:'Indietro',exact:true}).click();
+        await page.getByRole('link',{name:'Responsabili e corresponsabili',exact:true}).click();
+        await page.getByLabel('Parrocchia',{exact:true}).selectOption({label:'Parrocchia di test · '});
+        await page.getByLabel('Comunità',{exact:true}).selectOption({label:'3ª Comunità'});
+        await page.getByRole('button',{name:/Incarico Sintetico/}).click();
+        await page.getByLabel('Ruolo comunitario',{exact:true}).selectOption('MEMBER');
+        await page.getByLabel('Motivazione e verifica').fill('Revoca sintetica verificata');
+        await page.getByRole('button',{name:'Verifica modifica ruolo',exact:true}).click();
+        assert.equal(roleChanged,false);await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();
+        await page.getByText(/Incarico aggiornato/).waitFor();assert.equal(roleChanged,true);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+        await page.screenshot({path:path.join(output,'admin-requests-roles-'+flow+'.png'),fullPage:true});
       }
       if(flow==='invitation'){
         await page.getByRole('heading',{name:'Invito nella comunità',exact:true}).waitFor();

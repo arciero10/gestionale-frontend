@@ -7,7 +7,7 @@ export const MOBILE_ADMIN_SECTIONS = [
   { path: 'users', title: 'Utenti e ruoli', icon: 'pi-users' },
   { path: 'communities', title: 'Parrocchie e comunità', icon: 'pi-building' },
   { path: 'invitations', title: 'Inviti', icon: 'pi-envelope' },
-  { path: 'approvals', title: 'Approvazioni', icon: 'pi-check-square' },
+  { path: 'approvals', title: 'Richieste e approvazioni', icon: 'pi-check-square' },
   { path: 'responsibles', title: 'Responsabili e corresponsabili', icon: 'pi-user-edit' },
   { path: 'delegations', title: 'Deleghe', icon: 'pi-key' },
   { path: 'settings', title: 'Impostazioni', icon: 'pi-cog' },

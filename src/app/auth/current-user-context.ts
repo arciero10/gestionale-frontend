@@ -18,6 +18,7 @@ export interface CurrentUserContext {
     memberCount?: number;
     isOnboardingAdmin?: boolean;
     platformRoles?: string[];
+    applicationAccess?: 'MEMBER_PROVISIONAL' | 'NONE';
 }
 
 export const backendUserContext = signal<CurrentUserContext | null>(null);

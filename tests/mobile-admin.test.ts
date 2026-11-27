@@ -33,7 +33,7 @@ test('ordinary mobile home and web destinations remain unchanged',()=>{
 });
 test('mobile admin routes and template deny absent or revoked role',()=>{
  const routes=readFileSync('src/app/features/mobile/mobile.routes.ts','utf8');
- assert.equal((routes.match(/canMatch: \[mobileGlobalAdminGuard\]/g)||[]).length,3);
+ assert.equal((routes.match(/canMatch: \[mobileGlobalAdminGuard\]/g)||[]).length,6);
  assert.match(routes,/current.state\(\) === 'ready' && hasVerifiedGlobalAdmin/);
  const page=readFileSync('src/app/features/mobile/mobile-admin.ts','utf8');assert.match(page,/@if \(authorized\)/);assert.doesNotMatch(page,/HttpClient|localStorage|isOnboardingAdmin/);
 });
@@ -55,4 +55,25 @@ test('geography writes require review and use revision checks without onboarding
 test('logout awaits native cleanup, never clears server data or all local preferences',()=>{
  const page=readFileSync('src/app/features/mobile/mobile-account-security.ts','utf8');
  assert.match(page,/await this.mobile.logout\(\);await this.router.navigateByUrl/);assert.doesNotMatch(page,/localStorage.clear|sessionStorage.clear|HttpClient/);
+});
+
+test('approval queues use global API, explicit decisions and actor/generation checks',()=>{
+ const page=readFileSync('src/app/features/mobile/mobile-admin-requests.ts','utf8');
+ const api=readFileSync('src/app/features/mobile/admin-requests-api.service.ts','utf8');
+ for(const category of ['RESPONSIBLE','CO_RESPONSIBLE','NEW_COMMUNITY','SENZA_APPROVATORE','ALL'])assert.ok(page.includes(category));
+ assert.match(page,/hasVerifiedGlobalAdmin/);assert.match(page,/actor===this.current.context\(\)&&generation===this.generation/);
+ assert.match(page,/!this.selected\?\.canReview\|\|!this.confirmation/);assert.match(page,/this.rows=\[\];this.parishes=\[\];this.selected=null/);
+ assert.match(api,/\/admin\/membership-requests/);assert.doesNotMatch(api,/localStorage|isOnboardingAdmin|Bearer/);
+});
+
+test('community role and delegation UI never mutates a global role or stores account data',()=>{
+ const page=readFileSync('src/app/features/mobile/mobile-admin-roles.ts','utf8');
+ const api=readFileSync('src/app/features/mobile/admin-community-roles-api.service.ts','utf8');
+ assert.match(page,/Conferma e salva/);assert.match(page,/this.selected=null;this.delegationData=/);
+ assert.match(api,/expectedRevision:member.revision/);assert.match(api,/\/onboarding\/delegations/);
+ assert.doesNotMatch(api,/GLOBAL_ADMIN|localStorage|Users/);
+ const onboarding=readFileSync('src/app/features/gestionaleCN/onboarding-comunita/onboarding-comunita.ts','utf8');
+ assert.match(onboarding,/Area personale provvisoria/);assert.match(onboarding,/SENZA_APPROVATORE/);
+ const route=readFileSync('src/app/features/mobile/mobile.routes.ts','utf8');
+ assert.doesNotMatch(route,/context\?\.isOnboardingAdmin/);
 });

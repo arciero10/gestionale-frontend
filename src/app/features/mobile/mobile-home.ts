@@ -3,6 +3,7 @@ import { BirthdayApiService } from '../../services/birthday-api.service';
 import { CalendarApiService, CalendarEvent, calendarDate } from '../../services/calendar-api.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrentUserService } from '../../auth/current-user.service';
+import { hasVerifiedGlobalAdmin } from '../../auth/platform-role';
 import { AuthService } from '../../auth/auth.service';
 import { OnboardingApiService } from '../../auth/onboarding-api.service';
 import { dismissProfilePrompt } from './mobile-personal-profile';
@@ -71,7 +72,7 @@ export class MobileHome implements OnInit {
     { title: 'Convivenze', path: 'convivenze', icon: 'pi-calendar-plus', subtitle: 'Prossime convivenze' }
   ];
   protected canOrganize(): boolean { return this.current.context()?.permissions.includes('CREATE_CONVIVENZA') === true; }
-  protected canApprove(): boolean { return this.current.context()?.isOnboardingAdmin === true || this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
+  protected canApprove(): boolean { return hasVerifiedGlobalAdmin(this.current.context()) || this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
   protected get emptyIcon(): string { return this.cards.find(card => card.path === this.section)?.icon ?? 'pi-info-circle'; }
   protected get unavailableMessage(): string {
     return ({ calendario: 'Le date degli incontri della comunità non sono ancora disponibili. Puoi consultare le convivenze.',

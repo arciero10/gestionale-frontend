@@ -18,7 +18,7 @@ export const mobileAccessGuard: CanMatchFn = () => {
 const linkedGuard: CanMatchFn = () => inject(CurrentUserService).context()?.linkedToCommunity === true || inject(Router).parseUrl('/mobile/onboarding');
 const approvalGuard: CanMatchFn = () => {
   const context = inject(CurrentUserService).context();
-  return context?.isOnboardingAdmin === true || context?.linkedToCommunity === true || inject(Router).parseUrl('/mobile/onboarding');
+  return hasVerifiedGlobalAdmin(context) || context?.linkedToCommunity === true && context.permissions.some(p => ['APPROVE_REQUESTS','APPROVE_MEMBERS'].includes(p)) || inject(Router).parseUrl('/mobile/onboarding');
 };
 const structureGuard: CanMatchFn = () => inject(CurrentUserService).context()?.permissions.includes('CREATE_CONVIVENZA') || inject(Router).parseUrl('/forbidden');
 const section = (path: string, title: string) => ({ path, loadComponent: () => import('./mobile-home').then(c => c.MobileHome), data: { section: path, title }, canMatch: [linkedGuard] });
@@ -27,6 +27,9 @@ export default [{ path: '', component: MobileShell, children: [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: 'admin', loadComponent: () => import('./mobile-admin').then(c => c.MobileAdmin), canMatch: [mobileGlobalAdminGuard] },
   { path: 'admin/communities', loadComponent: () => import('./mobile-admin-communities').then(c => c.MobileAdminCommunities), canMatch: [mobileGlobalAdminGuard] },
+  { path: 'admin/approvals', loadComponent: () => import('./mobile-admin-requests').then(c => c.MobileAdminRequests), canMatch: [mobileGlobalAdminGuard] },
+  { path: 'admin/responsibles', loadComponent: () => import('./mobile-admin-roles').then(c => c.MobileAdminRoles), canMatch: [mobileGlobalAdminGuard] },
+  { path: 'admin/delegations', loadComponent: () => import('./mobile-admin-roles').then(c => c.MobileAdminRoles), canMatch: [mobileGlobalAdminGuard] },
   { path: 'admin/:section', loadComponent: () => import('./mobile-admin').then(c => c.MobileAdmin), canMatch: [mobileGlobalAdminGuard] },
   { path: 'account-security', loadComponent: () => import('./mobile-account-security').then(c => c.MobileAccountSecurity) },
   section('home', 'Home'),

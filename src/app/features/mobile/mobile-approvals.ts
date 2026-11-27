@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CurrentUserService } from '../../auth/current-user.service';
+import { hasVerifiedGlobalAdmin } from '../../auth/platform-role';
 import { OnboardingApiService } from '../../auth/onboarding-api.service';
 import { ApprovazioniAppartenenza } from '../gestionaleCN/onboarding-comunita/approvazioni-appartenenza';
 
@@ -31,7 +32,7 @@ export class MobileApprovals implements OnInit {
   private readonly api = inject(OnboardingApiService);
   private readonly current = inject(CurrentUserService);
   protected get responsible(): boolean { return this.current.context()?.role === 'RESPONSIBLE'; }
-  protected get canReview(): boolean { return this.current.context()?.isOnboardingAdmin === true || this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
+  protected get canReview(): boolean { return hasVerifiedGlobalAdmin(this.current.context()) || this.current.context()?.permissions.some(p => ['APPROVE_REQUESTS', 'APPROVE_MEMBERS'].includes(p)) === true; }
   protected available: string[] = [];
   protected members: Array<{personId: number; name: string; permissions: string[]}> = [];
   protected loading = false;

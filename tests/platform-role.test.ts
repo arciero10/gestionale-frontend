@@ -25,7 +25,7 @@ test('global administrator without membership has no association warning or inve
 });
 test('existing onboarding capability receives a scoped notice, never a global role',()=>{
   const admin=context({isOnboardingAdmin:true});
-  assert.equal(communityAssociationNotice(admin),'Accesso alle approvazioni verificato. Nessuna appartenenza comunitaria richiesta.');
+  assert.equal(communityAssociationNotice(admin),'Il tuo account deve ancora essere associato a una comunità.');
   assert.equal(hasVerifiedGlobalAdmin(admin),false);
 });
 test('ordinary unlinked and pending community members retain their exact notices',()=>{

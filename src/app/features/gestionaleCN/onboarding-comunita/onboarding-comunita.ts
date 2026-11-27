@@ -100,7 +100,15 @@ interface OnboardingPayload {
                             <p>La richiesta di appartenenza è stata salvata. Nessun ruolo operativo è ancora abilitato.</p>
                             <p><strong>Comunità richiesta:</strong> {{ richiestaCorrente?.communityNumber ?? numeroComunita }}ª Comunità · {{ richiestaCorrente?.parishName || nomeParrocchiaBackend }}</p>
                             <p><strong>Ruolo richiesto:</strong> {{ roleLabel(richiestaCorrente?.requestedRole ?? 'MEMBER') }}</p>
-                            <p><strong>Stato:</strong> In attesa di approvazione</p>
+                            <p><strong>Stato:</strong> {{richiestaCorrente?.queueStatus === 'SENZA_APPROVATORE' ? 'Senza approvatore disponibile' : 'In attesa di approvazione'}}</p>
+                            @if(mobileRuntime){
+                              <section class="provisional-profile"><h3>Area personale provvisoria</h3>
+                                <p>{{richiestaCorrente?.firstName}} {{richiestaCorrente?.lastName}}</p>
+                                <p>La richiesta resta registrata. Puoi aggiornare i tuoi dati qui sotto; l'anagrafica e le attività riservate della comunità restano protette.</p>
+                                @if(richiestaCorrente?.needsCommunityCensus){<p>Il numero della comunità è in attesa di censimento.</p>}
+                              </section>
+                            }
+                            @if(richiestaCorrente?.reviewMessage){<p role="status">{{richiestaCorrente?.reviewMessage}}</p>}
                             <button pButton type="button" label="Verifica approvazione" icon="pi pi-refresh" [disabled]="saving" (click)="verificaApprovazione()"></button>
                             @if(richiestaCorrente?.responsibleAvailable===false){<p>Non risulta un Responsabile con account attivo. La verifica resta affidata all'amministrazione superiore.</p>}
                             <details><summary>Segnala un referente per la verifica</summary><p>Il contatto indicato non riceve ruoli o permessi automaticamente.</p>
@@ -112,6 +120,7 @@ interface OnboardingPayload {
                     }
                     @if (richiestaCorrente?.status === 'RESPINTA') {
                         <p role="alert" class="privacy-consent">La richiesta è stata rifiutata. Puoi correggere i dati qui sotto e ripresentarla.</p>
+                        @if(richiestaCorrente?.reviewMessage){<p>{{richiestaCorrente?.reviewMessage}}</p>}
                     }
                     @if (loadingRequest||admissionChecking) { <p role="status">Caricamento profilo...</p> }
                     @else if(!platformAdmitted){<p role="status">Per richiedere l'appartenenza serve un invito personale alla piattaforma. Accedi e riapri il link ricevuto.</p><button pButton type="button" label="Riprova verifica invito" (click)="checkAdmission()"></button>}
@@ -137,6 +146,14 @@ interface OnboardingPayload {
                             @if (!loadingParishes && backendParishes.length === 0) {
                                 <p>Nessuna parrocchia disponibile. Contatta la segreteria.</p>
                                 <button pButton type="button" label="Riprova" icon="pi pi-refresh" (click)="caricaParrocchieBackend()"></button>
+                            }
+                            @if(mobileRuntime){
+                              <details><summary>La mia parrocchia non è presente</summary>
+                                <label>Nome della parrocchia<input pInputText name="missingParishName" [(ngModel)]="missingParishName" maxlength="200"/></label>
+                                <label>Indirizzo e località disponibili<input pInputText name="missingParishAddress" [(ngModel)]="missingParishAddress" maxlength="500"/></label>
+                                <button type="button" (click)="reportParish()" [disabled]="saving||missingParishName.trim().length<2">Segnala all'amministrazione</button>
+                                @if(parishReportFeedback){<p role="status">{{parishReportFeedback}}</p>}
+                              </details>
                             }
                         </div>
                         <div class="field" data-validation-field="numeroComunita" [class.field-error]="hasFieldError('numeroComunita')">
@@ -851,6 +868,14 @@ interface OnboardingPayload {
 export class OnboardingComunita implements OnInit {
     readonly mobileRuntime = Capacitor.isNativePlatform();
     readonly declaredRoles = COMMUNITY_ONBOARDING_ROLES.slice(0,3);
+    missingParishName='';missingParishAddress='';parishReportFeedback='';
+    async reportParish():Promise<void>{
+      if(this.saving||this.missingParishName.trim().length<2)return;
+      this.saving=true;this.parishReportFeedback='';
+      try{await this.onboardingApi.reportMissingParish(this.missingParishName.trim(),this.missingParishAddress.trim());this.parishReportFeedback='Segnalazione registrata. Non è stato creato alcun record ufficiale.';}
+      catch{this.parishReportFeedback='Segnalazione non confermata. I dati restano compilati: riprova più tardi.';}
+      finally{this.saving=false;}
+    }
     private readonly parishFilters = inject(FilterService);
     constructor(){this.parishFilters.register('parishNormalized',(value:unknown,query:string)=>matchesParish(String(value??''),query??''));}
     get selectedBackendAddress():string|null{return this.backendParishes.find(p=>p.id===this.backendParishId)?.address??null;}

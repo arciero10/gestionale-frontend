@@ -43,8 +43,8 @@ import { CurrentUserService } from '../../../auth/current-user.service';
                             }
                             }
                             <div class="actions">
-                                @if (request.canApprove) { <button pButton type="button" label="Approva accesso" icon="pi pi-check" [disabled]="busy || decisions[request.id] !== 'NEW' && !selectedPeople[request.id]" (click)="review(request.id, 'approve')"></button> }
-                                @if (request.canReject) { <button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined [disabled]="busy" (click)="review(request.id, 'reject')"></button> }
+                                @if (request.canApprove) { <button pButton type="button" label="Approva accesso" icon="pi pi-check" [disabled]="busy || request.requestedRole === 'RESPONSIBLE' && !reasons[request.id]?.trim() || decisions[request.id] !== 'NEW' && !selectedPeople[request.id]" (click)="review(request.id, 'approve')"></button> }
+                                @if (request.canReject) { <label>Motivazione della decisione<input [(ngModel)]="reasons[request.id]" maxlength="500" [disabled]="busy" /></label><button pButton type="button" label="Rifiuta" icon="pi pi-times" severity="danger" outlined [disabled]="busy || !reasons[request.id]?.trim()" (click)="review(request.id, 'reject')"></button> }
                                 @if (!request.canApprove && !request.canReject) { <span>È richiesta un'approvazione superiore; non puoi approvare la tua richiesta.</span> }
                             </div>
                         }
@@ -71,6 +71,7 @@ export class ApprovazioniAppartenenza implements OnInit {
     loading = false;
     busy = false;
     feedback = '';
+    reasons:Partial<Record<number,string>>={};
     requests: CommunityAccessRequest[] = [];
     selectedPeople: Record<number, number | undefined> = {};
     decisions: Record<number,'NEW'|'EXISTING'> = {};
@@ -93,7 +94,7 @@ export class ApprovazioniAppartenenza implements OnInit {
         if (this.busy) return;
         this.busy = true;
         try {
-            await this.api.review(id, action, this.decisions[id]==='EXISTING'?this.selectedPeople[id]:undefined, this.decisions[id]==='NEW'?this.edits[id]:{});
+            await this.api.review(id, action, this.decisions[id]==='EXISTING'?this.selectedPeople[id]:undefined, {...(this.decisions[id]==='NEW'?this.edits[id]:{}),reason:this.reasons[id]});
             this.feedback = action === 'approve' ? 'Appartenenza approvata.' : 'Richiesta rifiutata.';
             await this.load();
         } catch (error: unknown) {
